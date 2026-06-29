@@ -1,0 +1,21 @@
+{
+  "name": "MTG Trackers",
+  "short_name": "MTG Trackers",
+  "description": "Community trackers for Magic: The Gathering serialized cards.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#101413",
+  "theme_color": "#D6A73D",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "utilities"],
+  "lang": "en",
+  "dir": "ltr"
+}

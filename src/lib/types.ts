@@ -1,0 +1,62 @@
+export interface PriceHistoryEntry {
+  price: number;
+  date: string;
+  soldBy?: string;
+  soldTo?: string;
+}
+
+export interface GradingInfo {
+  service: string;
+  grade: number;
+  dateGraded?: string;
+}
+
+export type VerificationStatus = 'unverified' | 'source-linked' | 'confirmed';
+
+export type SourceType = 'marketplace' | 'grading-pop' | 'social' | 'article' | 'private-sale' | 'other';
+
+export type SubmissionStatus = 'pending' | 'approved' | 'rejected';
+
+export interface EvidenceImage {
+  url: string;
+  caption?: string;
+}
+
+export interface DiscoverySubmission {
+  id: string;
+  cardId: number;
+  serialNumber: string;
+  foundBy?: string;
+  dateFound?: string;
+  link?: string;
+  sourceType: SourceType;
+  requestedVerificationStatus: VerificationStatus;
+  price?: number;
+  imageUrl?: string;
+  evidenceImages: EvidenceImage[];
+  notes?: string;
+  status: SubmissionStatus;
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewNotes?: string;
+}
+
+export interface SerializedRingCard {
+  id: number;
+  serialNumber: string;
+  name: string;
+  found: boolean;
+  foundBy?: string;
+  dateFound?: string;
+  link?: string;
+  sourceType?: SourceType;
+  verificationStatus: VerificationStatus;
+  notes?: string;
+  image?: string;
+  price?: number;
+  priceDate?: string;
+  priceHistory: PriceHistoryEntry[];
+  grading?: GradingInfo;
+  pendingReports?: number;
+} 
