@@ -2,13 +2,13 @@
 
 ## Launch Readiness
 
-- Add real admin authentication.
-- Protect admin-only API routes:
-  - review submissions
-  - update price
-  - update image
-  - update grading
-  - add price history
+- [x] Add real admin authentication.
+- [x] Protect admin-only API routes:
+  - [x] review submissions
+  - [x] update price
+  - [x] update image
+  - [x] update grading
+  - [x] add price history
 - Add basic public submit rate limiting.
 - Add stricter server-side validation for:
   - serial range

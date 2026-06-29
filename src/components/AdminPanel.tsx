@@ -21,6 +21,9 @@ export default function AdminPanel({
   onRefresh,
 }: AdminPanelProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
   const [price, setPrice] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -57,10 +60,63 @@ export default function AdminPanel({
   }, [isVisible]);
 
   useEffect(() => {
-    if (isVisible && activeTab === 'review') {
+    if (isVisible) {
+      checkAuth();
+    }
+  }, [isVisible]);
+
+  useEffect(() => {
+    if (isVisible && isAuthenticated && activeTab === 'review') {
       fetchSubmissions();
     }
-  }, [isVisible, activeTab]);
+  }, [isVisible, isAuthenticated, activeTab]);
+
+  const checkAuth = async () => {
+    setAuthChecked(false);
+    try {
+      const response = await fetch('/api/admin/login');
+      if (response.ok) {
+        const data = await response.json();
+        setIsAuthenticated(Boolean(data.authenticated));
+      }
+    } catch (error) {
+      console.error('Error checking admin auth:', error);
+      setIsAuthenticated(false);
+    } finally {
+      setAuthChecked(true);
+    }
+  };
+
+  const handleLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setMessage('');
+
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: adminPassword }),
+      });
+
+      if (response.ok) {
+        setIsAuthenticated(true);
+        setAdminPassword('');
+      } else {
+        setMessage('Invalid admin password');
+      }
+    } catch (error) {
+      console.error('Error logging in:', error);
+      setMessage('Admin login failed');
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch('/api/admin/login', { method: 'DELETE' });
+    setIsAuthenticated(false);
+    setSubmissions([]);
+  };
 
   const fetchSubmissions = async () => {
     setSubmissionsLoading(true);
@@ -68,6 +124,8 @@ export default function AdminPanel({
       const response = await fetch('/api/trackers/one-ring/submissions?status=pending');
       if (response.ok) {
         setSubmissions(await response.json());
+      } else if (response.status === 401) {
+        setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('Error fetching submissions:', error);
@@ -97,6 +155,9 @@ export default function AdminPanel({
         await fetchSubmissions();
         onRefresh();
       } else {
+        if (response.status === 401) {
+          setIsAuthenticated(false);
+        }
         setMessage('Review action failed');
       }
     } catch (error) {
@@ -233,14 +294,58 @@ export default function AdminPanel({
       <div className="bg-ring-dark border border-ring-gold rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-ring-gold">Admin Panel</h2>
-          <button
-            onClick={() => setIsVisible(false)}
-            className="text-ring-gold hover:text-yellow-400"
-          >
-            x
-          </button>
+          <div className="flex items-center gap-3">
+            {isAuthenticated && (
+              <button
+                onClick={handleLogout}
+                className="text-xs text-ring-light hover:text-ring-gold"
+              >
+                Logout
+              </button>
+            )}
+            <button
+              onClick={() => setIsVisible(false)}
+              className="text-ring-gold hover:text-yellow-400"
+            >
+              x
+            </button>
+          </div>
         </div>
 
+        {!authChecked && (
+          <p className="text-sm text-ring-light">Checking admin session...</p>
+        )}
+
+        {authChecked && !isAuthenticated && (
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-ring-gold text-sm font-bold mb-2">
+                Admin Password
+              </label>
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={(event) => setAdminPassword(event.target.value)}
+                className="w-full bg-ring-light text-ring-dark border border-ring-gold rounded py-2 px-3"
+                autoFocus
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-4 rounded"
+            >
+              Login
+            </button>
+            {message && <p className="text-center text-red-300 text-sm">{message}</p>}
+            {process.env.NODE_ENV !== 'production' && (
+              <p className="text-xs text-ring-light text-center">
+                Local default: dev-admin
+              </p>
+            )}
+          </form>
+        )}
+
+        {authChecked && isAuthenticated && (
         <div className="space-y-4">
           <div>
             <label className="block text-ring-gold text-sm font-bold mb-2">
@@ -575,6 +680,7 @@ export default function AdminPanel({
             Press Ctrl + Alt + A to toggle this panel
           </p>
         </div>
+        )}
       </div>
     </div>
   );

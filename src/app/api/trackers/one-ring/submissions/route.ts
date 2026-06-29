@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DiscoverySubmission, PriceHistoryEntry, SerializedRingCard, VerificationStatus } from '@/lib/types';
 import { getRedis } from '@/lib/redis';
 import { initialSerializedRingCards, normalizeRingCard, ONE_RING_CARDS_KEY, ONE_RING_SUBMISSIONS_KEY } from '@/lib/ring-data';
+import { requireAdmin } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -17,6 +18,9 @@ async function getCards() {
 }
 
 export async function GET(request: NextRequest) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const redis = getRedis();
     const status = request.nextUrl.searchParams.get('status');
@@ -34,6 +38,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const redis = getRedis();
     const body = await request.json();

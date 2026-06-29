@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PriceHistoryEntry, SerializedRingCard } from '../../../lib/types';
 import { getRedis } from '../../../lib/redis';
+import { requireAdmin } from '../../../lib/admin-auth';
 
 // Force dynamic rendering to prevent caching issues
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function POST(request: NextRequest) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const redis = getRedis();
     const { cardId, entry } = await request.json();
