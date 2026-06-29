@@ -14,6 +14,9 @@ const config: Config = {
         'ring-dark': '#101413',
         'ring-light': '#F4EFE4',
         'ring-teal': '#2BAE9E',
+        'chocobo-gold': '#D6A73D',
+        'chocobo-dark': '#201A15',
+        'chocobo-light': '#FFF8F0',
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",

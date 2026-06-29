@@ -67,6 +67,11 @@ function TrackerCard({ tracker }: { tracker: (typeof trackers)[number] }) {
         </span>
       </div>
       <p className="mt-4 min-h-14 text-sm leading-6 text-ring-light/80">{tracker.description}</p>
+      <div className="mt-4 grid grid-cols-1 gap-2 text-xs text-ring-light/70 sm:grid-cols-3">
+        {tracker.setName && <span>Set: {tracker.setName}</span>}
+        {tracker.releaseName && <span>Release: {tracker.releaseName}</span>}
+        {tracker.cardType && <span>Type: {tracker.cardType}</span>}
+      </div>
       {disabled ? (
         <span className="mt-5 inline-flex h-10 items-center rounded border border-ring-light/20 px-4 text-sm font-bold text-ring-light/50">
           Planned

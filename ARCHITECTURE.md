@@ -20,12 +20,21 @@ src/lib/redis.ts                         lazy Redis client factory
 
 ## Tracker Directory
 
-`src/lib/trackers.ts` is the top-level registry. It currently contains:
+`src/lib/trackers.ts` is the top-level registry. Each tracker should define the collection identity, serialized quantity, theme, and affiliate links. It currently contains:
 
 - `one-ring`: live
 - `golden-chocobo`: planned placeholder
 
 Future trackers should start as entries there, then get a nested route and storage key.
+
+Tracker config fields include:
+
+- `slug`, `title`, `subtitle`, `description`
+- `setName`, `releaseName`, `cardType`
+- `total`
+- `theme`
+- `affiliateLinks`
+- `referenceImage`
 
 ## Data Model
 

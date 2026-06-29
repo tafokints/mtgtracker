@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry } from "@/lib/types";
 import { RING_REFERENCE_IMAGE, TOTAL_RING_CARDS } from '@/lib/ring-data';
+import { getTracker } from '@/lib/trackers';
 import Link from "next/link";
 import AffiliateLinks from "@/components/AffiliateLinks";
 import ReportButton from '@/components/ReportButton';
@@ -13,6 +14,8 @@ import CardDetails from '@/components/CardDetails';
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import Head from 'next/head';
+
+const tracker = getTracker('one-ring');
 
 export default function Home() {
   const [cards, setCards] = useState<SerializedRingCard[]>([]);
@@ -180,8 +183,8 @@ export default function Home() {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    "name": "One Ring Tracker",
-    "description": "Track all 100 serialized The One Ring borderless poster cards from Magic: The Gathering's The Lord of the Rings: Tales of Middle-earth.",
+    "name": tracker?.title || "One Ring Tracker",
+    "description": tracker?.description || "Track all 100 serialized The One Ring borderless poster cards from Magic: The Gathering's The Lord of the Rings: Tales of Middle-earth.",
     "url": "https://mtgtrackers.com/trackers/one-ring",
     "applicationCategory": "EntertainmentApplication",
     "operatingSystem": "Web Browser",
@@ -216,7 +219,7 @@ export default function Home() {
       <main className="flex min-h-screen flex-col items-center p-8 md:p-12">
         <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
           <h1 className="text-2xl md:text-4xl font-bold text-ring-gold mb-4 lg:mb-0">
-            One Ring Tracker
+            {tracker?.title || 'One Ring Tracker'}
           </h1>
           <div className="flex items-center space-x-4">
             <Link href="/" className="text-ring-gold hover:text-yellow-400 transition-colors">
@@ -232,7 +235,7 @@ export default function Home() {
         <div className="w-full max-w-5xl mt-6 text-center bg-ring-dark bg-opacity-75 p-6 rounded-lg">
           <ProgressBar current={foundCount} total={totalCount} />
           <p className="text-ring-light mt-3 text-sm">
-            Tracking {TOTAL_RING_CARDS} serialized The One Ring poster cards. {confirmedCount} confirmed, {foundCount - confirmedCount} source-linked or unverified.
+            Tracking {tracker?.total || TOTAL_RING_CARDS} {tracker?.cardType || 'serialized cards'} from {tracker?.setName || 'Magic: The Gathering'}. {confirmedCount} confirmed, {foundCount - confirmedCount} source-linked or unverified.
           </p>
           {lastFoundCard && (
             <p className="text-ring-light mt-4 text-sm">
@@ -364,7 +367,7 @@ export default function Home() {
           index={lightboxIndex}
         />
 
-        <AffiliateLinks />
+        <AffiliateLinks links={tracker?.affiliateLinks} title={`${tracker?.title || 'Tracker'} Marketplace Links`} />
         <AdminPanel 
           cards={cards} 
           onPriceUpdate={handlePriceUpdate} 

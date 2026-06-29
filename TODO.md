@@ -47,23 +47,27 @@
 - Move tracker-specific settings into config:
   - slug
   - title
+  - set/release/card type
   - total
   - Redis card key
   - Redis submissions key
   - serial formatter
   - reference image
   - theme
+  - affiliate links
 - Convert API routes to use tracker config by slug.
 - Add Golden Chocobo as a second tracker after the generic path is ready.
 
 ## Directory And UX
 
 - Add discovered count and pending report count to tracker directory cards.
-- Add richer tracker metadata:
-  - set name
-  - release name
-  - card type
-  - source/reference links
+- [x] Add richer tracker metadata:
+  - [x] set name
+  - [x] release name
+  - [x] card type
+  - [ ] source/reference links
+- [x] Add tracker-specific affiliate links with default fallback.
+- [x] Add tracker-specific theme config placeholders.
 - Improve mobile layout for tracker cards and admin review.
 - Add empty states for no submissions, no prices, and no discoveries.
 

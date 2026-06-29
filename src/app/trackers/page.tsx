@@ -31,6 +31,30 @@ export default function TrackersPage() {
                 </div>
                 <p className="mt-2 text-sm text-ring-teal">{tracker.subtitle}</p>
                 <p className="mt-4 text-sm leading-6 text-ring-light/75">{tracker.description}</p>
+                <dl className="mt-4 space-y-1 text-xs text-ring-light/70">
+                  {tracker.setName && (
+                    <div className="flex justify-between gap-4">
+                      <dt>Set</dt>
+                      <dd className="text-right">{tracker.setName}</dd>
+                    </div>
+                  )}
+                  {tracker.releaseName && (
+                    <div className="flex justify-between gap-4">
+                      <dt>Release</dt>
+                      <dd className="text-right">{tracker.releaseName}</dd>
+                    </div>
+                  )}
+                  {tracker.cardType && (
+                    <div className="flex justify-between gap-4">
+                      <dt>Type</dt>
+                      <dd className="text-right">{tracker.cardType}</dd>
+                    </div>
+                  )}
+                  <div className="flex justify-between gap-4">
+                    <dt>Serialized Qty</dt>
+                    <dd>{tracker.total}</dd>
+                  </div>
+                </dl>
                 {disabled ? (
                   <span className="mt-5 inline-flex h-10 items-center rounded border border-ring-light/20 px-4 text-sm font-bold text-ring-light/50">
                     Coming later
