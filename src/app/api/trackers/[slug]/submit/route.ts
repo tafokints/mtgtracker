@@ -1,17 +1,24 @@
 import { NextResponse } from 'next/server';
-import { DiscoverySubmission, SerializedRingCard } from '@/lib/types';
+import { DiscoverySubmission } from '@/lib/types';
 import { getRedis } from '@/lib/redis';
-import { formatSerial, ONE_RING_CARDS_KEY, ONE_RING_SUBMISSIONS_KEY, TOTAL_RING_CARDS } from '@/lib/ring-data';
+import { getTracker } from '@/lib/trackers';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { validateDiscoverySubmission } from '@/lib/submission-validation';
+import { formatTrackerSerial, getTrackerCards, getTrackerSubmissions, saveTrackerSubmissions } from '@/lib/tracker-data';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function POST(request: Request) {
+export async function POST(request: Request, { params }: { params: { slug: string } }) {
+  const tracker = getTracker(params.slug);
+
+  if (!tracker || tracker.status !== 'live') {
+    return NextResponse.json({ message: 'Tracker not found' }, { status: 404 });
+  }
+
   try {
     const body = await request.json();
-    const validation = validateDiscoverySubmission(body, TOTAL_RING_CARDS);
+    const validation = validateDiscoverySubmission(body, tracker.total);
 
     if (validation.errors.length > 0) {
       return NextResponse.json({ message: 'Submission validation failed', errors: validation.errors }, { status: 400 });
@@ -20,7 +27,7 @@ export async function POST(request: Request) {
     const redis = getRedis();
     const clientIp = getClientIp(request);
     const rateLimit = await checkRateLimit(redis, {
-      key: `rate-limit:one-ring-submit:${clientIp}`,
+      key: `rate-limit:${tracker.slug}:submit:${clientIp}`,
       limit: 5,
       windowSeconds: 60 * 60,
     });
@@ -33,18 +40,17 @@ export async function POST(request: Request) {
     }
 
     const input = validation.value;
-    const cards: SerializedRingCard[] = (await redis.get(ONE_RING_CARDS_KEY)) || [];
+    const cards = await getTrackerCards(redis, tracker);
     const card = cards.find((item) => item.id === input.cardId);
 
-    if (cards.length > 0 && !card) {
+    if (!card) {
       return NextResponse.json({ message: 'Card not found' }, { status: 404 });
     }
 
-    const now = new Date().toISOString();
     const submission: DiscoverySubmission = {
       id: crypto.randomUUID(),
       cardId: input.cardId,
-      serialNumber: card?.serialNumber || formatSerial(input.cardId),
+      serialNumber: card.serialNumber || formatTrackerSerial(tracker, input.cardId),
       foundBy: input.foundBy,
       dateFound: input.dateFound,
       link: input.link,
@@ -55,11 +61,11 @@ export async function POST(request: Request) {
       evidenceImages: input.evidenceImages,
       notes: input.notes,
       status: 'pending',
-      submittedAt: now,
+      submittedAt: new Date().toISOString(),
     };
 
-    const submissions: DiscoverySubmission[] = (await redis.get(ONE_RING_SUBMISSIONS_KEY)) || [];
-    await redis.set(ONE_RING_SUBMISSIONS_KEY, [submission, ...submissions]);
+    const submissions = await getTrackerSubmissions(redis, tracker);
+    await saveTrackerSubmissions(redis, tracker, [submission, ...submissions]);
 
     return NextResponse.json(
       {

@@ -4,9 +4,11 @@ import "./globals.css";
 import React from "react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
-import { RING_REFERENCE_IMAGE } from "@/lib/ring-data";
+import { getTracker } from "@/lib/trackers";
 
 const cinzel = Cinzel({ subsets: ["latin"] });
+const oneRingTracker = getTracker('one-ring');
+const socialImage = oneRingTracker?.referenceImage || '/icon.svg';
 
 export const metadata: Metadata = {
   title: {
@@ -48,7 +50,7 @@ export const metadata: Metadata = {
     siteName: 'MTG Trackers',
     images: [
       {
-        url: RING_REFERENCE_IMAGE,
+        url: socialImage,
         width: 1200,
         height: 630,
         alt: 'MTG Trackers',
@@ -59,7 +61,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'MTG Trackers',
     description: 'Community trackers for Magic: The Gathering serialized cards.',
-    images: [RING_REFERENCE_IMAGE],
+    images: [socialImage],
     creator: '@mtgtrackers',
   },
   robots: {

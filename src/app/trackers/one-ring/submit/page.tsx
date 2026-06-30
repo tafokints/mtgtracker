@@ -3,8 +3,11 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import { TOTAL_RING_CARDS, formatSerial } from '@/lib/ring-data';
+import { getTracker } from '@/lib/trackers';
+import { formatTrackerSerial } from '@/lib/tracker-data';
 import { SourceType, VerificationStatus } from '@/lib/types';
+
+const tracker = getTracker('one-ring');
 
 export default function SubmitPage() {
   const [cardId, setCardId] = useState('');
@@ -112,9 +115,9 @@ export default function SubmitPage() {
                 required
               >
                 <option value="">Select a serial</option>
-                {Array.from({ length: TOTAL_RING_CARDS }, (_, i) => i + 1).map((id) => (
+                {Array.from({ length: tracker?.total || 100 }, (_, i) => i + 1).map((id) => (
                   <option key={id} value={id}>
-                    The One Ring {formatSerial(id)}/100
+                    {tracker?.title || 'The One Ring'} {tracker ? formatTrackerSerial(tracker, id) : id.toString().padStart(3, '0')}/{tracker?.total || 100}
                   </option>
                 ))}
               </select>

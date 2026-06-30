@@ -44,19 +44,19 @@
 
 ## Modular Tracker Backend
 
-- Extract One Ring-specific Redis logic into generic tracker helpers.
-- Move tracker-specific settings into config:
-  - slug
-  - title
-  - set/release/card type
-  - total
-  - Redis card key
-  - Redis submissions key
-  - serial formatter
-  - reference image
-  - theme
-  - affiliate links
-- Convert API routes to use tracker config by slug.
+- [x] Extract One Ring-specific Redis logic into generic tracker helpers.
+- [x] Move tracker-specific settings into config:
+  - [x] slug
+  - [x] title
+  - [x] set/release/card type
+  - [x] total
+  - [x] Redis card key
+  - [x] Redis submissions key
+  - [x] serial formatter
+  - [x] reference image
+  - [x] theme
+  - [x] affiliate links
+- [x] Convert API routes to use tracker config by slug.
 - Add Golden Chocobo as a second tracker after the generic path is ready.
 
 ## Directory And UX

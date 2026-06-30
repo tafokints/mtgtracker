@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry } from "@/lib/types";
-import { RING_REFERENCE_IMAGE, TOTAL_RING_CARDS } from '@/lib/ring-data';
 import { getTracker } from '@/lib/trackers';
 import Link from "next/link";
 import AffiliateLinks from "@/components/AffiliateLinks";
@@ -16,6 +15,7 @@ import "yet-another-react-lightbox/styles.css";
 import Head from 'next/head';
 
 const tracker = getTracker('one-ring');
+const referenceImage = tracker?.referenceImage || '/icon.svg';
 
 export default function Home() {
   const [cards, setCards] = useState<SerializedRingCard[]>([]);
@@ -165,7 +165,7 @@ export default function Home() {
 
   const lightboxSlides = useMemo(() => {
     return filteredAndSortedCards
-      .map(card => card.image || RING_REFERENCE_IMAGE)
+      .map(card => card.image || referenceImage)
       .map(src => ({ src }));
   }, [filteredAndSortedCards]);
 
@@ -235,7 +235,7 @@ export default function Home() {
         <div className="w-full max-w-5xl mt-6 text-center bg-ring-dark bg-opacity-75 p-6 rounded-lg">
           <ProgressBar current={foundCount} total={totalCount} />
           <p className="text-ring-light mt-3 text-sm">
-            Tracking {tracker?.total || TOTAL_RING_CARDS} {tracker?.cardType || 'serialized cards'} from {tracker?.setName || 'Magic: The Gathering'}. {confirmedCount} confirmed, {foundCount - confirmedCount} source-linked or unverified.
+            Tracking {tracker?.total || totalCount} {tracker?.cardType || 'serialized cards'} from {tracker?.setName || 'Magic: The Gathering'}. {confirmedCount} confirmed, {foundCount - confirmedCount} source-linked or unverified.
           </p>
           {lastFoundCard && (
             <p className="text-ring-light mt-4 text-sm">
@@ -257,7 +257,7 @@ export default function Home() {
           <h2 className="sr-only">One Ring Card Collection</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredAndSortedCards.map((card, index) => {
-              const imageSrc = card.image || RING_REFERENCE_IMAGE;
+              const imageSrc = card.image || referenceImage;
               const statusLabel = card.found
                 ? card.verificationStatus === 'confirmed'
                   ? 'Confirmed'

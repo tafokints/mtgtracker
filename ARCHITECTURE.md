@@ -13,7 +13,7 @@ src/app/trackers/one-ring/submit/page.tsx hidden report form
 src/app/api/trackers/one-ring/*          namespaced One Ring API routes
 src/components/*                         shared tracker controls/details/admin UI
 src/lib/trackers.ts                      tracker directory configuration
-src/lib/ring-data.ts                     One Ring seed and reference constants
+src/lib/tracker-data.ts                  generic tracker storage helpers
 src/lib/types.ts                         shared card schema
 src/lib/redis.ts                         lazy Redis client factory
 ```
@@ -54,18 +54,18 @@ Each card has:
 
 ## API Shape
 
-The UI uses the platform-shaped One Ring API namespace:
+The UI uses the platform-shaped tracker API namespace:
 
-- `GET /api/trackers/one-ring/cards`
-- `POST /api/trackers/one-ring/submit`
-- `POST /api/trackers/one-ring/update-price`
-- `POST /api/trackers/one-ring/add-price-history`
-- `POST /api/trackers/one-ring/update-image`
-- `POST /api/trackers/one-ring/update-grading`
-- `GET /api/trackers/one-ring/submissions?status=pending`
-- `POST /api/trackers/one-ring/submissions`
+- `GET /api/trackers/[slug]/cards`
+- `POST /api/trackers/[slug]/submit`
+- `POST /api/trackers/[slug]/update-price`
+- `POST /api/trackers/[slug]/add-price-history`
+- `POST /api/trackers/[slug]/update-image`
+- `POST /api/trackers/[slug]/update-grading`
+- `GET /api/trackers/[slug]/submissions?status=pending`
+- `POST /api/trackers/[slug]/submissions`
 
-Most thin namespaced route files currently re-export the original One Ring handlers; the submission review route is implemented directly in the namespace. When the second tracker is migrated, the next step is to extract those handlers into a generic storage helper keyed by tracker config.
+All tracker API routes resolve storage keys, serial formatting, and totals from `src/lib/trackers.ts`.
 
 ## Submission Review Flow
 

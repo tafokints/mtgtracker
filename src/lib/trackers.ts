@@ -11,6 +11,12 @@ export interface TrackerTheme {
   glowClass: string;
 }
 
+export interface TrackerStorage {
+  cardsKey: string;
+  submissionsKey: string;
+  legacyCardsKeys?: string[];
+}
+
 export interface TrackerSummary {
   slug: string;
   title: string;
@@ -20,6 +26,8 @@ export interface TrackerSummary {
   releaseName?: string;
   cardType?: string;
   total: number;
+  serialPadding: number;
+  storage: TrackerStorage;
   href: string;
   status: 'live' | 'planned';
   theme: TrackerTheme;
@@ -62,6 +70,12 @@ export const trackers: TrackerSummary[] = [
     releaseName: 'Holiday Release',
     cardType: 'Serialized borderless poster',
     total: 100,
+    serialPadding: 3,
+    storage: {
+      cardsKey: 'one_ring_cards',
+      submissionsKey: 'one_ring_submissions',
+      legacyCardsKeys: ['one-ring-cards'],
+    },
     href: '/trackers/one-ring',
     status: 'live',
     theme: {
@@ -97,6 +111,12 @@ export const trackers: TrackerSummary[] = [
     setName: 'Final Fantasy',
     cardType: 'Serialized card',
     total: 77,
+    serialPadding: 2,
+    storage: {
+      cardsKey: 'golden_chocobo_cards',
+      submissionsKey: 'golden_chocobo_submissions',
+      legacyCardsKeys: ['chocobo_cards', 'chocobo-cards'],
+    },
     href: '/trackers/golden-chocobo',
     status: 'planned',
     theme: {

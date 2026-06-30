@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GradingInfo, SerializedRingCard } from '../../../lib/types';
-import { getRedis } from '../../../lib/redis';
-import { requireAdmin } from '../../../lib/admin-auth';
+import { getRedis } from '@/lib/redis';
+import { getTracker } from '@/lib/trackers';
+import { requireAdmin } from '@/lib/admin-auth';
+import { getTrackerCards, saveTrackerCards } from '@/lib/tracker-data';
 
-// Force dynamic rendering to prevent caching issues
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest, { params }: { params: { slug: string } }) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
+
+  const tracker = getTracker(params.slug);
+  if (!tracker || tracker.status !== 'live') {
+    return NextResponse.json({ error: 'Tracker not found' }, { status: 404 });
+  }
 
   try {
     const redis = getRedis();
@@ -19,35 +24,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Convert grade to number and validate
     const gradeValue = typeof grading.grade === 'string' ? parseFloat(grading.grade) : grading.grade;
     if (isNaN(gradeValue) || gradeValue < 0) {
       return NextResponse.json({ error: 'Invalid grade value' }, { status: 400 });
     }
 
-    // Update the grading object with the numeric grade
-    const validatedGrading = {
-      ...grading,
-      grade: gradeValue
-    };
-
-    const cards: SerializedRingCard[] = (await redis.get('one_ring_cards')) || [];
-
+    const cards = await getTrackerCards(redis, tracker);
     const numericCardId = typeof cardId === 'string' ? parseInt(cardId, 10) : cardId;
     const cardIndex = cards.findIndex((card) => card.id === numericCardId);
+
     if (cardIndex === -1) {
       return NextResponse.json({ error: 'Card not found' }, { status: 404 });
     }
 
-    cards[cardIndex].grading = validatedGrading;
+    cards[cardIndex].grading = {
+      ...grading,
+      grade: gradeValue,
+    };
     cards[cardIndex].found = true;
     cards[cardIndex].verificationStatus = 'confirmed';
 
-    await redis.set('one_ring_cards', cards);
+    await saveTrackerCards(redis, tracker, cards);
 
     return NextResponse.json({ success: true, card: cards[cardIndex] });
   } catch (error) {
     console.error('Error updating grading:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-} 
+}

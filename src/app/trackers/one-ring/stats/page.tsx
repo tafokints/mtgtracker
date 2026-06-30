@@ -3,10 +3,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { SerializedRingCard } from '@/lib/types';
-import { TOTAL_RING_CARDS } from '@/lib/ring-data';
+import { getTracker } from '@/lib/trackers';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import Link from 'next/link';
 import Head from 'next/head';
+
+const tracker = getTracker('one-ring');
 
 export default function StatsPage() {
   const [cards, setCards] = useState<SerializedRingCard[]>([]);
@@ -76,10 +78,10 @@ export default function StatsPage() {
     ];
 
     return {
-      totalCards: TOTAL_RING_CARDS,
+      totalCards: tracker?.total || cards.length,
       foundCount: foundCards.length,
       confirmedCount: confirmedCards.length,
-      foundPercentage: (foundCards.length / TOTAL_RING_CARDS) * 100,
+      foundPercentage: (foundCards.length / (tracker?.total || cards.length || 1)) * 100,
       averagePrice,
       totalValue,
       findsByMonth: Object.entries(findsByMonth)
@@ -96,7 +98,7 @@ export default function StatsPage() {
         .slice(0, 10),
       priceRanges,
     };
-  }, [foundCards, gradedCards, confirmedCards]);
+  }, [cards.length, foundCards, gradedCards, confirmedCards]);
 
   const structuredData = {
     '@context': 'https://schema.org',

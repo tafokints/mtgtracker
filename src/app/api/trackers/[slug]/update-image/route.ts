@@ -1,0 +1,52 @@
+import { NextResponse } from 'next/server';
+import { getRedis } from '@/lib/redis';
+import { getTracker } from '@/lib/trackers';
+import { requireAdmin } from '@/lib/admin-auth';
+import { getTrackerCards, saveTrackerCards } from '@/lib/tracker-data';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+function isValidHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' || value.startsWith('/');
+  } catch {
+    return value.startsWith('/');
+  }
+}
+
+export async function POST(request: Request, { params }: { params: { slug: string } }) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
+  const tracker = getTracker(params.slug);
+  if (!tracker || tracker.status !== 'live') {
+    return NextResponse.json({ message: 'Tracker not found' }, { status: 404 });
+  }
+
+  try {
+    const redis = getRedis();
+    const { cardId, imageUrl } = await request.json();
+
+    if (!imageUrl || !isValidHttpUrl(imageUrl)) {
+      return NextResponse.json({ message: 'Valid image URL is required' }, { status: 400 });
+    }
+
+    const cards = await getTrackerCards(redis, tracker);
+    const numericCardId = typeof cardId === 'string' ? parseInt(cardId, 10) : cardId;
+    const cardIndex = cards.findIndex((card) => card.id === numericCardId);
+
+    if (cardIndex === -1) {
+      return NextResponse.json({ message: 'Card not found' }, { status: 404 });
+    }
+
+    cards[cardIndex].image = imageUrl;
+    await saveTrackerCards(redis, tracker, cards);
+
+    return NextResponse.json({ message: 'Image updated successfully' });
+  } catch (error) {
+    console.error('Error updating image:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
+}
