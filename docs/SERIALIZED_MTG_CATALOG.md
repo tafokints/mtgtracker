@@ -4,7 +4,11 @@ Last researched: 2026-06-30
 
 Primary working query: https://scryfall.com/search?q=is%3Aserialized&unique=prints&order=set
 
+Secondary collector reference: https://draftsim.com/mtg-serial-number-cards/
+
 Scryfall currently returns 298 serialized print records for `is:serialized`. This document groups those records into tracker-friendly product/treatment buckets.
+
+Draftsim's serialized-card guide is useful as a companion source for treatment-level summaries, collector context, and print-run notes. Do not copy its article text or tables into the app. Use it to cross-check our machine-readable catalog, then verify live tracker details against Scryfall and official Wizards product/collecting pages where possible.
 
 ## How To Read This
 
@@ -98,6 +102,7 @@ Use it to drive:
 
 - Scryfall serialized query: https://scryfall.com/search?q=is%3Aserialized&unique=prints&order=set
 - Scryfall API card search: https://scryfall.com/docs/api/cards/search
+- Draftsim, The Complete List of Serialized Cards in Magic: the Gathering: https://draftsim.com/mtg-serial-number-cards/
 - Wizards, What's Inside The Brothers' War Boosters: https://magic.wizards.com/en/news/feature/whats-inside-the-brothers-war-boosters
 - Wizards, Collecting The Lord of the Rings: Tales of Middle-earth: https://magic.wizards.com/en/news/feature/collecting-the-lord-of-the-rings-tales-of-middle-earth
 - Wizards article and collecting pages should be checked per treatment before moving a tracker from planned to live.
