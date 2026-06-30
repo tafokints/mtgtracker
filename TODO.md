@@ -9,14 +9,15 @@
   - [x] update image
   - [x] update grading
   - [x] add price history
-- Add basic public submit rate limiting.
-- Add stricter server-side validation for:
-  - serial range
-  - URLs
-  - image URLs
-  - prices
-  - source type
-  - verification status
+- [x] Add basic public submit rate limiting.
+- [x] Add stricter server-side validation for:
+  - [x] serial range
+  - [x] URLs
+  - [x] image URLs
+  - [x] prices
+  - [x] source type
+  - [x] verification status
+  - [x] max text lengths
 - Add Vercel deployment notes for `mtgtrackers.com`.
 
 ## Submission Review Queue

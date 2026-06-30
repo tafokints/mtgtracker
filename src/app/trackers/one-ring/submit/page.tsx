@@ -18,11 +18,13 @@ export default function SubmitPage() {
   const [evidenceImageUrls, setEvidenceImageUrls] = useState('');
   const [notes, setNotes] = useState('');
   const [message, setMessage] = useState('');
+  const [errors, setErrors] = useState<string[]>([]);
   const [isError, setIsError] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage('');
+    setErrors([]);
     setIsError(false);
 
     const response = await fetch('/api/trackers/one-ring/submit', {
@@ -56,7 +58,9 @@ export default function SubmitPage() {
       setEvidenceImageUrls('');
       setNotes('');
     } else {
-      setMessage('Submission failed. Please check the serial and source details.');
+      const data = await response.json().catch(() => null);
+      setMessage(data?.message || 'Submission failed. Please check the serial and source details.');
+      setErrors(Array.isArray(data?.errors) ? data.errors : []);
       setIsError(true);
     }
   };
@@ -242,6 +246,13 @@ export default function SubmitPage() {
             Submit
           </button>
           {message && <p className={`mt-4 text-center ${isError ? 'text-red-500' : 'text-green-400'}`}>{message}</p>}
+          {errors.length > 0 && (
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-red-300">
+              {errors.map((error) => (
+                <li key={error}>{error}</li>
+              ))}
+            </ul>
+          )}
         </form>
       </main>
     </>
