@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry, DiscoverySubmission, VerificationStatus } from '../lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
 import { formatTrackerSerial } from '@/lib/tracker-data';
+import ExternalImage from '@/components/ExternalImage';
 
 interface AdminPanelProps {
   tracker: TrackerSummary;
@@ -469,7 +470,12 @@ export default function AdminPanel({
                     <div className="grid grid-cols-2 gap-2">
                       {(submission.evidenceImages || []).slice(0, 4).map((image) => (
                         <a key={image.url} href={image.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded border border-ring-gold/30 bg-ring-light/10">
-                          <img src={image.url} alt={`Evidence for ${serialLabel(submission.serialNumber)}`} className="h-28 w-full object-cover" />
+                          <ExternalImage
+                            src={image.url}
+                            alt={`Evidence for ${serialLabel(submission.serialNumber)}`}
+                            className="h-28 w-full object-cover"
+                            hideOnError
+                          />
                         </a>
                       ))}
                     </div>

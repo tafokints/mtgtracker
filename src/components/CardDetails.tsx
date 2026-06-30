@@ -3,6 +3,7 @@
 import React from 'react';
 import { SerializedRingCard } from '../lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
+import ExternalImage from '@/components/ExternalImage';
 
 interface CardDetailsProps {
   card: SerializedRingCard;
@@ -140,10 +141,11 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
             <div>
               <h3 className="text-lg font-bold text-ring-gold mb-2">Card Image</h3>
               <div className="bg-ring-light bg-opacity-20 p-4 rounded">
-                <img
+                <ExternalImage
                   src={card.image}
                   alt={`${tracker.title} ${serialLabel}`}
                   className="w-full max-w-md mx-auto rounded"
+                  fallbackSrc={tracker.referenceImage || '/icon.svg'}
                 />
               </div>
             </div>

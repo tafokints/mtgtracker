@@ -11,6 +11,7 @@ import AdminPanel from '@/components/AdminPanel';
 import ProgressBar from '@/components/ProgressBar';
 import FilterControls from '@/components/FilterControls';
 import CardDetails from '@/components/CardDetails';
+import ExternalImage from '@/components/ExternalImage';
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import Head from 'next/head';
@@ -298,18 +299,11 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                       }
                     }}
                   >
-                    <img
+                    <ExternalImage
                       src={imageSrc}
                       alt={`${tracker.title} ${card.serialNumber}/${tracker.total} - ${card.name}`}
                       className="w-full h-full object-contain bg-black/20"
-                      loading="lazy"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        const container = target.parentElement;
-                        if (container) {
-                          (container as HTMLElement).style.display = 'none';
-                        }
-                      }}
+                      fallbackSrc={referenceImage}
                     />
                   </div>
                   
