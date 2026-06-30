@@ -21,6 +21,7 @@
 - [x] Add Vercel deployment notes for `mtgtrackers.com`.
 - [x] Add affiliate disclosure near marketplace links.
 - [x] Add eBay Partner Network disclosure on tracker pages.
+- [x] Add top-of-page affiliate disclosure on tracker pages.
 - [x] Add affiliate link validation script.
 - [ ] Validate Google Search Console setup.
 - [x] Replace placeholder Google verification metadata.

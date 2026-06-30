@@ -5,6 +5,7 @@ import { SerializedRingCard, GradingInfo, PriceHistoryEntry } from "@/lib/types"
 import type { TrackerSummary } from '@/lib/trackers';
 import Link from "next/link";
 import AffiliateLinks from "@/components/AffiliateLinks";
+import AffiliateDisclosureNotice from "@/components/AffiliateDisclosureNotice";
 import ReportButton from '@/components/ReportButton';
 import AdminPanel from '@/components/AdminPanel';
 import ProgressBar from '@/components/ProgressBar';
@@ -233,6 +234,9 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
         </div>
 
         <div className="w-full max-w-5xl mt-6 text-center bg-ring-dark bg-opacity-75 p-6 rounded-lg">
+          <div className="mb-5 text-left">
+            <AffiliateDisclosureNotice links={tracker.affiliateLinks} compact />
+          </div>
           <ProgressBar current={foundCount} total={totalCount} />
           <p className="text-ring-light mt-3 text-sm">
             Tracking {tracker.total || totalCount} {tracker.cardType || 'serialized cards'} from {tracker.setName || 'Magic: The Gathering'}. {confirmedCount} confirmed, {foundCount - confirmedCount} source-linked or unverified.
