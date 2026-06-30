@@ -3,6 +3,7 @@ import { DiscoverySubmission, VerificationStatus } from '@/lib/types';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
+import { readJsonBody } from '@/lib/request-json';
 import {
   applyApprovedSubmission,
   getTrackerCards,
@@ -14,6 +15,8 @@ import {
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+const VERIFICATION_STATUSES: VerificationStatus[] = ['unverified', 'source-linked', 'confirmed'];
 
 export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
   const unauthorized = requireAdmin(request);
@@ -51,12 +54,27 @@ export async function POST(request: NextRequest, { params }: { params: { slug: s
 
   try {
     const redis = getRedis();
-    const body = await request.json();
-    const { submissionId, action } = body;
+    const body = await readJsonBody(request);
+    if (!body.ok) return body.response;
 
-    if (!submissionId || !['approve', 'reject'].includes(action)) {
+    const input = body.value as {
+      submissionId?: unknown;
+      action?: unknown;
+      reviewedBy?: unknown;
+      reviewNotes?: unknown;
+      imageUrl?: unknown;
+      verificationStatus?: unknown;
+    };
+    const { submissionId, action } = input;
+
+    if (typeof submissionId !== 'string' || !['approve', 'reject'].includes(String(action))) {
       return NextResponse.json({ message: 'Submission id and valid action are required' }, { status: 400 });
     }
+
+    const verificationStatus =
+      typeof input.verificationStatus === 'string' && VERIFICATION_STATUSES.includes(input.verificationStatus as VerificationStatus)
+        ? input.verificationStatus as VerificationStatus
+        : undefined;
 
     const submissions = await getTrackerSubmissions(redis, tracker);
     const submissionIndex = submissions.findIndex((submission) => submission.id === submissionId);
@@ -74,8 +92,8 @@ export async function POST(request: NextRequest, { params }: { params: { slug: s
       ...submission,
       status: action === 'approve' ? 'approved' : 'rejected',
       reviewedAt: new Date().toISOString(),
-      reviewedBy: body.reviewedBy || 'admin',
-      reviewNotes: body.reviewNotes || undefined,
+      reviewedBy: typeof input.reviewedBy === 'string' && input.reviewedBy.trim() ? input.reviewedBy.trim() : 'admin',
+      reviewNotes: typeof input.reviewNotes === 'string' && input.reviewNotes.trim() ? input.reviewNotes.trim() : undefined,
     };
 
     submissions[submissionIndex] = reviewedSubmission;
@@ -83,9 +101,9 @@ export async function POST(request: NextRequest, { params }: { params: { slug: s
     if (action === 'approve') {
       const cards = await getTrackerCards(redis, tracker);
       const applied = applyApprovedSubmission(tracker, cards, submission, {
-        imageUrl: body.imageUrl,
-        verificationStatus: body.verificationStatus as VerificationStatus | undefined,
-        reviewNotes: body.reviewNotes,
+        imageUrl: typeof input.imageUrl === 'string' ? input.imageUrl : undefined,
+        verificationStatus,
+        reviewNotes: typeof input.reviewNotes === 'string' ? input.reviewNotes : undefined,
       });
 
       if (!applied) {

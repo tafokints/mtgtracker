@@ -3,6 +3,7 @@ import { DiscoverySubmission } from '@/lib/types';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { readJsonBody } from '@/lib/request-json';
 import { validateDiscoverySubmission } from '@/lib/submission-validation';
 import { formatTrackerSerial, getTrackerCards, getTrackerSubmissions, saveTrackerSubmissions } from '@/lib/tracker-data';
 
@@ -17,8 +18,10 @@ export async function POST(request: Request, { params }: { params: { slug: strin
   }
 
   try {
-    const body = await request.json();
-    const validation = validateDiscoverySubmission(body, tracker.total);
+    const body = await readJsonBody(request);
+    if (!body.ok) return body.response;
+
+    const validation = validateDiscoverySubmission(body.value, tracker.total);
 
     if (validation.errors.length > 0) {
       return NextResponse.json({ message: 'Submission validation failed', errors: validation.errors }, { status: 400 });

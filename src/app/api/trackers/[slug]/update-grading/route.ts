@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
+import { readJsonBody } from '@/lib/request-json';
 import { getTrackerCards, saveTrackerCards } from '@/lib/tracker-data';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +19,10 @@ export async function POST(request: NextRequest, { params }: { params: { slug: s
 
   try {
     const redis = getRedis();
-    const { cardId, grading } = await request.json();
+    const body = await readJsonBody(request);
+    if (!body.ok) return body.response;
+
+    const { cardId, grading } = body.value as { cardId?: unknown; grading?: any };
 
     if (!cardId || !grading || !grading.service || grading.grade === undefined) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });

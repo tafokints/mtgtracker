@@ -6,6 +6,7 @@ import {
   getAdminPassword,
   isAdminRequest,
 } from '@/lib/admin-auth';
+import { readJsonBody } from '@/lib/request-json';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -21,7 +22,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'Admin password is not configured' }, { status: 503 });
   }
 
-  const { password } = await request.json();
+  const body = await readJsonBody(request);
+  if (!body.ok) return body.response;
+
+  const { password } = body.value as { password?: unknown };
   if (password !== configuredPassword) {
     return NextResponse.json({ message: 'Invalid password' }, { status: 401 });
   }

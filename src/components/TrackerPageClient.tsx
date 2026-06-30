@@ -193,11 +193,6 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
       "@type": "Offer",
       "price": "0",
       "priceCurrency": "USD"
-    },
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.8",
-      "ratingCount": "150"
     }
   };
 

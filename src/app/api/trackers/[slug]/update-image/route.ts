@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
+import { readJsonBody } from '@/lib/request-json';
 import { getTrackerCards, saveTrackerCards } from '@/lib/tracker-data';
 
 export const dynamic = 'force-dynamic';
@@ -27,9 +28,12 @@ export async function POST(request: Request, { params }: { params: { slug: strin
 
   try {
     const redis = getRedis();
-    const { cardId, imageUrl } = await request.json();
+    const body = await readJsonBody(request);
+    if (!body.ok) return body.response;
 
-    if (!imageUrl || !isValidHttpUrl(imageUrl)) {
+    const { cardId, imageUrl } = body.value as { cardId?: unknown; imageUrl?: unknown };
+
+    if (typeof imageUrl !== 'string' || !isValidHttpUrl(imageUrl)) {
       return NextResponse.json({ message: 'Valid image URL is required' }, { status: 400 });
     }
 

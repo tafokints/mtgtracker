@@ -3,6 +3,7 @@ import { PriceHistoryEntry } from '@/lib/types';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
+import { readJsonBody } from '@/lib/request-json';
 import { getTrackerCards, saveTrackerCards } from '@/lib/tracker-data';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,10 @@ export async function POST(request: Request, { params }: { params: { slug: strin
 
   try {
     const redis = getRedis();
-    const { cardId, price } = await request.json();
+    const body = await readJsonBody(request);
+    if (!body.ok) return body.response;
+
+    const { cardId, price } = body.value as { cardId?: unknown; price?: unknown };
     const priceValue = Number(price);
 
     if (!Number.isFinite(priceValue) || priceValue < 0) {
