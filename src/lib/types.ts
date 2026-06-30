@@ -20,6 +20,9 @@ export type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'needs-more
 export interface EvidenceImage {
   url: string;
   caption?: string;
+  sourceSubmissionId?: string;
+  sourceUrl?: string;
+  sourceType?: SourceType;
 }
 
 export interface DiscoverySubmission {
@@ -56,6 +59,7 @@ export interface SerializedRingCard {
   verificationStatus: VerificationStatus;
   notes?: string;
   image?: string;
+  evidenceImages?: EvidenceImage[];
   price?: number;
   priceDate?: string;
   priceHistory: PriceHistoryEntry[];

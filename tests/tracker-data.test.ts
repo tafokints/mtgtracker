@@ -82,11 +82,55 @@ describe('tracker data helpers', () => {
       price: 1000,
       priceDate: '2026-06-30',
     });
+    expect(cards[6].evidenceImages).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        url: 'https://example.com/admin-selected.jpg',
+        caption: 'Admin selected primary image',
+        sourceSubmissionId: 'submission-1',
+      }),
+      expect.objectContaining({
+        url: 'https://example.com/card.jpg',
+        caption: 'Approved report primary image',
+        sourceSubmissionId: 'submission-1',
+      }),
+      expect.objectContaining({
+        url: 'https://example.com/evidence.jpg',
+        caption: 'Approved report evidence 1',
+        sourceSubmissionId: 'submission-1',
+      }),
+    ]));
     expect(cards[6].priceHistory[0]).toEqual({
       price: 1000,
       date: '2026-06-30',
       soldBy: 'Collector',
     });
+  });
+
+  it('merges evidence from related submissions during approval', () => {
+    const cards = createInitialTrackerCards(tracker);
+    const applied = applyApprovedSubmission(tracker, cards, submission(), {
+      mergedEvidenceSubmissions: [
+        submission({
+          id: 'merged-submission',
+          imageUrl: 'https://example.com/merged-card.jpg',
+          evidenceImages: [{ url: 'https://example.com/merged-evidence.jpg' }],
+        }),
+      ],
+    });
+
+    expect(applied).toBe(true);
+    expect(cards[6].evidenceImages).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        url: 'https://example.com/merged-card.jpg',
+        caption: 'Merged report primary image',
+        sourceSubmissionId: 'merged-submission',
+      }),
+      expect.objectContaining({
+        url: 'https://example.com/merged-evidence.jpg',
+        caption: 'Merged report evidence 1',
+        sourceSubmissionId: 'merged-submission',
+      }),
+    ]));
   });
 
   it('returns false when approval targets a missing card', () => {

@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis';
-import { DiscoverySubmission, PriceHistoryEntry, SerializedRingCard, VerificationStatus } from './types';
+import { DiscoverySubmission, EvidenceImage, PriceHistoryEntry, SerializedRingCard, VerificationStatus } from './types';
 import { TrackerSummary } from './trackers';
 
 export function formatTrackerSerial(tracker: TrackerSummary, id: number) {
@@ -39,6 +39,7 @@ export function normalizeTrackerCard(tracker: TrackerSummary, card: Partial<Seri
     verificationStatus: card.verificationStatus || 'unverified',
     notes: card.notes,
     image: card.image || tracker.referenceImage,
+    evidenceImages: card.evidenceImages || [],
     price: card.price,
     priceDate: card.priceDate,
     priceHistory: card.priceHistory || [],
@@ -100,6 +101,43 @@ export async function saveTrackerSubmissions(redis: Redis, tracker: TrackerSumma
   await redis.set(tracker.storage.submissionsKey, submissions);
 }
 
+function evidenceFromSubmission(submission: DiscoverySubmission, label: string): EvidenceImage[] {
+  const provenance = {
+    sourceSubmissionId: submission.id,
+    sourceUrl: submission.link,
+    sourceType: submission.sourceType,
+  };
+
+  return [
+    submission.imageUrl
+      ? {
+          url: submission.imageUrl,
+          caption: `${label} primary image`,
+          ...provenance,
+        }
+      : undefined,
+    ...(submission.evidenceImages || []).map((image, index) => ({
+      ...image,
+      caption: image.caption || `${label} evidence ${index + 1}`,
+      ...provenance,
+    })),
+  ].filter(Boolean) as EvidenceImage[];
+}
+
+function mergeEvidenceImages(existingImages: EvidenceImage[], incomingImages: EvidenceImage[]) {
+  const imagesByUrl = new Map<string, EvidenceImage>();
+
+  for (const image of [...existingImages, ...incomingImages]) {
+    if (!image.url) continue;
+    imagesByUrl.set(image.url, {
+      ...imagesByUrl.get(image.url),
+      ...image,
+    });
+  }
+
+  return [...imagesByUrl.values()];
+}
+
 export function applyApprovedSubmission(
   tracker: TrackerSummary,
   cards: SerializedRingCard[],
@@ -108,6 +146,7 @@ export function applyApprovedSubmission(
     imageUrl?: string;
     verificationStatus?: VerificationStatus;
     reviewNotes?: string;
+    mergedEvidenceSubmissions?: DiscoverySubmission[];
   }
 ) {
   const cardIndex = cards.findIndex((card) => card.id === submission.cardId);
@@ -122,6 +161,21 @@ export function applyApprovedSubmission(
     cards[cardIndex].image ||
     tracker.referenceImage;
 
+  const approvedEvidence = evidenceFromSubmission(submission, 'Approved report');
+  const mergedEvidence = (options.mergedEvidenceSubmissions || []).flatMap((mergedSubmission) => (
+    evidenceFromSubmission(mergedSubmission, 'Merged report')
+  ));
+  const selectedImageEvidence =
+    options.imageUrl && !approvedEvidence.some((image) => image.url === options.imageUrl)
+      ? [{
+          url: options.imageUrl,
+          caption: 'Admin selected primary image',
+          sourceSubmissionId: submission.id,
+          sourceUrl: submission.link,
+          sourceType: submission.sourceType,
+        }]
+      : [];
+
   cards[cardIndex] = {
     ...cards[cardIndex],
     found: true,
@@ -132,6 +186,11 @@ export function applyApprovedSubmission(
     verificationStatus: options.verificationStatus || submission.requestedVerificationStatus || 'source-linked',
     notes: [submission.notes, options.reviewNotes].filter(Boolean).join('\n\n') || undefined,
     image: selectedImageUrl,
+    evidenceImages: mergeEvidenceImages(cards[cardIndex].evidenceImages || [], [
+      ...selectedImageEvidence,
+      ...approvedEvidence,
+      ...mergedEvidence,
+    ]),
   };
 
   if (submission.price !== undefined) {

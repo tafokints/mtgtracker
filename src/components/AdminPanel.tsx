@@ -61,6 +61,7 @@ export default function AdminPanel({
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [imageOverrides, setImageOverrides] = useState<Record<string, string>>({});
   const [verificationOverrides, setVerificationOverrides] = useState<Record<string, VerificationStatus>>({});
+  const [mergeSelections, setMergeSelections] = useState<Record<string, string[]>>({});
   const pendingSubmissions = submissions.filter((submission) => submission.status === 'pending');
   const reviewedSubmissions = submissions.filter((submission) => submission.status !== 'pending');
   
@@ -176,6 +177,7 @@ export default function AdminPanel({
           reviewNotes: reviewNotes[submission.id],
           imageUrl: imageOverrides[submission.id],
           verificationStatus: verificationOverrides[submission.id] || submission.requestedVerificationStatus,
+          mergeSubmissionIds: mergeSelections[submission.id] || [],
         }),
       });
 
@@ -193,6 +195,22 @@ export default function AdminPanel({
       console.error('Error reviewing submission:', error);
       setMessage('Review action failed');
     }
+  };
+
+  const getMergeCandidates = (submission: DiscoverySubmission) => (
+    pendingSubmissions.filter((candidate) => candidate.id !== submission.id && candidate.cardId === submission.cardId)
+  );
+
+  const toggleMergeSelection = (submissionId: string, mergeSubmissionId: string) => {
+    const selectedIds = mergeSelections[submissionId] || [];
+    const nextSelectedIds = selectedIds.includes(mergeSubmissionId)
+      ? selectedIds.filter((id) => id !== mergeSubmissionId)
+      : [...selectedIds, mergeSubmissionId];
+
+    setMergeSelections({
+      ...mergeSelections,
+      [submissionId]: nextSelectedIds,
+    });
   };
 
   const handlePriceUpdate = () => {
@@ -509,6 +527,34 @@ export default function AdminPanel({
                           />
                         </a>
                       ))}
+                    </div>
+                  )}
+
+                  {getMergeCandidates(submission).length > 0 && (
+                    <div className="rounded border border-ring-light/20 bg-ring-dark/50 p-3">
+                      <p className="mb-2 text-xs font-bold text-ring-gold">Merge evidence from related reports</p>
+                      <div className="space-y-2">
+                        {getMergeCandidates(submission).map((candidate) => (
+                          <label key={candidate.id} className="flex items-start gap-2 text-xs text-ring-light">
+                            <input
+                              type="checkbox"
+                              checked={(mergeSelections[submission.id] || []).includes(candidate.id)}
+                              onChange={() => toggleMergeSelection(submission.id, candidate.id)}
+                              className="mt-1"
+                            />
+                            <span>
+                              <span className="block text-ring-light">
+                                {new Date(candidate.submittedAt).toLocaleString()} - {(candidate.evidenceImages || []).length + (candidate.imageUrl ? 1 : 0)} image{(candidate.evidenceImages || []).length + (candidate.imageUrl ? 1 : 0) === 1 ? '' : 's'}
+                              </span>
+                              {candidate.link && (
+                                <a href={candidate.link} target="_blank" rel="noopener noreferrer" className="text-ring-gold hover:underline">
+                                  Open source
+                                </a>
+                              )}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   )}
 

@@ -40,7 +40,7 @@
   - [x] needs more info
   - [x] duplicate
   - [x] cannot verify
-- [ ] Allow admins to merge evidence from multiple pending reports.
+- [x] Allow admins to merge evidence from multiple pending reports.
 - [x] Add audit trail for who reviewed each report.
 
 ## Image Storage
@@ -52,7 +52,7 @@
 - Replace URL-only evidence with uploads.
 - Store all submitted evidence images with the report.
 - Let admins choose the canonical card image during approval.
-- Keep image provenance attached to each discovery.
+- [x] Keep image provenance attached to each discovery.
 
 ## Modular Tracker Backend
 

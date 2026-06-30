@@ -79,7 +79,7 @@ async function json(response: Response) {
   return response.json() as Promise<Record<string, unknown>>;
 }
 
-async function submitValidDiscovery(cardId = 7, ip = '203.0.113.7') {
+async function submitValidDiscovery(cardId = 7, ip = '203.0.113.7', overrides: Record<string, unknown> = {}) {
   const response = await submitDiscovery(submitRequest({
     cardId,
     foundBy: 'Collector',
@@ -90,6 +90,7 @@ async function submitValidDiscovery(cardId = 7, ip = '203.0.113.7') {
     price: '1200',
     imageUrl: 'https://example.com/card.jpg',
     notes: 'Looks real.',
+    ...overrides,
   }, ip), routeContext());
 
   const body = await json(response);
@@ -194,6 +195,58 @@ describe('tracker API routes', () => {
       id: body.submissionId,
       status: 'approved',
       reviewedBy: 'admin',
+    });
+  });
+
+  it('merges selected duplicate evidence when approving a submission', async () => {
+    const primary = await submitValidDiscovery(10, '203.0.113.10', {
+      imageUrl: 'https://example.com/primary-card.jpg',
+      evidenceImageUrls: ['https://example.com/primary-evidence.jpg'],
+    });
+    const duplicate = await submitValidDiscovery(10, '203.0.113.11', {
+      imageUrl: 'https://example.com/duplicate-card.jpg',
+      evidenceImageUrls: ['https://example.com/duplicate-evidence.jpg'],
+    });
+    const response = await reviewSubmission(reviewRequest({
+      submissionId: primary.body.submissionId,
+      action: 'approve',
+      reviewedBy: 'admin',
+      mergeSubmissionIds: [duplicate.body.submissionId],
+    }), routeContext());
+    const cards = redisFixture.store.get(tracker.storage.cardsKey) as Array<{
+      id: number;
+      evidenceImages?: Array<{ url: string; sourceSubmissionId?: string }>;
+    }>;
+    const submissions = redisFixture.store.get(tracker.storage.submissionsKey) as Array<{
+      id: string;
+      status: string;
+      duplicateOf?: string;
+      reviewNotes?: string;
+    }>;
+
+    expect(response.status).toBe(200);
+    expect(cards[9].evidenceImages).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        url: 'https://example.com/primary-card.jpg',
+        sourceSubmissionId: primary.body.submissionId,
+      }),
+      expect.objectContaining({
+        url: 'https://example.com/primary-evidence.jpg',
+        sourceSubmissionId: primary.body.submissionId,
+      }),
+      expect.objectContaining({
+        url: 'https://example.com/duplicate-card.jpg',
+        sourceSubmissionId: duplicate.body.submissionId,
+      }),
+      expect.objectContaining({
+        url: 'https://example.com/duplicate-evidence.jpg',
+        sourceSubmissionId: duplicate.body.submissionId,
+      }),
+    ]));
+    expect(submissions.find((submission) => submission.id === duplicate.body.submissionId)).toMatchObject({
+      status: 'duplicate',
+      duplicateOf: primary.body.submissionId,
+      reviewNotes: `Merged evidence into ${primary.body.submissionId}.`,
     });
   });
 
