@@ -107,6 +107,7 @@ Also verify:
 - Live tracker pages load on `https://mtgtrackers.com`.
 - Marketplace links are relevant to the tracker subject.
 - Affiliate disclosures are visible near marketplace links.
+- TCGplayer links use the `partner.tcgplayer.com/DyJ25G` redirect with a tracker-specific `sharedid`, then validate that the final URL receives `irclickid`, Impact parameters, and the expected destination query.
 - `/about`, `/contact`, `/privacy`, and `/affiliate-disclosure` load in production.
 - Google Search Console ownership is verified and `https://mtgtrackers.com/sitemap.xml` is submitted.
 

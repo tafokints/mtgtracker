@@ -75,14 +75,25 @@ function assertUrlShape(link) {
   }
 
   if (link.merchant === 'tcgplayer') {
-    if (!url.hostname.endsWith('tcgplayer.com')) {
-      throw new Error(`${link.tracker} ${link.label} must point to tcgplayer.com`);
+    if (url.hostname !== 'partner.tcgplayer.com') {
+      throw new Error(`${link.tracker} ${link.label} must use the TCGplayer partner redirect`);
     }
-    if (url.searchParams.get('utm_campaign') !== 'tafokints') {
-      throw new Error(`${link.tracker} ${link.label} is missing TCGplayer affiliate campaign`);
+    if (!url.pathname.includes('DyJ25G')) {
+      throw new Error(`${link.tracker} ${link.label} is missing the TCGplayer partner link id`);
     }
-    if (!url.searchParams.get('q')) {
-      throw new Error(`${link.tracker} ${link.label} is missing TCGplayer search query`);
+    if (!url.searchParams.get('sharedid')) {
+      throw new Error(`${link.tracker} ${link.label} is missing TCGplayer shared id`);
+    }
+    const destination = url.searchParams.get('u');
+    if (!destination) {
+      throw new Error(`${link.tracker} ${link.label} is missing TCGplayer deep link destination`);
+    }
+    const destinationUrl = new URL(destination);
+    if (!destinationUrl.hostname.endsWith('tcgplayer.com')) {
+      throw new Error(`${link.tracker} ${link.label} deep link destination must point to tcgplayer.com`);
+    }
+    if (!destinationUrl.searchParams.get('q')) {
+      throw new Error(`${link.tracker} ${link.label} deep link destination is missing a search query`);
     }
   }
 }
@@ -134,7 +145,16 @@ async function main() {
       merchant: link.merchant,
       label: link.label,
       status: result.status,
-      ok: result.ok,
+      ok: result.ok && (
+        link.merchant !== 'tcgplayer' ||
+        (
+          result.finalUrl.includes('irclickid=') &&
+          result.finalUrl.includes('irpid=6334129') &&
+          result.finalUrl.includes('irgwc=1') &&
+          result.finalUrl.includes('utm_source=impact') &&
+          result.finalUrl.includes(`sharedid=${encodeURIComponent(link.tracker === 'default' ? 'serialized-mtg' : link.tracker)}`)
+        )
+      ),
       finalUrl: result.finalUrl,
       error: result.error,
     });

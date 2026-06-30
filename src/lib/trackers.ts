@@ -35,6 +35,8 @@ export interface TrackerSummary {
   referenceImage?: string;
 }
 
+const tcgplayerPartnerLink = 'https://partner.tcgplayer.com/DyJ25G';
+
 function buildEbaySearchUrl(query: string, customId: string) {
   const params = new URLSearchParams({
     _nkw: query,
@@ -62,26 +64,24 @@ function buildAmazonSearchUrl(query: string) {
   return `https://www.amazon.com/s?${params.toString()}`;
 }
 
-function buildTcgplayerSearchUrl(query: string) {
-  const params = new URLSearchParams({
+function buildTcgplayerSearchUrl(query: string, sharedId: string) {
+  const destinationParams = new URLSearchParams({
     productLineName: 'magic',
     q: query,
     view: 'grid',
-    irpid: '6334129',
-    irgwc: '1',
-    afsrc: '1',
-    utm_source: 'impact',
-    utm_medium: 'affiliate',
-    utm_campaign: 'tafokints',
+  });
+  const params = new URLSearchParams({
+    u: `https://www.tcgplayer.com/search/magic/product?${destinationParams.toString()}`,
+    sharedid: sharedId,
   });
 
-  return `https://www.tcgplayer.com/search/magic/product?${params.toString()}`;
+  return `${tcgplayerPartnerLink}?${params.toString()}`;
 }
 
 export const defaultAffiliateLinks: AffiliateLink[] = [
   {
     label: 'MTG Singles on TCGplayer',
-    href: buildTcgplayerSearchUrl('serialized mtg'),
+    href: buildTcgplayerSearchUrl('serialized mtg', 'serialized-mtg'),
     merchant: 'tcgplayer',
   },
   {
@@ -130,7 +130,7 @@ export const trackers: TrackerSummary[] = [
     affiliateLinks: [
       {
         label: 'LOTR Singles on TCGplayer',
-        href: buildTcgplayerSearchUrl('The One Ring serialized'),
+        href: buildTcgplayerSearchUrl('The One Ring serialized', 'one-ring'),
         merchant: 'tcgplayer',
       },
       {
@@ -166,7 +166,7 @@ export const trackers: TrackerSummary[] = [
     affiliateLinks: [
       {
         label: 'Innistrad Remastered Singles on TCGplayer',
-        href: buildTcgplayerSearchUrl('Edgar Markov serialized'),
+        href: buildTcgplayerSearchUrl('Edgar Markov serialized', 'edgar-markov'),
         merchant: 'tcgplayer',
       },
       {
@@ -207,7 +207,7 @@ export const trackers: TrackerSummary[] = [
     affiliateLinks: [
       {
         label: 'Final Fantasy Singles on TCGplayer',
-        href: buildTcgplayerSearchUrl('Final Fantasy Traveling Chocobo'),
+        href: buildTcgplayerSearchUrl('Final Fantasy Traveling Chocobo', 'golden-chocobo'),
         merchant: 'tcgplayer',
       },
       {
