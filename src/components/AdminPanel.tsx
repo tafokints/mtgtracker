@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry, DiscoverySubmission, VerificationStatus, SubmissionStatus } from '../lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
 import { formatTrackerSerial } from '@/lib/tracker-data';
@@ -46,6 +46,7 @@ export default function AdminPanel({
 }: AdminPanelProps) {
   const trackerApiBase = `/api/trackers/${tracker.slug}`;
   const serialLabel = (serialNumber: string | number) => `${serialNumber}/${tracker.total}`;
+  const backupInputRef = useRef<HTMLInputElement>(null);
 
   const [isVisible, setIsVisible] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -190,6 +191,47 @@ export default function AdminPanel({
     } catch (error) {
       console.error('Error exporting backup:', error);
       setMessage('Backup export failed');
+    }
+  };
+
+  const handleRestoreBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) return;
+    if (!window.confirm(`Restore ${tracker.title} from ${file.name}? This overwrites current cards and submissions.`)) {
+      return;
+    }
+
+    try {
+      const backup = JSON.parse(await file.text());
+      const response = await fetch(`${trackerApiBase}/import`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          confirm: 'RESTORE_TRACKER_BACKUP',
+          backup,
+        }),
+      });
+
+      if (response.ok) {
+        setMessage('Backup restored');
+        await fetchSubmissions();
+        onRefresh();
+        return;
+      }
+
+      if (response.status === 401) {
+        setIsAuthenticated(false);
+      }
+
+      const errorBody = await response.json().catch(() => null);
+      setMessage(errorBody?.message || 'Backup restore failed');
+    } catch (error) {
+      console.error('Error restoring backup:', error);
+      setMessage('Backup restore failed');
     }
   };
 
@@ -379,6 +421,19 @@ export default function AdminPanel({
                 >
                   Export Backup
                 </button>
+                <button
+                  onClick={() => backupInputRef.current?.click()}
+                  className="text-xs text-ring-light hover:text-ring-gold"
+                >
+                  Restore Backup
+                </button>
+                <input
+                  ref={backupInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  onChange={handleRestoreBackup}
+                  className="hidden"
+                />
                 <button
                   onClick={handleLogout}
                   className="text-xs text-ring-light hover:text-ring-gold"

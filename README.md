@@ -69,6 +69,29 @@ For local development only, the admin password falls back to `dev-admin` if `ADM
 
 The first `/api/trackers/one-ring/cards` request initializes Redis with all 100 One Ring serial slots. Public reports are stored in `one_ring_submissions` until approved.
 
+## Redis Keys And Backups
+
+Each live tracker owns two Redis JSON values defined in `src/lib/trackers.ts`:
+
+- `tracker.storage.cardsKey` stores the public serial card records.
+- `tracker.storage.submissionsKey` stores public discovery reports and admin review history.
+
+Current live keys:
+
+- `one_ring_cards`
+- `one_ring_submissions`
+- `edgar_markov_cards`
+- `edgar_markov_submissions`
+
+Legacy keys are read once during card initialization, migrated into the configured `cardsKey`, then deleted. Rate-limit keys use the `rate-limit:{trackerSlug}:submit:{clientIp}` pattern and are not included in tracker backups.
+
+Admin backups are tracker-scoped:
+
+- `GET /api/trackers/[slug]/export` downloads a JSON backup with `schemaVersion`, tracker metadata, counts, cards, and submissions.
+- `POST /api/trackers/[slug]/import` restores one exported backup for the same tracker slug.
+- Restore requests must include `confirm: "RESTORE_TRACKER_BACKUP"` and overwrite only that tracker's `cardsKey` and `submissionsKey`.
+- The hidden admin panel includes `Export Backup` and `Restore Backup` controls after login.
+
 ## Hidden Workflows
 
 - Report form: enter the Konami code on `/trackers/one-ring` to reveal the `Report a Find` link.

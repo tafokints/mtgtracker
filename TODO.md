@@ -102,9 +102,9 @@
 ## Data Safety
 
 - [x] Add export/backup endpoint for cards and submissions.
-- Add import/restore tooling for admin use.
+- [x] Add import/restore tooling for admin use.
 - [x] Add lightweight schema versioning for tracker data.
-- Document Redis key conventions.
+- [x] Document Redis key conventions.
 
 ## Maintenance
 

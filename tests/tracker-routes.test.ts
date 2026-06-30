@@ -41,6 +41,7 @@ vi.mock('@/lib/redis', () => ({
 import { POST as submitDiscovery } from '@/app/api/trackers/[slug]/submit/route';
 import { POST as reviewSubmission } from '@/app/api/trackers/[slug]/submissions/route';
 import { GET as exportTrackerBackup } from '@/app/api/trackers/[slug]/export/route';
+import { POST as importTrackerBackup } from '@/app/api/trackers/[slug]/import/route';
 
 const tracker = getTracker('one-ring');
 
@@ -82,6 +83,17 @@ function exportRequest(session = createAdminSession()) {
     headers: {
       cookie: `${ADMIN_COOKIE_NAME}=${session}`,
     },
+  });
+}
+
+function importRequest(body: unknown, session = createAdminSession()) {
+  return new NextRequest('https://mtgtrackers.com/api/trackers/one-ring/import', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      cookie: `${ADMIN_COOKIE_NAME}=${session}`,
+    },
+    body: JSON.stringify(body),
   });
 }
 
@@ -210,6 +222,73 @@ describe('tracker API routes', () => {
     expect(Array.isArray(backup.cards)).toBe(true);
     expect(Array.isArray(backup.submissions)).toBe(true);
     expect((backup.submissions as Array<{ id: string }>)[0].id).toBe(body.submissionId);
+  });
+
+  it('requires admin auth to import a tracker backup', async () => {
+    const request = new NextRequest('https://mtgtrackers.com/api/trackers/one-ring/import', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ confirm: 'RESTORE_TRACKER_BACKUP', backup: {} }),
+    });
+    const response = await importTrackerBackup(request, routeContext());
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ message: 'Unauthorized' });
+  });
+
+  it('requires explicit confirmation to import a tracker backup', async () => {
+    const response = await importTrackerBackup(importRequest({ backup: {} }), routeContext());
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: 'Restore confirmation is required' });
+  });
+
+  it('rejects backups for a different tracker slug', async () => {
+    await submitValidDiscovery(7);
+    const exportResponse = await exportTrackerBackup(exportRequest(), routeContext());
+    const backup = await json(exportResponse);
+    const response = await importTrackerBackup(importRequest({
+      confirm: 'RESTORE_TRACKER_BACKUP',
+      backup: {
+        ...backup,
+        tracker: {
+          ...(backup.tracker as Record<string, unknown>),
+          slug: 'edgar-markov',
+        },
+      },
+    }), routeContext());
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: 'Backup tracker does not match this tracker' });
+  });
+
+  it('imports a matching tracker backup and overwrites cards and submissions', async () => {
+    const { body } = await submitValidDiscovery(7);
+    const exportResponse = await exportTrackerBackup(exportRequest(), routeContext());
+    const backup = await json(exportResponse);
+
+    redisFixture.store.set(tracker.storage.cardsKey, []);
+    redisFixture.store.set(tracker.storage.submissionsKey, []);
+
+    const response = await importTrackerBackup(importRequest({
+      confirm: 'RESTORE_TRACKER_BACKUP',
+      backup,
+    }), routeContext());
+    const cards = redisFixture.store.get(tracker.storage.cardsKey) as Array<{ id: number; serialNumber: string }>;
+    const submissions = redisFixture.store.get(tracker.storage.submissionsKey) as Array<{ id: string }>;
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      message: 'Backup restored',
+      counts: {
+        cards: 100,
+        submissions: 1,
+      },
+    });
+    expect(cards).toHaveLength(100);
+    expect(cards[6]).toMatchObject({ id: 7, serialNumber: '007' });
+    expect(submissions).toHaveLength(1);
+    expect(submissions[0].id).toBe(body.submissionId);
   });
 
   it('approves a pending submission and updates the target card', async () => {
