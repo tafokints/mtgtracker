@@ -28,7 +28,7 @@ These can be scaffolded with the current model after verifying quantity and aest
 | 2021-11 | Mirrored Viscera Seer | SLD | 1-100 | Phyrexian Praetors: Compleat Edition bonus card | First serialized MTG-context card series; verify primary Secret Lair source before launch. |
 | 2023-06 | The One Ring 001/001 | LTR | 001/001 | LOTR Collector Boosters | Unique Quenya One Ring. |
 | 2023-11 | The One Ring poster | LTR | 1-100 | LOTR Holiday Release Collector Boosters | Already live as `/trackers/one-ring`. |
-| 2025-01 | Edgar Markov | INR | 1-500 | Innistrad Remastered Collector Boosters | Headliner. |
+| 2025-01 | Edgar Markov | INR | 1-500 | Innistrad Remastered Collector Boosters | Headliner. Live at `/trackers/edgar-markov`. |
 | 2025-02 | The Aetherspark | DFT | 1-500 | Aetherdrift Collector Boosters | Headliner. |
 | 2025-02 | Mox Jasper | TDM | 1-500 | Tarkir: Dragonstorm Collector Boosters | Headliner. |
 | 2025 | Traveling Chocobo | FIN | 1-77 | Final Fantasy product | Golden Chocobo future migration target. |

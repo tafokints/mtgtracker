@@ -104,6 +104,42 @@ export const trackers: TrackerSummary[] = [
     referenceImage: 'https://cards.scryfall.io/large/front/4/e/4e6fee52-33a8-4085-b632-bf95dfd2b16d.jpg?1782694957',
   },
   {
+    slug: 'edgar-markov',
+    title: 'Edgar Markov',
+    subtitle: 'Serialized Innistrad Remastered headliner',
+    description: 'Track the 500 serialized Edgar Markov cards from Magic: The Gathering Innistrad Remastered.',
+    setName: 'Innistrad Remastered',
+    releaseName: 'Collector Boosters',
+    cardType: 'Serialized headliner',
+    total: 500,
+    serialPadding: 3,
+    storage: {
+      cardsKey: 'edgar_markov_cards',
+      submissionsKey: 'edgar_markov_submissions',
+    },
+    href: '/trackers/edgar-markov',
+    status: 'live',
+    theme: defaultTrackerTheme,
+    affiliateLinks: [
+      {
+        label: 'Innistrad Remastered Singles on TCGplayer',
+        href: 'https://partner.tcgplayer.com/WyLbG3',
+        merchant: 'tcgplayer',
+      },
+      {
+        label: 'Serialized Edgar Markov on eBay',
+        href: 'https://ebay.us/MZ8psC',
+        merchant: 'ebay',
+      },
+      {
+        label: 'Innistrad Remastered on Amazon',
+        href: 'https://amzn.to/4kAIv6n',
+        merchant: 'amazon',
+      },
+    ],
+    referenceImage: 'https://cards.scryfall.io/large/front/e/7/e70bfc25-3c0c-4574-b504-1d1f73e9e790.jpg?1782726466',
+  },
+  {
     slug: 'golden-chocobo',
     title: 'Golden Chocobo',
     subtitle: 'Coming later',

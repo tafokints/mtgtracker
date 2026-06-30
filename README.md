@@ -2,7 +2,7 @@
 
 A Vercel-ready umbrella site for Magic: The Gathering serialized card trackers.
 
-The first tracker is `The One Ring` at `/trackers/one-ring`. The existing Golden Chocobo tracker stays untouched for now and can be migrated later as `/trackers/golden-chocobo`.
+The live trackers are `The One Ring` at `/trackers/one-ring` and `Edgar Markov` at `/trackers/edgar-markov`. The existing Golden Chocobo tracker stays untouched for now and can be migrated later as `/trackers/golden-chocobo`.
 
 ## Routes
 
@@ -11,6 +11,9 @@ The first tracker is `The One Ring` at `/trackers/one-ring`. The existing Golden
 - `/trackers/one-ring` - The One Ring tracker
 - `/trackers/one-ring/stats` - The One Ring stats
 - `/trackers/one-ring/submit` - hidden submit flow target
+- `/trackers/edgar-markov` - Edgar Markov tracker
+- `/trackers/edgar-markov/stats` - Edgar Markov stats
+- `/trackers/edgar-markov/submit` - hidden submit flow target
 - `/trackers` also includes a serialized scaffold queue sourced from `src/lib/serialized-catalog.ts`
 
 ## Features

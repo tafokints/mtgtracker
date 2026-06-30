@@ -320,7 +320,7 @@ export const serializedCatalog: SerializedCatalogEntry[] = [
     releaseMonth: '2025-01',
     treatment: 'serialized movie poster card',
     trackingMode: 'single-card',
-    status: 'planned',
+    status: 'live',
     cardCount: 1,
     numbered: '1-500',
     foundIn: 'Collector Boosters of Innistrad Remastered',

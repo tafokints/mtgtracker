@@ -64,12 +64,13 @@
   - [x] `/trackers/[slug]/stats`
   - [x] `/trackers/[slug]/submit`
 - [x] Generate sitemap tracker routes from live tracker config.
+- [x] Add Edgar Markov as the first second live single-card tracker.
 - Add multi-card treatment data model:
   - tracked card definitions
   - card-plus-serial discovery slots
   - submission validation for card and serial
   - admin review filters by card
-- Add scaffold tooling for single-card trackers.
+- Add scaffold tooling for single-card trackers from `src/lib/serialized-catalog.ts`.
 - Add Golden Chocobo as a second tracker after the generic path is ready.
 
 ## Directory And UX
