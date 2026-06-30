@@ -113,4 +113,4 @@
 - [x] Add graceful tracker data fallback when the cards API is unavailable.
 - [x] Decide whether to migrate arbitrary image rendering to `next/image`.
 - [x] Centralize externally hosted card/evidence images behind a safe wrapper.
-- Add basic tests for submission approval/rejection.
+- [x] Add basic tests for submission approval/rejection.
