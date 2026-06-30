@@ -31,11 +31,17 @@ copy .env.example .env.local
 npm run dev
 ```
 
-Set these env vars in `.env.local` and in Vercel:
+Set these env vars in `.env.local` and in Vercel. Either Redis naming pair works:
 
 ```bash
+# Upstash names
 UPSTASH_REDIS_REST_URL=...
 UPSTASH_REDIS_REST_TOKEN=...
+
+# Vercel Redis/KV integration names
+KV_REST_API_URL=...
+KV_REST_API_TOKEN=...
+
 ADMIN_PASSWORD=...
 ADMIN_SESSION_SECRET=...
 ```
@@ -47,7 +53,7 @@ For local development only, the admin password falls back to `dev-admin` if `ADM
 1. Import the repository in Vercel.
 2. Set the project root to `mtg-serial-tracker`.
 3. Add an Upstash Redis database.
-4. Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+4. Add Redis REST env vars. Vercel may provide `KV_REST_API_URL` and `KV_REST_API_TOKEN`; those are supported. Manual Upstash envs can use `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
 5. Deploy.
 
 The first `/api/trackers/one-ring/cards` request initializes Redis with all 100 One Ring serial slots. Public reports are stored in `one_ring_submissions` until approved.
