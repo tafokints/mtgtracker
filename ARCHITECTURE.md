@@ -10,7 +10,8 @@ src/app/trackers/page.tsx                tracker directory
 src/app/trackers/one-ring/page.tsx       The One Ring tracker
 src/app/trackers/one-ring/stats/page.tsx The One Ring stats
 src/app/trackers/one-ring/submit/page.tsx hidden report form
-src/app/api/trackers/one-ring/*          namespaced One Ring API routes
+src/app/api/trackers/[slug]/*            generic tracker API routes
+src/app/api/health/route.ts              Redis/runtime health check
 src/components/*                         shared tracker controls/details/admin UI
 src/lib/trackers.ts                      tracker directory configuration
 src/lib/tracker-data.ts                  generic tracker storage helpers
@@ -80,9 +81,25 @@ All tracker API routes resolve storage keys, serial formatting, and totals from 
 
 The API routes call `getRedis()` inside handlers instead of at module import time. This lets local and Vercel builds compile before runtime env vars are available.
 
-Required runtime env vars:
+Required admin runtime env vars:
+
+```bash
+ADMIN_PASSWORD
+ADMIN_SESSION_SECRET
+```
+
+Redis runtime env vars can use either naming pair:
 
 ```bash
 UPSTASH_REDIS_REST_URL
 UPSTASH_REDIS_REST_TOKEN
 ```
+
+or:
+
+```bash
+KV_REST_API_URL
+KV_REST_API_TOKEN
+```
+
+Use a write-capable token, not the read-only token. `/api/health` verifies that the deployed runtime can write, read, and delete a temporary Redis key without exposing secrets.

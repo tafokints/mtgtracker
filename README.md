@@ -68,3 +68,9 @@ The first `/api/trackers/one-ring/cards` request initializes Redis with all 100 
 
 - Scryfall reference printing: https://scryfall.com/card/ltr/748z/the-one-ring
 - Wizards product context: https://magic.wizards.com/en/products/the-lord-of-the-rings-tales-of-middle-earth
+
+## Agent Guidance
+
+- `CLAUDE.md` - Claude Code project instructions
+- `AGENTS.md` - Codex and general AI coding-agent instructions
+- `.codex/skills/mtg-trackers/SKILL.md` - reusable MTG Trackers development workflow

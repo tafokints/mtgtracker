@@ -18,7 +18,7 @@
   - [x] source type
   - [x] verification status
   - [x] max text lengths
-- Add Vercel deployment notes for `mtgtrackers.com`.
+- [x] Add Vercel deployment notes for `mtgtrackers.com`.
 
 ## Submission Review Queue
 
