@@ -69,6 +69,22 @@ The first `/api/trackers/one-ring/cards` request initializes Redis with all 100 
 - Admin panel: press `Ctrl + Alt + A` on `/trackers/one-ring`.
 - Review queue: use the admin panel `Review` tab to approve or reject pending reports.
 
+## Tracker Scaffolding
+
+List serialized catalog entries:
+
+```bash
+npm run catalog:list
+```
+
+Generate a reviewable single-card tracker config snippet:
+
+```bash
+npm run tracker:scaffold -- innistrad-remastered-edgar-markov --tracker-slug edgar-markov
+```
+
+The scaffold command reads `src/lib/serialized-catalog.ts`, blocks multi-card treatments that need card-plus-serial support, and tries to fetch direct Scryfall card images when available.
+
 ## References
 
 - Scryfall reference printing: https://scryfall.com/card/ltr/748z/the-one-ring

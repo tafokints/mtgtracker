@@ -70,7 +70,8 @@
   - card-plus-serial discovery slots
   - submission validation for card and serial
   - admin review filters by card
-- Add scaffold tooling for single-card trackers from `src/lib/serialized-catalog.ts`.
+- [x] Add scaffold tooling for single-card trackers from `src/lib/serialized-catalog.ts`.
+- Add catalog/tracker consistency checks for live catalog entries.
 - Add Golden Chocobo as a second tracker after the generic path is ready.
 
 ## Directory And UX
