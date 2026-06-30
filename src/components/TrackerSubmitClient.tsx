@@ -3,13 +3,11 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import { getTracker } from '@/lib/trackers';
+import type { TrackerSummary } from '@/lib/trackers';
 import { formatTrackerSerial } from '@/lib/tracker-data';
 import { SourceType, VerificationStatus } from '@/lib/types';
 
-const tracker = getTracker('one-ring');
-
-export default function SubmitPage() {
+export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSummary }) {
   const [cardId, setCardId] = useState('');
   const [foundBy, setFoundBy] = useState('');
   const [dateFound, setDateFound] = useState('');
@@ -23,6 +21,7 @@ export default function SubmitPage() {
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
   const [isError, setIsError] = useState(false);
+  const trackerPath = `/trackers/${tracker.slug}`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +29,7 @@ export default function SubmitPage() {
     setErrors([]);
     setIsError(false);
 
-    const response = await fetch('/api/trackers/one-ring/submit', {
+    const response = await fetch(`/api/trackers/${tracker.slug}/submit`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -71,21 +70,21 @@ export default function SubmitPage() {
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    name: 'Report a The One Ring Find',
-    description: 'Submit information about discovered serialized The One Ring cards to help track all 100 copies.',
-    url: 'https://mtgtrackers.com/trackers/one-ring/submit',
+    name: `Report a ${tracker.title} Find`,
+    description: `Submit information about discovered serialized ${tracker.title} cards to help track all ${tracker.total} copies.`,
+    url: `https://mtgtrackers.com${trackerPath}/submit`,
     mainEntity: {
       '@type': 'Form',
-      name: 'The One Ring Discovery Report',
-      description: 'Form to report newly discovered serialized The One Ring cards',
+      name: `${tracker.title} Discovery Report`,
+      description: `Form to report newly discovered serialized ${tracker.title} cards`,
     },
   };
 
   return (
     <>
       <Head>
-        <title>Report a Find | One Ring Tracker</title>
-        <meta name="description" content="Submit a discovered serialized The One Ring card for admin review." />
+        <title>Report a Find | {tracker.title} Tracker</title>
+        <meta name="description" content={`Submit a discovered serialized ${tracker.title} card for admin review.`} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
@@ -97,7 +96,7 @@ export default function SubmitPage() {
             <h1 className="text-3xl md:text-4xl font-bold text-ring-gold">Report a Find</h1>
             <p className="mt-2 text-sm text-ring-light/70">Reports are queued for admin review before they appear as located.</p>
           </div>
-          <Link href="/trackers/one-ring" className="text-ring-gold hover:text-yellow-400 transition-colors">
+          <Link href={trackerPath} className="text-ring-gold hover:text-yellow-400 transition-colors">
             Back
           </Link>
         </div>
@@ -115,9 +114,9 @@ export default function SubmitPage() {
                 required
               >
                 <option value="">Select a serial</option>
-                {Array.from({ length: tracker?.total || 100 }, (_, i) => i + 1).map((id) => (
+                {Array.from({ length: tracker.total }, (_, i) => i + 1).map((id) => (
                   <option key={id} value={id}>
-                    {tracker?.title || 'The One Ring'} {tracker ? formatTrackerSerial(tracker, id) : id.toString().padStart(3, '0')}/{tracker?.total || 100}
+                    {tracker.title} {formatTrackerSerial(tracker, id)}/{tracker.total}
                   </option>
                 ))}
               </select>

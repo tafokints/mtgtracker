@@ -7,11 +7,12 @@ The app uses Next.js App Router with an umbrella homepage and nested tracker pag
 ```text
 src/app/page.tsx                         MTG Trackers homepage
 src/app/trackers/page.tsx                tracker directory
-src/app/trackers/one-ring/page.tsx       The One Ring tracker
-src/app/trackers/one-ring/stats/page.tsx The One Ring stats
-src/app/trackers/one-ring/submit/page.tsx hidden report form
+src/app/trackers/[slug]/page.tsx         dynamic tracker page
+src/app/trackers/[slug]/stats/page.tsx   dynamic tracker stats
+src/app/trackers/[slug]/submit/page.tsx  dynamic hidden report form
 src/app/api/trackers/[slug]/*            generic tracker API routes
 src/app/api/health/route.ts              Redis/runtime health check
+src/components/Tracker*Client.tsx        shared client tracker views
 src/components/*                         shared tracker controls/details/admin UI
 src/lib/trackers.ts                      tracker directory configuration
 src/lib/serialized-catalog.ts            researched serialized-card scaffold catalog
@@ -27,7 +28,7 @@ src/lib/redis.ts                         lazy Redis client factory
 - `one-ring`: live
 - `golden-chocobo`: planned placeholder
 
-Future trackers should start as entries there, then get a nested route and storage key.
+Future single-card trackers should start as entries there. Live tracker pages, stats pages, submit forms, API routes, and sitemap entries resolve by slug from this config.
 
 `src/lib/serialized-catalog.ts` is a broader research catalog of MTG serialized treatments. It includes single-card trackers that fit the current data model and multi-card treatments that need card-plus-serial support before launch.
 
@@ -84,9 +85,9 @@ Catalog tracking modes:
 
 ## Submission Review Flow
 
-1. A user reports a discovered serial at `/trackers/one-ring/submit`.
-2. The report is written to `one_ring_submissions` with status `pending`.
-3. `/api/trackers/one-ring/cards` includes pending report counts per serial.
+1. A user reports a discovered serial at `/trackers/[slug]/submit`.
+2. The report is written to the tracker submissions Redis key with status `pending`.
+3. `/api/trackers/[slug]/cards` includes pending report counts per serial.
 4. An admin opens the hidden admin panel and uses the `Review` tab.
 5. Approving a report updates `one_ring_cards` and marks the report `approved`.
 6. Rejecting a report marks it `rejected` without changing the public card state.

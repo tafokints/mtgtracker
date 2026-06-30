@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry } from "@/lib/types";
-import { getTracker } from '@/lib/trackers';
+import type { TrackerSummary } from '@/lib/trackers';
 import Link from "next/link";
 import AffiliateLinks from "@/components/AffiliateLinks";
 import ReportButton from '@/components/ReportButton';
@@ -14,12 +14,12 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import Head from 'next/head';
 
-const tracker = getTracker('one-ring');
-const referenceImage = tracker?.referenceImage || '/icon.svg';
-
-export default function Home() {
+export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary }) {
   const [cards, setCards] = useState<SerializedRingCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const trackerPath = `/trackers/${tracker.slug}`;
+  const trackerApiBase = `/api/trackers/${tracker.slug}`;
+  const referenceImage = tracker.referenceImage || '/icon.svg';
 
   // State for filtering and sorting
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,13 +33,9 @@ export default function Home() {
   // State for card details
   const [selectedCardForDetails, setSelectedCardForDetails] = useState<SerializedRingCard | null>(null);
 
-  useEffect(() => {
-    fetchCards();
-  }, []);
-
-  const fetchCards = async () => {
+  const fetchCards = useCallback(async () => {
     try {
-      const response = await fetch('/api/trackers/one-ring/cards');
+      const response = await fetch(`${trackerApiBase}/cards`);
       if (response.ok) {
         const data = await response.json();
         setCards(data);
@@ -49,11 +45,15 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [trackerApiBase]);
+
+  useEffect(() => {
+    fetchCards();
+  }, [fetchCards]);
 
   const handlePriceUpdate = async (cardId: number, price: number) => {
     try {
-      const response = await fetch('/api/trackers/one-ring/update-price', {
+      const response = await fetch(`${trackerApiBase}/update-price`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,7 +72,7 @@ export default function Home() {
 
   const handleImageUpdate = async (cardId: number, imageUrl: string) => {
     try {
-      const response = await fetch('/api/trackers/one-ring/update-image', {
+      const response = await fetch(`${trackerApiBase}/update-image`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,7 +91,7 @@ export default function Home() {
 
   const handleGradingUpdate = async (cardId: number, grading: GradingInfo) => {
     try {
-      const response = await fetch('/api/trackers/one-ring/update-grading', {
+      const response = await fetch(`${trackerApiBase}/update-grading`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +110,7 @@ export default function Home() {
 
   const handlePriceHistoryAdd = async (cardId: number, entry: PriceHistoryEntry) => {
     try {
-      const response = await fetch('/api/trackers/one-ring/add-price-history', {
+      const response = await fetch(`${trackerApiBase}/add-price-history`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -167,7 +167,7 @@ export default function Home() {
     return filteredAndSortedCards
       .map(card => card.image || referenceImage)
       .map(src => ({ src }));
-  }, [filteredAndSortedCards]);
+  }, [filteredAndSortedCards, referenceImage]);
 
   const foundCards = cards.filter((card) => card.found);
   const confirmedCount = cards.filter((card) => card.verificationStatus === 'confirmed').length;
@@ -183,9 +183,9 @@ export default function Home() {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    "name": tracker?.title || "One Ring Tracker",
-    "description": tracker?.description || "Track all 100 serialized The One Ring borderless poster cards from Magic: The Gathering's The Lord of the Rings: Tales of Middle-earth.",
-    "url": "https://mtgtrackers.com/trackers/one-ring",
+    "name": `${tracker.title} Tracker`,
+    "description": tracker.description,
+    "url": `https://mtgtrackers.com${trackerPath}`,
     "applicationCategory": "EntertainmentApplication",
     "operatingSystem": "Web Browser",
     "offers": {
@@ -219,27 +219,27 @@ export default function Home() {
       <main className="flex min-h-screen flex-col items-center p-8 md:p-12">
         <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
           <h1 className="text-2xl md:text-4xl font-bold text-ring-gold mb-4 lg:mb-0">
-            {tracker?.title || 'One Ring Tracker'}
+            {tracker.title}
           </h1>
           <div className="flex items-center space-x-4">
             <Link href="/" className="text-ring-gold hover:text-yellow-400 transition-colors">
               Home
             </Link>
-            <Link href="/trackers/one-ring/stats" className="text-ring-gold hover:text-yellow-400 transition-colors">
+            <Link href={`${trackerPath}/stats`} className="text-ring-gold hover:text-yellow-400 transition-colors">
               Stats
             </Link>
-            <ReportButton />
+            <ReportButton href={`${trackerPath}/submit`} />
           </div>
         </div>
 
         <div className="w-full max-w-5xl mt-6 text-center bg-ring-dark bg-opacity-75 p-6 rounded-lg">
           <ProgressBar current={foundCount} total={totalCount} />
           <p className="text-ring-light mt-3 text-sm">
-            Tracking {tracker?.total || totalCount} {tracker?.cardType || 'serialized cards'} from {tracker?.setName || 'Magic: The Gathering'}. {confirmedCount} confirmed, {foundCount - confirmedCount} source-linked or unverified.
+            Tracking {tracker.total || totalCount} {tracker.cardType || 'serialized cards'} from {tracker.setName || 'Magic: The Gathering'}. {confirmedCount} confirmed, {foundCount - confirmedCount} source-linked or unverified.
           </p>
           {lastFoundCard && (
             <p className="text-ring-light mt-4 text-sm">
-              Last find: {lastFoundCard.serialNumber}/100 by {lastFoundCard.foundBy} on {lastFoundCard.dateFound}
+              Last find: {lastFoundCard.serialNumber}/{tracker.total} by {lastFoundCard.foundBy} on {lastFoundCard.dateFound}
             </p>
           )}
         </div>
@@ -253,8 +253,8 @@ export default function Home() {
           setSortOrder={setSortOrder}
         />
 
-        <section className="w-full max-w-5xl mt-8" aria-label="Serialized One Ring Cards">
-          <h2 className="sr-only">One Ring Card Collection</h2>
+        <section className="w-full max-w-5xl mt-8" aria-label={`${tracker.title} serialized cards`}>
+          <h2 className="sr-only">{tracker.title} Card Collection</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredAndSortedCards.map((card, index) => {
               const imageSrc = card.image || referenceImage;
@@ -276,7 +276,7 @@ export default function Home() {
                     }}
                     role="button"
                     tabIndex={0}
-                    aria-label={`View larger image of Serialized One Ring Card ${card.serialNumber}/100`}
+                    aria-label={`View larger image of ${tracker.title} ${card.serialNumber}/${tracker.total}`}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         setLightboxIndex(index);
@@ -286,7 +286,7 @@ export default function Home() {
                   >
                     <img
                       src={imageSrc}
-                      alt={`Serialized One Ring Card ${card.serialNumber}/100 - ${card.name}`}
+                      alt={`${tracker.title} ${card.serialNumber}/${tracker.total} - ${card.name}`}
                       className="w-full h-full object-contain bg-black/20"
                       loading="lazy"
                       onError={(e) => {
@@ -299,7 +299,7 @@ export default function Home() {
                     />
                   </div>
                   
-                  <h3 className="text-lg font-bold text-ring-gold tabular-nums">{card.serialNumber}/100</h3>
+                  <h3 className="text-lg font-bold text-ring-gold tabular-nums">{card.serialNumber}/{tracker.total}</h3>
                   
                   <div className="flex-grow flex flex-col">
                     <span
@@ -367,8 +367,9 @@ export default function Home() {
           index={lightboxIndex}
         />
 
-        <AffiliateLinks links={tracker?.affiliateLinks} title={`${tracker?.title || 'Tracker'} Marketplace Links`} />
+        <AffiliateLinks links={tracker.affiliateLinks} title={`${tracker.title} Marketplace Links`} />
         <AdminPanel 
+          tracker={tracker}
           cards={cards} 
           onPriceUpdate={handlePriceUpdate} 
           onImageUpdate={handleImageUpdate}
@@ -378,6 +379,7 @@ export default function Home() {
         />
         {selectedCardForDetails && (
           <CardDetails
+            tracker={tracker}
             card={selectedCardForDetails}
             isOpen={!!selectedCardForDetails}
             onClose={() => setSelectedCardForDetails(null)}

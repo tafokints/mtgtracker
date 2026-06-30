@@ -1,9 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry, DiscoverySubmission, VerificationStatus } from '../lib/types';
+import type { TrackerSummary } from '@/lib/trackers';
+import { formatTrackerSerial } from '@/lib/tracker-data';
 
 interface AdminPanelProps {
+  tracker: TrackerSummary;
   cards: SerializedRingCard[];
   onPriceUpdate: (cardId: number, price: number) => void;
   onImageUpdate: (cardId: number, imageUrl: string) => void;
@@ -13,6 +16,7 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ 
+  tracker,
   cards, 
   onPriceUpdate, 
   onImageUpdate, 
@@ -20,6 +24,9 @@ export default function AdminPanel({
   onPriceHistoryAdd,
   onRefresh,
 }: AdminPanelProps) {
+  const trackerApiBase = `/api/trackers/${tracker.slug}`;
+  const serialLabel = (serialNumber: string | number) => `${serialNumber}/${tracker.total}`;
+
   const [isVisible, setIsVisible] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
@@ -46,6 +53,22 @@ export default function AdminPanel({
   const [soldTo, setSoldTo] = useState('');
   const [saleDate, setSaleDate] = useState('');
 
+  const fetchSubmissions = useCallback(async () => {
+    setSubmissionsLoading(true);
+    try {
+      const response = await fetch(`${trackerApiBase}/submissions?status=pending`);
+      if (response.ok) {
+        setSubmissions(await response.json());
+      } else if (response.status === 401) {
+        setIsAuthenticated(false);
+      }
+    } catch (error) {
+      console.error('Error fetching submissions:', error);
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  }, [trackerApiBase]);
+
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       // Secret code: Ctrl + Alt + A
@@ -69,7 +92,7 @@ export default function AdminPanel({
     if (isVisible && isAuthenticated && activeTab === 'review') {
       fetchSubmissions();
     }
-  }, [isVisible, isAuthenticated, activeTab]);
+  }, [isVisible, isAuthenticated, activeTab, fetchSubmissions]);
 
   const checkAuth = async () => {
     setAuthChecked(false);
@@ -118,25 +141,9 @@ export default function AdminPanel({
     setSubmissions([]);
   };
 
-  const fetchSubmissions = async () => {
-    setSubmissionsLoading(true);
-    try {
-      const response = await fetch('/api/trackers/one-ring/submissions?status=pending');
-      if (response.ok) {
-        setSubmissions(await response.json());
-      } else if (response.status === 401) {
-        setIsAuthenticated(false);
-      }
-    } catch (error) {
-      console.error('Error fetching submissions:', error);
-    } finally {
-      setSubmissionsLoading(false);
-    }
-  };
-
   const reviewSubmission = async (submission: DiscoverySubmission, action: 'approve' | 'reject') => {
     try {
-      const response = await fetch('/api/trackers/one-ring/submissions', {
+      const response = await fetch(`${trackerApiBase}/submissions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -151,7 +158,7 @@ export default function AdminPanel({
       });
 
       if (response.ok) {
-        setMessage(action === 'approve' ? `Approved ${submission.serialNumber}/100` : `Rejected ${submission.serialNumber}/100`);
+        setMessage(action === 'approve' ? `Approved ${serialLabel(submission.serialNumber)}` : `Rejected ${serialLabel(submission.serialNumber)}`);
         await fetchSubmissions();
         onRefresh();
       } else {
@@ -179,7 +186,7 @@ export default function AdminPanel({
     }
 
     onPriceUpdate(selectedCard, priceValue);
-    setMessage(`Price updated for serial ${selectedCard.toString().padStart(3, '0')}/100`);
+    setMessage(`Price updated for serial ${serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
     setPrice('');
     setSelectedCard(null);
   };
@@ -206,7 +213,7 @@ export default function AdminPanel({
     }
 
     onImageUpdate(selectedCard, imageUrl);
-    setMessage(`Image updated for serial ${selectedCard.toString().padStart(3, '0')}/100`);
+    setMessage(`Image updated for serial ${serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
     setImageUrl('');
     setSelectedCard(null);
   };
@@ -230,7 +237,7 @@ export default function AdminPanel({
     };
 
     onGradingUpdate(selectedCard, gradingInfo);
-    setMessage(`Grading updated for serial ${selectedCard.toString().padStart(3, '0')}/100`);
+    setMessage(`Grading updated for serial ${serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
     setGradingService('');
     setGrade('');
     setDateGraded('');
@@ -257,7 +264,7 @@ export default function AdminPanel({
     };
 
     onPriceHistoryAdd(selectedCard, historyEntry);
-    setMessage(`Price history added for serial ${selectedCard.toString().padStart(3, '0')}/100`);
+    setMessage(`Price history added for serial ${serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
     setHistoryPrice('');
     setSoldBy('');
     setSoldTo('');
@@ -359,7 +366,7 @@ export default function AdminPanel({
               <option value="">Choose a serial...</option>
               {cards.map((card) => (
                 <option key={card.id} value={card.id}>
-                  {card.serialNumber}/100 - {card.found ? card.verificationStatus : 'not found'}
+                  {serialLabel(card.serialNumber)} - {card.found ? card.verificationStatus : 'not found'}
                 </option>
               ))}
             </select>
@@ -431,7 +438,7 @@ export default function AdminPanel({
                 <div key={submission.id} className="rounded border border-ring-gold/40 bg-black/20 p-3 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-bold text-ring-gold">{submission.serialNumber}/100</p>
+                      <p className="font-bold text-ring-gold">{serialLabel(submission.serialNumber)}</p>
                       <p className="text-xs text-ring-light">
                         {submission.sourceType.replace('-', ' ')} · {submission.requestedVerificationStatus.replace('-', ' ')}
                       </p>
@@ -462,7 +469,7 @@ export default function AdminPanel({
                     <div className="grid grid-cols-2 gap-2">
                       {(submission.evidenceImages || []).slice(0, 4).map((image) => (
                         <a key={image.url} href={image.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded border border-ring-gold/30 bg-ring-light/10">
-                          <img src={image.url} alt={`Evidence for ${submission.serialNumber}/100`} className="h-28 w-full object-cover" />
+                          <img src={image.url} alt={`Evidence for ${serialLabel(submission.serialNumber)}`} className="h-28 w-full object-cover" />
                         </a>
                       ))}
                     </div>

@@ -2,22 +2,26 @@
 
 import React from 'react';
 import { SerializedRingCard } from '../lib/types';
+import type { TrackerSummary } from '@/lib/trackers';
 
 interface CardDetailsProps {
   card: SerializedRingCard;
+  tracker: TrackerSummary;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function CardDetails({ card, isOpen, onClose }: CardDetailsProps) {
+export default function CardDetails({ card, tracker, isOpen, onClose }: CardDetailsProps) {
   if (!isOpen) return null;
+
+  const serialLabel = `${card.serialNumber}/${tracker.total}`;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
       <div className="bg-ring-dark border border-ring-gold rounded-lg p-6 w-[min(90vw,42rem)] max-h-[90vh] overflow-y-auto divide-y divide-ring-gold/20">
         <div className="flex justify-between items-center pb-4 gap-4">
           <h2 className="text-xl font-bold text-ring-gold">
-            The One Ring {card.serialNumber}/100 Details
+            {tracker.title} {serialLabel} Details
           </h2>
           <button
             onClick={onClose}
@@ -138,7 +142,7 @@ export default function CardDetails({ card, isOpen, onClose }: CardDetailsProps)
               <div className="bg-ring-light bg-opacity-20 p-4 rounded">
                 <img
                   src={card.image}
-                  alt={`Serialized One Ring Card ${card.serialNumber}/100`}
+                  alt={`${tracker.title} ${serialLabel}`}
                   className="w-full max-w-md mx-auto rounded"
                 />
               </div>

@@ -59,10 +59,11 @@
 - [x] Convert API routes to use tracker config by slug.
 - [x] Add researched serialized MTG scaffold catalog.
 - [x] Surface serialized scaffold queue on `/trackers`.
-- Convert One Ring pages to dynamic tracker pages:
-  - `/trackers/[slug]`
-  - `/trackers/[slug]/stats`
-  - `/trackers/[slug]/submit`
+- [x] Convert One Ring pages to dynamic tracker pages:
+  - [x] `/trackers/[slug]`
+  - [x] `/trackers/[slug]/stats`
+  - [x] `/trackers/[slug]/submit`
+- [x] Generate sitemap tracker routes from live tracker config.
 - Add multi-card treatment data model:
   - tracked card definitions
   - card-plus-serial discovery slots

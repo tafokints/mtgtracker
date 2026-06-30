@@ -3,25 +3,24 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { SerializedRingCard } from '@/lib/types';
-import { getTracker } from '@/lib/trackers';
+import type { TrackerSummary } from '@/lib/trackers';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import Link from 'next/link';
 import Head from 'next/head';
 
-const tracker = getTracker('one-ring');
-
-export default function StatsPage() {
+export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummary }) {
   const [cards, setCards] = useState<SerializedRingCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const trackerPath = `/trackers/${tracker.slug}`;
 
   useEffect(() => {
-    fetch('/api/trackers/one-ring/cards')
+    fetch(`/api/trackers/${tracker.slug}/cards`)
       .then(res => res.json())
       .then(data => {
         setCards(data);
         setLoading(false);
       });
-  }, []);
+  }, [tracker.slug]);
 
   const foundCards = useMemo(() => cards.filter(c => c.found), [cards]);
   const gradedCards = useMemo(() => foundCards.filter(c => c.grading), [foundCards]);
@@ -78,10 +77,10 @@ export default function StatsPage() {
     ];
 
     return {
-      totalCards: tracker?.total || cards.length,
+      totalCards: tracker.total || cards.length,
       foundCount: foundCards.length,
       confirmedCount: confirmedCards.length,
-      foundPercentage: (foundCards.length / (tracker?.total || cards.length || 1)) * 100,
+      foundPercentage: (foundCards.length / (tracker.total || cards.length || 1)) * 100,
       averagePrice,
       totalValue,
       findsByMonth: Object.entries(findsByMonth)
@@ -98,18 +97,18 @@ export default function StatsPage() {
         .slice(0, 10),
       priceRanges,
     };
-  }, [cards.length, foundCards, gradedCards, confirmedCards]);
+  }, [cards.length, foundCards, gradedCards, confirmedCards, tracker.total]);
 
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    name: 'One Ring Statistics',
-    description: 'Comprehensive statistics and analytics for serialized The One Ring discoveries, including grading data, price trends, and discovery patterns.',
-    url: 'https://mtgtrackers.com/trackers/one-ring/stats',
+    name: `${tracker.title} Statistics`,
+    description: `Comprehensive statistics and analytics for serialized ${tracker.title} discoveries, including grading data, price trends, and discovery patterns.`,
+    url: `https://mtgtrackers.com${trackerPath}/stats`,
     mainEntity: {
       '@type': 'Dataset',
-      name: 'One Ring Card Statistics',
-      description: 'Detailed statistics for 100 serialized The One Ring cards from MTG The Lord of the Rings: Tales of Middle-earth',
+      name: `${tracker.title} Card Statistics`,
+      description: `Detailed statistics for ${tracker.total} serialized ${tracker.title} cards from ${tracker.setName || 'Magic: The Gathering'}`,
       numberOfItems: foundCards.length,
     },
   };
@@ -127,8 +126,8 @@ export default function StatsPage() {
   return (
     <>
       <Head>
-        <title>Statistics | One Ring Tracker</title>
-        <meta name="description" content="Comprehensive statistics and analytics for serialized The One Ring discoveries, including grading data, price trends, and discovery patterns." />
+        <title>Statistics | {tracker.title} Tracker</title>
+        <meta name="description" content={`Comprehensive statistics and analytics for serialized ${tracker.title} discoveries, including grading data, price trends, and discovery patterns.`} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
@@ -137,9 +136,9 @@ export default function StatsPage() {
       <main className="flex min-h-screen flex-col items-center p-8 md:p-12">
         <div className="z-10 w-full max-w-7xl items-center justify-between font-mono text-sm lg:flex mb-8">
           <h1 className="text-2xl md:text-4xl font-bold text-ring-gold">
-            One Ring Statistics
+            {tracker.title} Statistics
           </h1>
-          <Link href="/trackers/one-ring" className="text-ring-gold hover:text-yellow-400 transition-colors">
+          <Link href={trackerPath} className="text-ring-gold hover:text-yellow-400 transition-colors">
             &larr; Back to Tracker
           </Link>
         </div>
@@ -228,7 +227,7 @@ export default function StatsPage() {
               <ListPanel title="Recent Discoveries">
                 {stats.recentDiscoveries.map((card) => (
                   <div key={card.id} className="flex justify-between items-center gap-4">
-                    <span className="text-ring-light">{card.serialNumber}/100 - {card.foundBy}</span>
+                    <span className="text-ring-light">{card.serialNumber}/{tracker.total} - {card.foundBy}</span>
                     <span className="text-ring-gold font-bold">${card.price?.toLocaleString() || 'N/A'}</span>
                   </div>
                 ))}
