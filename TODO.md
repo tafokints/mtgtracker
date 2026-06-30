@@ -57,6 +57,18 @@
   - [x] theme
   - [x] affiliate links
 - [x] Convert API routes to use tracker config by slug.
+- [x] Add researched serialized MTG scaffold catalog.
+- [x] Surface serialized scaffold queue on `/trackers`.
+- Convert One Ring pages to dynamic tracker pages:
+  - `/trackers/[slug]`
+  - `/trackers/[slug]/stats`
+  - `/trackers/[slug]/submit`
+- Add multi-card treatment data model:
+  - tracked card definitions
+  - card-plus-serial discovery slots
+  - submission validation for card and serial
+  - admin review filters by card
+- Add scaffold tooling for single-card trackers.
 - Add Golden Chocobo as a second tracker after the generic path is ready.
 
 ## Directory And UX

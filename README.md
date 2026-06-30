@@ -11,6 +11,7 @@ The first tracker is `The One Ring` at `/trackers/one-ring`. The existing Golden
 - `/trackers/one-ring` - The One Ring tracker
 - `/trackers/one-ring/stats` - The One Ring stats
 - `/trackers/one-ring/submit` - hidden submit flow target
+- `/trackers` also includes a serialized scaffold queue sourced from `src/lib/serialized-catalog.ts`
 
 ## Features
 
@@ -20,6 +21,7 @@ The first tracker is `The One Ring` at `/trackers/one-ring`. The existing Golden
 - Hidden report flow with source type, evidence level, price, image URLs, and notes
 - Admin review queue before crowd-sourced discoveries become public tracker updates
 - Hidden admin panel with price, image, grading, and price-history updates
+- Curated serialized MTG catalog for future tracker scaffolding
 - Upstash Redis storage for Vercel deployment
 
 ## Local Setup
@@ -74,3 +76,4 @@ The first `/api/trackers/one-ring/cards` request initializes Redis with all 100 
 - `CLAUDE.md` - Claude Code project instructions
 - `AGENTS.md` - Codex and general AI coding-agent instructions
 - `.codex/skills/mtg-trackers/SKILL.md` - reusable MTG Trackers development workflow
+- `docs/SERIALIZED_MTG_CATALOG.md` - researched serialized-card scaffold catalog

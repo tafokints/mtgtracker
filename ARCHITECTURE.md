@@ -14,6 +14,7 @@ src/app/api/trackers/[slug]/*            generic tracker API routes
 src/app/api/health/route.ts              Redis/runtime health check
 src/components/*                         shared tracker controls/details/admin UI
 src/lib/trackers.ts                      tracker directory configuration
+src/lib/serialized-catalog.ts            researched serialized-card scaffold catalog
 src/lib/tracker-data.ts                  generic tracker storage helpers
 src/lib/types.ts                         shared card schema
 src/lib/redis.ts                         lazy Redis client factory
@@ -27,6 +28,8 @@ src/lib/redis.ts                         lazy Redis client factory
 - `golden-chocobo`: planned placeholder
 
 Future trackers should start as entries there, then get a nested route and storage key.
+
+`src/lib/serialized-catalog.ts` is a broader research catalog of MTG serialized treatments. It includes single-card trackers that fit the current data model and multi-card treatments that need card-plus-serial support before launch.
 
 Tracker config fields include:
 
@@ -67,6 +70,17 @@ The UI uses the platform-shaped tracker API namespace:
 - `POST /api/trackers/[slug]/submissions`
 
 All tracker API routes resolve storage keys, serial formatting, and totals from `src/lib/trackers.ts`.
+
+## Serialized Catalog
+
+The serialized catalog drives the scaffold queue on `/trackers` and is documented in `docs/SERIALIZED_MTG_CATALOG.md`.
+
+Catalog tracking modes:
+
+- `single-card`: current data model can support this after adding tracker config/routes.
+- `multi-card-treatment`: needs a selected card plus serial number.
+- `variant-card`: one card name with multiple serialized variants and totals.
+- `promo-series`: related promo cards that may need extra source verification.
 
 ## Submission Review Flow
 
