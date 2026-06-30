@@ -164,6 +164,35 @@ export default function AdminPanel({
     setSubmissions([]);
   };
 
+  const handleExportBackup = async () => {
+    try {
+      const response = await fetch(`${trackerApiBase}/export`);
+      if (!response.ok) {
+        if (response.status === 401) {
+          setIsAuthenticated(false);
+        }
+        setMessage('Backup export failed');
+        return;
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+
+      link.href = downloadUrl;
+      link.download = `${tracker.slug}-backup-${date}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(downloadUrl);
+      setMessage('Backup export downloaded');
+    } catch (error) {
+      console.error('Error exporting backup:', error);
+      setMessage('Backup export failed');
+    }
+  };
+
   const reviewSubmission = async (submission: DiscoverySubmission, action: ReviewAction) => {
     try {
       const response = await fetch(`${trackerApiBase}/submissions`, {
@@ -343,12 +372,20 @@ export default function AdminPanel({
           <h2 className="text-xl font-bold text-ring-gold">Admin Panel</h2>
           <div className="flex items-center gap-3">
             {isAuthenticated && (
-              <button
-                onClick={handleLogout}
-                className="text-xs text-ring-light hover:text-ring-gold"
-              >
-                Logout
-              </button>
+              <>
+                <button
+                  onClick={handleExportBackup}
+                  className="text-xs text-ring-light hover:text-ring-gold"
+                >
+                  Export Backup
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="text-xs text-ring-light hover:text-ring-gold"
+                >
+                  Logout
+                </button>
+              </>
             )}
             <button
               onClick={() => setIsVisible(false)}

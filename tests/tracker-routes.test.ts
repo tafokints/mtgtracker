@@ -40,6 +40,7 @@ vi.mock('@/lib/redis', () => ({
 
 import { POST as submitDiscovery } from '@/app/api/trackers/[slug]/submit/route';
 import { POST as reviewSubmission } from '@/app/api/trackers/[slug]/submissions/route';
+import { GET as exportTrackerBackup } from '@/app/api/trackers/[slug]/export/route';
 
 const tracker = getTracker('one-ring');
 
@@ -72,6 +73,15 @@ function reviewRequest(body: unknown, session = createAdminSession()) {
       cookie: `${ADMIN_COOKIE_NAME}=${session}`,
     },
     body: JSON.stringify(body),
+  });
+}
+
+function exportRequest(session = createAdminSession()) {
+  return new NextRequest('https://mtgtrackers.com/api/trackers/one-ring/export', {
+    method: 'GET',
+    headers: {
+      cookie: `${ADMIN_COOKIE_NAME}=${session}`,
+    },
   });
 }
 
@@ -168,6 +178,38 @@ describe('tracker API routes', () => {
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({ message: 'Unauthorized' });
+  });
+
+  it('requires admin auth to export a tracker backup', async () => {
+    const request = new NextRequest('https://mtgtrackers.com/api/trackers/one-ring/export');
+    const response = await exportTrackerBackup(request, routeContext());
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ message: 'Unauthorized' });
+  });
+
+  it('exports tracker cards and submissions for admins', async () => {
+    const { body } = await submitValidDiscovery(7);
+    const response = await exportTrackerBackup(exportRequest(), routeContext());
+    const backup = await json(response);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    expect(response.headers.get('content-disposition')).toContain('one-ring-backup-');
+    expect(backup).toMatchObject({
+      schemaVersion: 1,
+      tracker: {
+        slug: 'one-ring',
+        total: 100,
+      },
+      counts: {
+        cards: 100,
+        submissions: 1,
+      },
+    });
+    expect(Array.isArray(backup.cards)).toBe(true);
+    expect(Array.isArray(backup.submissions)).toBe(true);
+    expect((backup.submissions as Array<{ id: string }>)[0].id).toBe(body.submissionId);
   });
 
   it('approves a pending submission and updates the target card', async () => {
