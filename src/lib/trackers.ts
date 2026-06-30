@@ -64,18 +64,8 @@ function buildAmazonSearchUrl(query: string) {
   return `https://www.amazon.com/s?${params.toString()}`;
 }
 
-function buildTcgplayerSearchUrl(query: string, sharedId: string) {
-  const destinationParams = new URLSearchParams({
-    productLineName: 'magic',
-    q: query,
-    view: 'grid',
-  });
-  const params = new URLSearchParams({
-    u: `https://www.tcgplayer.com/search/magic/product?${destinationParams.toString()}`,
-    sharedid: sharedId,
-  });
-
-  return `${tcgplayerPartnerLink}?${params.toString()}`;
+function buildTcgplayerSearchUrl(_query: string, _sharedId: string) {
+  return tcgplayerPartnerLink;
 }
 
 export const defaultAffiliateLinks: AffiliateLink[] = [

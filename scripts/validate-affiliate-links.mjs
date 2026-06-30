@@ -81,20 +81,6 @@ function assertUrlShape(link) {
     if (!url.pathname.includes('DyJ25G')) {
       throw new Error(`${link.tracker} ${link.label} is missing the TCGplayer partner link id`);
     }
-    if (!url.searchParams.get('sharedid')) {
-      throw new Error(`${link.tracker} ${link.label} is missing TCGplayer shared id`);
-    }
-    const destination = url.searchParams.get('u');
-    if (!destination) {
-      throw new Error(`${link.tracker} ${link.label} is missing TCGplayer deep link destination`);
-    }
-    const destinationUrl = new URL(destination);
-    if (!destinationUrl.hostname.endsWith('tcgplayer.com')) {
-      throw new Error(`${link.tracker} ${link.label} deep link destination must point to tcgplayer.com`);
-    }
-    if (!destinationUrl.searchParams.get('q')) {
-      throw new Error(`${link.tracker} ${link.label} deep link destination is missing a search query`);
-    }
   }
 }
 
@@ -151,8 +137,7 @@ async function main() {
           result.finalUrl.includes('irclickid=') &&
           result.finalUrl.includes('irpid=6334129') &&
           result.finalUrl.includes('irgwc=1') &&
-          result.finalUrl.includes('utm_source=impact') &&
-          result.finalUrl.includes(`sharedid=${encodeURIComponent(link.tracker === 'default' ? 'serialized-mtg' : link.tracker)}`)
+          result.finalUrl.includes('utm_source=impact')
         )
       ),
       finalUrl: result.finalUrl,
