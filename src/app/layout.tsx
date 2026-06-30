@@ -5,10 +5,12 @@ import React from "react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { getTracker } from "@/lib/trackers";
+import SiteFooter from "@/components/SiteFooter";
 
 const cinzel = Cinzel({ subsets: ["latin"] });
 const oneRingTracker = getTracker('one-ring');
 const socialImage = oneRingTracker?.referenceImage || '/icon.svg';
+const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || process.env.GOOGLE_SITE_VERIFICATION;
 
 export const metadata: Metadata = {
   title: {
@@ -75,9 +77,7 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  verification: {
-    google: 'your-google-verification-code',
-  },
+  ...(googleVerification ? { verification: { google: googleVerification } } : {}),
 };
 
 export default function RootLayout({
@@ -100,6 +100,7 @@ export default function RootLayout({
       </head>
       <body className={cinzel.className}>
         {children}
+        <SiteFooter />
         <SpeedInsights />
         <Analytics />
       </body>

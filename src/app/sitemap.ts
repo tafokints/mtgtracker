@@ -3,6 +3,14 @@ import { trackers } from '@/lib/trackers'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://mtgtrackers.com'
+  const staticRoutes = [
+    '',
+    '/trackers',
+    '/about',
+    '/contact',
+    '/privacy',
+    '/affiliate-disclosure',
+  ]
 
   const liveTrackerRoutes = trackers
     .filter((tracker) => tracker.status === 'live')
@@ -22,18 +30,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ])
 
   return [
-    {
-      url: baseUrl,
+    ...staticRoutes.map((route) => ({
+      url: `${baseUrl}${route}`,
       lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/trackers`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.8,
-    },
+      changeFrequency: route === '' || route === '/trackers' ? 'daily' as const : 'monthly' as const,
+      priority: route === '' ? 1 : route === '/trackers' ? 0.8 : 0.4,
+    })),
     ...liveTrackerRoutes,
   ]
 }

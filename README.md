@@ -15,6 +15,10 @@ The live trackers are `The One Ring` at `/trackers/one-ring` and `Edgar Markov` 
 - `/trackers/edgar-markov/stats` - Edgar Markov stats
 - `/trackers/edgar-markov/submit` - hidden submit flow target
 - `/trackers` also includes a serialized scaffold queue sourced from `src/lib/serialized-catalog.ts`
+- `/about` - project purpose and independence notes
+- `/contact` - correction, tracker request, and issue-reporting paths
+- `/privacy` - submission, analytics, and admin review privacy notes
+- `/affiliate-disclosure` - marketplace affiliate relationship disclosure
 
 ## Features
 
@@ -49,6 +53,7 @@ KV_REST_API_TOKEN=...
 
 ADMIN_PASSWORD=...
 ADMIN_SESSION_SECRET=...
+NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=...
 ```
 
 For local development only, the admin password falls back to `dev-admin` if `ADMIN_PASSWORD` is not set.
@@ -59,7 +64,8 @@ For local development only, the admin password falls back to `dev-admin` if `ADM
 2. Set the project root to `mtg-serial-tracker`.
 3. Add an Upstash Redis database.
 4. Add Redis REST env vars. Vercel may provide `KV_REST_API_URL` and `KV_REST_API_TOKEN`; those are supported. Manual Upstash envs can use `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
-5. Deploy.
+5. Add `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` after creating the property in Google Search Console.
+6. Deploy.
 
 The first `/api/trackers/one-ring/cards` request initializes Redis with all 100 One Ring serial slots. Public reports are stored in `one_ring_submissions` until approved.
 
@@ -101,6 +107,8 @@ Also verify:
 - Live tracker pages load on `https://mtgtrackers.com`.
 - Marketplace links are relevant to the tracker subject.
 - Affiliate disclosures are visible near marketplace links.
+- `/about`, `/contact`, `/privacy`, and `/affiliate-disclosure` load in production.
+- Google Search Console ownership is verified and `https://mtgtrackers.com/sitemap.xml` is submitted.
 
 ## References
 
