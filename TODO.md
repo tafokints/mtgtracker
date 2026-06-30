@@ -19,6 +19,12 @@
   - [x] verification status
   - [x] max text lengths
 - [x] Add Vercel deployment notes for `mtgtrackers.com`.
+- [x] Add affiliate disclosure near marketplace links.
+- [x] Add eBay Partner Network disclosure on tracker pages.
+- [x] Add affiliate link validation script.
+- Validate Google Search Console setup.
+- Replace placeholder Google verification metadata.
+- Add privacy/contact/about pages before broad promotion.
 
 ## Submission Review Queue
 

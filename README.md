@@ -85,6 +85,23 @@ npm run tracker:scaffold -- innistrad-remastered-edgar-markov --tracker-slug edg
 
 The scaffold command reads `src/lib/serialized-catalog.ts`, blocks multi-card treatments that need card-plus-serial support, and tries to fetch direct Scryfall card images when available.
 
+## Promotion Checks
+
+Before promoting the site, run:
+
+```bash
+npm run lint
+npm run build
+npm run links:validate
+```
+
+Also verify:
+
+- `/api/health` returns `ok: true` in production.
+- Live tracker pages load on `https://mtgtrackers.com`.
+- Marketplace links are relevant to the tracker subject.
+- Affiliate disclosures are visible near marketplace links.
+
 ## References
 
 - Scryfall reference printing: https://scryfall.com/card/ltr/748z/the-one-ring

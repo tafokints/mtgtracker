@@ -35,20 +35,63 @@ export interface TrackerSummary {
   referenceImage?: string;
 }
 
+function buildEbaySearchUrl(query: string, customId: string) {
+  const params = new URLSearchParams({
+    _nkw: query,
+    _sacat: '0',
+    _from: 'R40',
+    _trksid: 'p4432023.m570.l1313',
+    mkcid: '1',
+    mkrid: '711-53200-19255-0',
+    siteid: '0',
+    campid: '5339113954',
+    customid: customId,
+    toolid: '20012',
+    mkevt: '1',
+  });
+
+  return `https://www.ebay.com/sch/i.html?${params.toString()}`;
+}
+
+function buildAmazonSearchUrl(query: string) {
+  const params = new URLSearchParams({
+    k: query,
+    tag: 'meleeitonme0a-20',
+  });
+
+  return `https://www.amazon.com/s?${params.toString()}`;
+}
+
+function buildTcgplayerSearchUrl(query: string) {
+  const params = new URLSearchParams({
+    productLineName: 'magic',
+    q: query,
+    view: 'grid',
+    irpid: '6334129',
+    irgwc: '1',
+    afsrc: '1',
+    utm_source: 'impact',
+    utm_medium: 'affiliate',
+    utm_campaign: 'tafokints',
+  });
+
+  return `https://www.tcgplayer.com/search/magic/product?${params.toString()}`;
+}
+
 export const defaultAffiliateLinks: AffiliateLink[] = [
   {
     label: 'MTG Singles on TCGplayer',
-    href: 'https://partner.tcgplayer.com/WyLbG3',
+    href: buildTcgplayerSearchUrl('serialized mtg'),
     merchant: 'tcgplayer',
   },
   {
     label: 'Serialized MTG on eBay',
-    href: 'https://ebay.us/MZ8psC',
+    href: buildEbaySearchUrl('serialized mtg card', 'serialized-mtg'),
     merchant: 'ebay',
   },
   {
     label: 'Magic: The Gathering on Amazon',
-    href: 'https://amzn.to/4kAIv6n',
+    href: buildAmazonSearchUrl('magic the gathering collector booster'),
     merchant: 'amazon',
   },
 ];
@@ -87,17 +130,17 @@ export const trackers: TrackerSummary[] = [
     affiliateLinks: [
       {
         label: 'LOTR Singles on TCGplayer',
-        href: 'https://partner.tcgplayer.com/WyLbG3',
+        href: buildTcgplayerSearchUrl('The One Ring serialized'),
         merchant: 'tcgplayer',
       },
       {
         label: 'Serialized One Ring on eBay',
-        href: 'https://ebay.us/MZ8psC',
+        href: buildEbaySearchUrl('serialized one ring mtg', 'one-ring'),
         merchant: 'ebay',
       },
       {
         label: 'LOTR Collector Boosters on Amazon',
-        href: 'https://amzn.to/4kAIv6n',
+        href: buildAmazonSearchUrl('lord of the rings mtg collector booster'),
         merchant: 'amazon',
       },
     ],
@@ -123,17 +166,17 @@ export const trackers: TrackerSummary[] = [
     affiliateLinks: [
       {
         label: 'Innistrad Remastered Singles on TCGplayer',
-        href: 'https://partner.tcgplayer.com/WyLbG3',
+        href: buildTcgplayerSearchUrl('Edgar Markov serialized'),
         merchant: 'tcgplayer',
       },
       {
         label: 'Serialized Edgar Markov on eBay',
-        href: 'https://ebay.us/MZ8psC',
+        href: buildEbaySearchUrl('serialized edgar markov mtg', 'edgar-markov'),
         merchant: 'ebay',
       },
       {
         label: 'Innistrad Remastered on Amazon',
-        href: 'https://amzn.to/4kAIv6n',
+        href: buildAmazonSearchUrl('innistrad remastered collector booster'),
         merchant: 'amazon',
       },
     ],
@@ -164,17 +207,17 @@ export const trackers: TrackerSummary[] = [
     affiliateLinks: [
       {
         label: 'Final Fantasy Singles on TCGplayer',
-        href: 'https://partner.tcgplayer.com/WyLbG3',
+        href: buildTcgplayerSearchUrl('Final Fantasy Traveling Chocobo'),
         merchant: 'tcgplayer',
       },
       {
         label: 'Golden Chocobo on eBay',
-        href: 'https://ebay.us/MZ8psC',
+        href: buildEbaySearchUrl('traveling chocobo serialized mtg', 'golden-chocobo'),
         merchant: 'ebay',
       },
       {
         label: 'Final Fantasy MTG on Amazon',
-        href: 'https://amzn.to/4kAIv6n',
+        href: buildAmazonSearchUrl('final fantasy mtg collector booster'),
         merchant: 'amazon',
       },
     ],
