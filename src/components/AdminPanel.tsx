@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { SerializedRingCard, GradingInfo, PriceHistoryEntry, DiscoverySubmission, VerificationStatus } from '../lib/types';
+import { SerializedRingCard, GradingInfo, PriceHistoryEntry, DiscoverySubmission, VerificationStatus, SubmissionStatus } from '../lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
 import { formatTrackerSerial } from '@/lib/tracker-data';
 import ExternalImage from '@/components/ExternalImage';
@@ -15,6 +15,25 @@ interface AdminPanelProps {
   onPriceHistoryAdd: (cardId: number, entry: PriceHistoryEntry) => void;
   onRefresh: () => void;
 }
+
+type ReviewAction = 'approve' | 'reject' | 'needs-more-info' | 'duplicate' | 'cannot-verify';
+
+const REVIEW_ACTION_LABELS: Record<ReviewAction, string> = {
+  approve: 'Approve',
+  reject: 'Reject',
+  'needs-more-info': 'Needs more info',
+  duplicate: 'Duplicate',
+  'cannot-verify': 'Cannot verify',
+};
+
+const SUBMISSION_STATUS_LABELS: Record<SubmissionStatus, string> = {
+  pending: 'Pending',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  'needs-more-info': 'Needs more info',
+  duplicate: 'Duplicate',
+  'cannot-verify': 'Cannot verify',
+};
 
 export default function AdminPanel({ 
   tracker,
@@ -42,6 +61,8 @@ export default function AdminPanel({
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [imageOverrides, setImageOverrides] = useState<Record<string, string>>({});
   const [verificationOverrides, setVerificationOverrides] = useState<Record<string, VerificationStatus>>({});
+  const pendingSubmissions = submissions.filter((submission) => submission.status === 'pending');
+  const reviewedSubmissions = submissions.filter((submission) => submission.status !== 'pending');
   
   // Grading fields
   const [gradingService, setGradingService] = useState('');
@@ -57,7 +78,7 @@ export default function AdminPanel({
   const fetchSubmissions = useCallback(async () => {
     setSubmissionsLoading(true);
     try {
-      const response = await fetch(`${trackerApiBase}/submissions?status=pending`);
+      const response = await fetch(`${trackerApiBase}/submissions`);
       if (response.ok) {
         setSubmissions(await response.json());
       } else if (response.status === 401) {
@@ -142,7 +163,7 @@ export default function AdminPanel({
     setSubmissions([]);
   };
 
-  const reviewSubmission = async (submission: DiscoverySubmission, action: 'approve' | 'reject') => {
+  const reviewSubmission = async (submission: DiscoverySubmission, action: ReviewAction) => {
     try {
       const response = await fetch(`${trackerApiBase}/submissions`, {
         method: 'POST',
@@ -159,7 +180,7 @@ export default function AdminPanel({
       });
 
       if (response.ok) {
-        setMessage(action === 'approve' ? `Approved ${serialLabel(submission.serialNumber)}` : `Rejected ${serialLabel(submission.serialNumber)}`);
+        setMessage(`${REVIEW_ACTION_LABELS[action]}: ${serialLabel(submission.serialNumber)}`);
         await fetchSubmissions();
         onRefresh();
       } else {
@@ -383,7 +404,7 @@ export default function AdminPanel({
                   : 'text-ring-light hover:text-ring-gold'
               }`}
             >
-              Review ({submissions.length})
+              Review ({pendingSubmissions.length})
             </button>
             <button
               onClick={() => setActiveTab('price')}
@@ -430,18 +451,18 @@ export default function AdminPanel({
           {activeTab === 'review' && (
             <div className="space-y-4">
               {submissionsLoading && (
-                <p className="text-sm text-ring-light">Loading pending reports...</p>
+                <p className="text-sm text-ring-light">Loading reports...</p>
               )}
-              {!submissionsLoading && submissions.length === 0 && (
+              {!submissionsLoading && pendingSubmissions.length === 0 && (
                 <p className="text-sm text-ring-light">No pending reports.</p>
               )}
-              {submissions.map((submission) => (
+              {pendingSubmissions.map((submission) => (
                 <div key={submission.id} className="rounded border border-ring-gold/40 bg-black/20 p-3 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-bold text-ring-gold">{serialLabel(submission.serialNumber)}</p>
                       <p className="text-xs text-ring-light">
-                        {submission.sourceType.replace('-', ' ')} · {submission.requestedVerificationStatus.replace('-', ' ')}
+                        {submission.sourceType.replace('-', ' ')} - {submission.requestedVerificationStatus.replace('-', ' ')}
                       </p>
                       <p className="text-xs text-ring-light">{new Date(submission.submittedAt).toLocaleString()}</p>
                     </div>
@@ -451,6 +472,16 @@ export default function AdminPanel({
                       </span>
                     )}
                   </div>
+
+                  {submission.duplicateOf && (
+                    <div className="rounded border border-yellow-400/40 bg-yellow-900/20 px-3 py-2 text-xs text-yellow-100">
+                      Possible duplicate of report {submission.duplicateOf}
+                      {submission.duplicateSubmissionIds && submission.duplicateSubmissionIds.length > 1
+                        ? ` and ${submission.duplicateSubmissionIds.length - 1} other report${submission.duplicateSubmissionIds.length === 2 ? '' : 's'}`
+                        : ''}
+                      .
+                    </div>
+                  )}
 
                   <div className="text-xs text-ring-light space-y-1">
                     {submission.foundBy && <p>Found by: {submission.foundBy}</p>}
@@ -528,9 +559,61 @@ export default function AdminPanel({
                     >
                       Reject
                     </button>
+                    <button
+                      onClick={() => reviewSubmission(submission, 'needs-more-info')}
+                      className="border border-blue-300/60 text-blue-100 hover:bg-blue-900/30 font-bold py-2 px-3 rounded text-sm"
+                    >
+                      Needs Info
+                    </button>
+                    <button
+                      onClick={() => reviewSubmission(submission, 'duplicate')}
+                      className="border border-yellow-300/60 text-yellow-100 hover:bg-yellow-900/30 font-bold py-2 px-3 rounded text-sm"
+                    >
+                      Duplicate
+                    </button>
+                    <button
+                      onClick={() => reviewSubmission(submission, 'cannot-verify')}
+                      className="col-span-2 border border-ring-light/40 text-ring-light hover:bg-ring-light/10 font-bold py-2 px-3 rounded text-sm"
+                    >
+                      Cannot Verify
+                    </button>
                   </div>
                 </div>
               ))}
+
+              {reviewedSubmissions.length > 0 && (
+                <div className="space-y-2 pt-2">
+                  <h4 className="text-ring-gold font-bold text-sm">Reviewed history</h4>
+                  {reviewedSubmissions.slice(0, 20).map((submission) => (
+                    <div key={submission.id} className="rounded border border-ring-light/20 bg-black/10 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-ring-light">{serialLabel(submission.serialNumber)}</p>
+                          <p className="text-xs text-ring-light">
+                            {submission.sourceType.replace('-', ' ')} - submitted {new Date(submission.submittedAt).toLocaleString()}
+                          </p>
+                          {submission.reviewedAt && (
+                            <p className="text-xs text-ring-light">
+                              Reviewed by {submission.reviewedBy || 'admin'} on {new Date(submission.reviewedAt).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                        <span className="rounded bg-ring-light/10 px-2 py-1 text-xs text-ring-gold">
+                          {SUBMISSION_STATUS_LABELS[submission.status]}
+                        </span>
+                      </div>
+                      {submission.link && (
+                        <a href={submission.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-ring-gold hover:underline">
+                          Open source
+                        </a>
+                      )}
+                      {submission.reviewNotes && (
+                        <p className="mt-2 text-xs text-ring-light">Notes: {submission.reviewNotes}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

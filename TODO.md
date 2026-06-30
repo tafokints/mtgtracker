@@ -34,14 +34,14 @@
 
 ## Submission Review Queue
 
-- Show approved and rejected submission history in admin.
-- Add duplicate detection for repeated reports on the same serial.
-- Add report status options beyond approved/rejected:
-  - needs more info
-  - duplicate
-  - cannot verify
-- Allow admins to merge evidence from multiple pending reports.
-- Add audit trail for who reviewed each report.
+- [x] Show approved and rejected submission history in admin.
+- [x] Add duplicate detection for repeated reports on the same serial.
+- [x] Add report status options beyond approved/rejected:
+  - [x] needs more info
+  - [x] duplicate
+  - [x] cannot verify
+- [ ] Allow admins to merge evidence from multiple pending reports.
+- [x] Add audit trail for who reviewed each report.
 
 ## Image Storage
 

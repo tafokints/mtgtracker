@@ -15,7 +15,7 @@ export type VerificationStatus = 'unverified' | 'source-linked' | 'confirmed';
 
 export type SourceType = 'marketplace' | 'grading-pop' | 'social' | 'article' | 'private-sale' | 'other';
 
-export type SubmissionStatus = 'pending' | 'approved' | 'rejected';
+export type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'needs-more-info' | 'duplicate' | 'cannot-verify';
 
 export interface EvidenceImage {
   url: string;
@@ -37,6 +37,8 @@ export interface DiscoverySubmission {
   notes?: string;
   status: SubmissionStatus;
   submittedAt: string;
+  duplicateOf?: string;
+  duplicateSubmissionIds?: string[];
   reviewedAt?: string;
   reviewedBy?: string;
   reviewNotes?: string;

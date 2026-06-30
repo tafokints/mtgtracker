@@ -55,6 +55,12 @@ export async function POST(request: Request, { params }: RouteContext) {
       return NextResponse.json({ message: 'Card not found' }, { status: 404 });
     }
 
+    const submissions = await getTrackerSubmissions(redis, tracker);
+    const duplicateCandidates = submissions.filter((existingSubmission) => (
+      existingSubmission.cardId === input.cardId &&
+      !['rejected', 'cannot-verify'].includes(existingSubmission.status)
+    ));
+
     const submission: DiscoverySubmission = {
       id: crypto.randomUUID(),
       cardId: input.cardId,
@@ -70,9 +76,10 @@ export async function POST(request: Request, { params }: RouteContext) {
       notes: input.notes,
       status: 'pending',
       submittedAt: new Date().toISOString(),
+      duplicateOf: duplicateCandidates[0]?.id,
+      duplicateSubmissionIds: duplicateCandidates.map((candidate) => candidate.id),
     };
 
-    const submissions = await getTrackerSubmissions(redis, tracker);
     await saveTrackerSubmissions(redis, tracker, [submission, ...submissions]);
 
     return NextResponse.json(

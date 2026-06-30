@@ -129,6 +129,23 @@ describe('tracker API routes', () => {
     });
   });
 
+  it('marks repeated reports for the same serial as possible duplicates', async () => {
+    const first = await submitValidDiscovery(7);
+    const second = await submitValidDiscovery(7);
+    const submissions = redisFixture.store.get(tracker.storage.submissionsKey) as Array<{
+      id: string;
+      duplicateOf?: string;
+      duplicateSubmissionIds?: string[];
+    }>;
+
+    expect(second.response.status).toBe(202);
+    expect(submissions[0]).toMatchObject({
+      id: second.body.submissionId,
+      duplicateOf: first.body.submissionId,
+      duplicateSubmissionIds: [first.body.submissionId],
+    });
+  });
+
   it('rate limits repeated public submissions from the same client', async () => {
     const responses: number[] = [];
 
@@ -199,6 +216,28 @@ describe('tracker API routes', () => {
       id: body.submissionId,
       status: 'rejected',
       reviewNotes: 'Could not verify.',
+    });
+  });
+
+  it('can request more information without changing card state', async () => {
+    const { body } = await submitValidDiscovery(9);
+    const beforeCards = redisFixture.store.get(tracker.storage.cardsKey) as Array<{ id: number; found: boolean; verificationStatus: string }>;
+    const beforeCard = { ...beforeCards[8] };
+    const response = await reviewSubmission(reviewRequest({
+      submissionId: body.submissionId,
+      action: 'needs-more-info',
+      reviewedBy: 'admin',
+      reviewNotes: 'Need a clearer serial photo.',
+    }), routeContext());
+    const afterCards = redisFixture.store.get(tracker.storage.cardsKey) as Array<{ id: number; found: boolean; verificationStatus: string }>;
+    const submissions = redisFixture.store.get(tracker.storage.submissionsKey) as Array<{ id: string; status: string; reviewNotes?: string }>;
+
+    expect(response.status).toBe(200);
+    expect(afterCards[8]).toMatchObject(beforeCard);
+    expect(submissions[0]).toMatchObject({
+      id: body.submissionId,
+      status: 'needs-more-info',
+      reviewNotes: 'Need a clearer serial photo.',
     });
   });
 });

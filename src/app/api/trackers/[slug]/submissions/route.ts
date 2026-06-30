@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DiscoverySubmission, VerificationStatus } from '@/lib/types';
+import { DiscoverySubmission, SubmissionStatus, VerificationStatus } from '@/lib/types';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
@@ -17,6 +17,19 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const VERIFICATION_STATUSES: VerificationStatus[] = ['unverified', 'source-linked', 'confirmed'];
+const REVIEW_ACTION_TO_STATUS = {
+  approve: 'approved',
+  reject: 'rejected',
+  'needs-more-info': 'needs-more-info',
+  duplicate: 'duplicate',
+  'cannot-verify': 'cannot-verify',
+} as const satisfies Record<string, SubmissionStatus>;
+
+type ReviewAction = keyof typeof REVIEW_ACTION_TO_STATUS;
+
+function isReviewAction(action: unknown): action is ReviewAction {
+  return typeof action === 'string' && action in REVIEW_ACTION_TO_STATUS;
+}
 
 type RouteContext = {
   params: Promise<{ slug: string }>;
@@ -73,7 +86,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     };
     const { submissionId, action } = input;
 
-    if (typeof submissionId !== 'string' || !['approve', 'reject'].includes(String(action))) {
+    if (typeof submissionId !== 'string' || !isReviewAction(action)) {
       return NextResponse.json({ message: 'Submission id and valid action are required' }, { status: 400 });
     }
 
@@ -96,7 +109,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     const reviewedSubmission: DiscoverySubmission = {
       ...submission,
-      status: action === 'approve' ? 'approved' : 'rejected',
+      status: REVIEW_ACTION_TO_STATUS[action],
       reviewedAt: new Date().toISOString(),
       reviewedBy: typeof input.reviewedBy === 'string' && input.reviewedBy.trim() ? input.reviewedBy.trim() : 'admin',
       reviewNotes: typeof input.reviewNotes === 'string' && input.reviewNotes.trim() ? input.reviewNotes.trim() : undefined,
