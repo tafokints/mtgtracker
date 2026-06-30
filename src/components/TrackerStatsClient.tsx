@@ -5,19 +5,39 @@ import type { ReactNode } from 'react';
 import { SerializedRingCard } from '@/lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import type { PieLabelRenderProps } from 'recharts';
 import Link from 'next/link';
 import Head from 'next/head';
 
 export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummary }) {
   const [cards, setCards] = useState<SerializedRingCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
   const trackerPath = `/trackers/${tracker.slug}`;
 
   useEffect(() => {
     fetch(`/api/trackers/${tracker.slug}/cards`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Cards request failed with status ${res.status}`);
+        }
+
+        return res.json();
+      })
       .then(data => {
+        if (!Array.isArray(data)) {
+          throw new Error('Cards response was not an array');
+        }
+
         setCards(data);
+        setDataError(null);
+      })
+      .catch(error => {
+        console.warn('Tracker stats data unavailable:', error);
+        setCards([]);
+        setDataError('Tracker data is temporarily unavailable.');
+      })
+      .finally(() => {
         setLoading(false);
       });
   }, [tracker.slug]);
@@ -122,6 +142,14 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
   }
 
   const COLORS = ['#D6A73D', '#2BAE9E', '#A4508B', '#E4DCCF', '#4C7C59'];
+  const renderGradeLabel = ({ payload, percent }: PieLabelRenderProps) => {
+    const grade = payload && typeof payload === 'object' && 'grade' in payload
+      ? String(payload.grade)
+      : 'Grade';
+    const percentage = typeof percent === 'number' ? percent : 0;
+
+    return `${grade} (${(percentage * 100).toFixed(0)}%)`;
+  };
 
   return (
     <>
@@ -143,7 +171,9 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
           </Link>
         </div>
 
-        {foundCards.length === 0 ? (
+        {dataError ? (
+          <div className="text-center text-ring-light">{dataError}</div>
+        ) : foundCards.length === 0 ? (
           <div className="text-center text-ring-light">No cards found yet. Check back later for stats!</div>
         ) : (
           <div className="w-full max-w-7xl space-y-8">
@@ -176,7 +206,7 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ grade, percent }) => `${grade} (${(percent * 100).toFixed(0)}%)`}
+                        label={renderGradeLabel}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="count"

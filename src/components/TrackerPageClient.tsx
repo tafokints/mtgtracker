@@ -18,6 +18,7 @@ import Head from 'next/head';
 export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary }) {
   const [cards, setCards] = useState<SerializedRingCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
   const trackerPath = `/trackers/${tracker.slug}`;
   const trackerApiBase = `/api/trackers/${tracker.slug}`;
   const referenceImage = tracker.referenceImage || '/icon.svg';
@@ -37,12 +38,21 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   const fetchCards = useCallback(async () => {
     try {
       const response = await fetch(`${trackerApiBase}/cards`);
-      if (response.ok) {
-        const data = await response.json();
-        setCards(data);
+      if (!response.ok) {
+        throw new Error(`Cards request failed with status ${response.status}`);
       }
+
+      const data = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error('Cards response was not an array');
+      }
+
+      setCards(data);
+      setDataError(null);
     } catch (error) {
-      console.error('Error fetching cards:', error);
+      console.warn('Tracker card data unavailable:', error);
+      setCards([]);
+      setDataError('Tracker data is temporarily unavailable.');
     } finally {
       setLoading(false);
     }
@@ -173,7 +183,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   const foundCards = cards.filter((card) => card.found);
   const confirmedCount = cards.filter((card) => card.verificationStatus === 'confirmed').length;
   const foundCount = foundCards.length;
-  const totalCount = cards.length;
+  const totalCount = cards.length || tracker.total || 0;
 
   const lastFoundCard = foundCards.sort((a, b) => {
     if (!a.dateFound || !b.dateFound) return 0;
@@ -236,6 +246,9 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
           <p className="text-ring-light mt-3 text-sm">
             Tracking {tracker.total || totalCount} {tracker.cardType || 'serialized cards'} from {tracker.setName || 'Magic: The Gathering'}. {confirmedCount} confirmed, {foundCount - confirmedCount} source-linked or unverified.
           </p>
+          {dataError && (
+            <p className="text-ring-light mt-4 text-sm">{dataError}</p>
+          )}
           {lastFoundCard && (
             <p className="text-ring-light mt-4 text-sm">
               Last find: {lastFoundCard.serialNumber}/{tracker.total} by {lastFoundCard.foundBy} on {lastFoundCard.dateFound}
@@ -243,19 +256,21 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
           )}
         </div>
 
-        <FilterControls
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          sortOrder={sortOrder}
-          setSortOrder={setSortOrder}
-        />
+        {!dataError && (
+          <>
+            <FilterControls
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              sortOrder={sortOrder}
+              setSortOrder={setSortOrder}
+            />
 
-        <section className="w-full max-w-5xl mt-8" aria-label={`${tracker.title} serialized cards`}>
-          <h2 className="sr-only">{tracker.title} Card Collection</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredAndSortedCards.map((card, index) => {
+            <section className="w-full max-w-5xl mt-8" aria-label={`${tracker.title} serialized cards`}>
+              <h2 className="sr-only">{tracker.title} Card Collection</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {filteredAndSortedCards.map((card, index) => {
               const imageSrc = card.image || referenceImage;
               const statusLabel = card.found
                 ? card.verificationStatus === 'confirmed'
@@ -355,9 +370,11 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                   </div>
                 </article>
               );
-            })}
-          </div>
-        </section>
+                })}
+              </div>
+            </section>
+          </>
+        )}
 
         <Lightbox
           open={lightboxOpen}

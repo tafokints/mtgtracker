@@ -10,8 +10,13 @@ import { formatTrackerSerial, getTrackerCards, getTrackerSubmissions, saveTracke
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function POST(request: Request, { params }: { params: { slug: string } }) {
-  const tracker = getTracker(params.slug);
+type RouteContext = {
+  params: Promise<{ slug: string }>;
+};
+
+export async function POST(request: Request, { params }: RouteContext) {
+  const { slug } = await params;
+  const tracker = getTracker(slug);
 
   if (!tracker || tracker.status !== 'live') {
     return NextResponse.json({ message: 'Tracker not found' }, { status: 404 });

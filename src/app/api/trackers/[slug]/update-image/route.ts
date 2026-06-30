@@ -8,6 +8,10 @@ import { getTrackerCards, saveTrackerCards } from '@/lib/tracker-data';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+type RouteContext = {
+  params: Promise<{ slug: string }>;
+};
+
 function isValidHttpUrl(value: string) {
   try {
     const url = new URL(value);
@@ -17,11 +21,12 @@ function isValidHttpUrl(value: string) {
   }
 }
 
-export async function POST(request: Request, { params }: { params: { slug: string } }) {
+export async function POST(request: Request, { params }: RouteContext) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
 
-  const tracker = getTracker(params.slug);
+  const { slug } = await params;
+  const tracker = getTracker(slug);
   if (!tracker || tracker.status !== 'live') {
     return NextResponse.json({ message: 'Tracker not found' }, { status: 404 });
   }

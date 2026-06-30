@@ -18,11 +18,16 @@ export const revalidate = 0;
 
 const VERIFICATION_STATUSES: VerificationStatus[] = ['unverified', 'source-linked', 'confirmed'];
 
-export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
+type RouteContext = {
+  params: Promise<{ slug: string }>;
+};
+
+export async function GET(request: NextRequest, { params }: RouteContext) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
 
-  const tracker = getTracker(params.slug);
+  const { slug } = await params;
+  const tracker = getTracker(slug);
   if (!tracker || tracker.status !== 'live') {
     return NextResponse.json({ message: 'Tracker not found' }, { status: 404 });
   }
@@ -43,11 +48,12 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: { slug: string } }) {
+export async function POST(request: NextRequest, { params }: RouteContext) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
 
-  const tracker = getTracker(params.slug);
+  const { slug } = await params;
+  const tracker = getTracker(slug);
   if (!tracker || tracker.status !== 'live') {
     return NextResponse.json({ message: 'Tracker not found' }, { status: 404 });
   }
