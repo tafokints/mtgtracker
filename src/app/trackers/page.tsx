@@ -2,9 +2,13 @@ import Link from 'next/link';
 import { trackers } from '@/lib/trackers';
 import { serializedCatalog } from '@/lib/serialized-catalog';
 
-function getQuantityLabel(entry: (typeof serializedCatalog)[number]) {
+function getNumberedLabel(entry: (typeof serializedCatalog)[number]) {
   if (entry.serialVariants?.length) {
     return entry.serialVariants.map((variant) => `${variant.label}: ${variant.total}`).join(', ');
+  }
+
+  if (entry.numbered) {
+    return entry.numbered;
   }
 
   if (entry.defaultSerialTotal) {
@@ -12,6 +16,10 @@ function getQuantityLabel(entry: (typeof serializedCatalog)[number]) {
   }
 
   return 'Verify';
+}
+
+function getDateLabel(entry: (typeof serializedCatalog)[number]) {
+  return entry.releaseMonth || entry.releaseYear || 'TBD';
 }
 
 const trackingModeLabels: Record<(typeof serializedCatalog)[number]['trackingMode'], string> = {
@@ -113,9 +121,11 @@ export default function TrackersPage() {
               <thead className="border-b border-ring-gold/30 text-xs uppercase tracking-wide text-ring-light/55">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Treatment</th>
+                  <th className="px-4 py-3 font-semibold">Date</th>
                   <th className="px-4 py-3 font-semibold">Set</th>
                   <th className="px-4 py-3 font-semibold">Cards</th>
-                  <th className="px-4 py-3 font-semibold">Serial Qty</th>
+                  <th className="px-4 py-3 font-semibold">Numbered</th>
+                  <th className="px-4 py-3 font-semibold">Found In</th>
                   <th className="px-4 py-3 font-semibold">Mode</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
                 </tr>
@@ -127,12 +137,14 @@ export default function TrackersPage() {
                       <div className="font-semibold text-ring-light">{entry.title}</div>
                       <div className="mt-1 max-w-md text-xs leading-5 text-ring-light/55">{entry.treatment}</div>
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs">{getDateLabel(entry)}</td>
                     <td className="px-4 py-3">
                       <div className="font-semibold text-ring-gold">{entry.setCode}</div>
-                      <div className="mt-1 text-xs text-ring-light/55">{entry.releaseYear || 'TBD'}</div>
+                      <div className="mt-1 max-w-[12rem] text-xs leading-5 text-ring-light/55">{entry.setName}</div>
                     </td>
                     <td className="px-4 py-3">{entry.cardCount}</td>
-                    <td className="px-4 py-3 text-xs leading-5">{getQuantityLabel(entry)}</td>
+                    <td className="px-4 py-3 text-xs leading-5">{getNumberedLabel(entry)}</td>
+                    <td className="px-4 py-3 max-w-xs text-xs leading-5">{entry.foundIn || 'Verify source'}</td>
                     <td className="px-4 py-3">{trackingModeLabels[entry.trackingMode]}</td>
                     <td className="px-4 py-3">
                       <span className="inline-flex rounded border border-ring-gold/30 px-2 py-1 text-xs uppercase text-ring-light/65">

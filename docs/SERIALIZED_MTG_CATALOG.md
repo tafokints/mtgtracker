@@ -23,38 +23,38 @@ Many MTG serialized releases are not one card. They are multi-card treatments, s
 
 These can be scaffolded with the current model after verifying quantity and aesthetics:
 
-| Tracker | Set | Qty | Notes |
-| --- | --- | ---: | --- |
-| The One Ring poster | LTR | 100 | Already live as `/trackers/one-ring`. |
-| The One Ring 001/001 | LTR | 1 | Unique Quenya One Ring. |
-| Viscera Seer | SLD | 100 | Verify with primary Secret Lair source before launch. |
-| Edgar Markov | INR | 500 | Innistrad Remastered serialized movie poster card. |
-| The Aetherspark | DFT | 500 | Aetherdrift serialized headliner. |
-| Mox Jasper | TDM | 500 | Tarkir: Dragonstorm serialized headliner. |
-| Traveling Chocobo | FIN | 77 | Golden Chocobo future migration target. |
-| Emeritus of Ideation // Ancestral Recall | SOS | 500 | Secrets of Strixhaven serialized headliner. |
-| Bitterbloom Bearer | ECL | 500 | Announced/future product; recheck before launch. |
-| Bloodline Recollector // Ancestral Craving | FRA | 500 | Announced/future product; recheck before launch. |
+| Date | Tracker | Set | Numbered | Found In | Notes |
+| --- | --- | --- | --- | --- | --- |
+| 2021-11 | Mirrored Viscera Seer | SLD | 1-100 | Phyrexian Praetors: Compleat Edition bonus card | First serialized MTG-context card series; verify primary Secret Lair source before launch. |
+| 2023-06 | The One Ring 001/001 | LTR | 001/001 | LOTR Collector Boosters | Unique Quenya One Ring. |
+| 2023-11 | The One Ring poster | LTR | 1-100 | LOTR Holiday Release Collector Boosters | Already live as `/trackers/one-ring`. |
+| 2025-01 | Edgar Markov | INR | 1-500 | Innistrad Remastered Collector Boosters | Headliner. |
+| 2025-02 | The Aetherspark | DFT | 1-500 | Aetherdrift Collector Boosters | Headliner. |
+| 2025-02 | Mox Jasper | TDM | 1-500 | Tarkir: Dragonstorm Collector Boosters | Headliner. |
+| 2025 | Traveling Chocobo | FIN | 1-77 | Final Fantasy product | Golden Chocobo future migration target. |
+| 2026 | Emeritus of Ideation // Ancestral Recall | SOS | 1-500 | Secrets of Strixhaven product | Recheck before launch. |
+| 2026 | Bitterbloom Bearer | ECL | 1-500 | Lorwyn Eclipsed product | Announced/future product; recheck before launch. |
+| 2026 | Bloodline Recollector // Ancestral Craving | FRA | 1-500 | Reality Fracture product | Announced/future product; recheck before launch. |
 
 ## Multi-Card Or Variant Treatments
 
 These need card-plus-serial support before they should become live trackers:
 
-| Treatment | Set | Cards | Qty |
-| --- | --- | ---: | --- |
-| The Brothers' War retro schematic artifacts | BRR | 63 | 500 each |
-| Secret Lair serialized classic cards | SLD | 5 | 295 each |
-| Multiverse Legends | MUL | 65 | 500 each |
-| March of the Machine serialized Praetors | MOM | 5 | 500 each |
-| Serialized Sol Rings | LTC | 3 variants | 300 Elven, 700 Dwarven, 900 Human |
-| LOTR poster cards | LTR | 20 | 100 each |
-| Realms and Relics | LTC | 30 | 100 each |
-| Doctor Who serialized Doctors | WHO | 13 | approx. 500 each; verify per-card totals |
-| Ravnica Remastered retro serials | RVR | 64 | 500 each |
-| Murders at Karlov Manor Ravnica City serials | MKM | 7 | 250 each |
-| Fallout Bobbleheads | PIP | 7 | 500 each |
-| Assassin's Creed historical figures | ACR | 4 | 500 each |
-| Modern Horizons 3 concept Eldrazi | MH3 | 3 | 250 each |
+| Date | Treatment | Set | Cards | Numbered | Found In |
+| --- | --- | --- | ---: | --- | --- |
+| 2022-11 | The Brothers' War retro schematic artifacts | BRR | 63 | 1-500 | The Brothers' War Collector Boosters |
+| 2023-02 and later | Secret Lair serialized classic cards | SLD | 5 | 1-295 | MagicCon visitor gifts |
+| 2023-04 | Multiverse Legends | MUL | 65 | 1-500 | March of the Machine Collector Boosters |
+| 2023-04 | March of the Machine serialized Praetors | MOM | 5 | 1-500 | March of the Machine Collector Boosters |
+| 2023-06 | Serialized Sol Rings | LTC | 3 variants | 300 Elven, 700 Dwarven, 900 Human | LOTR Collector Boosters |
+| 2023-10 | Doctor Who serialized Doctors | WHO | 13 | 501-513 by Doctor | Doctor Who Collector Boosters |
+| 2023-11 | Realms and Relics | LTC | 30 | 1-100 | LOTR Holiday Release Collector Boosters |
+| 2023-11 | LOTR poster cards | LTR | 20 | 1-100 | LOTR Holiday Release Collector Boosters |
+| 2024-01 | Ravnica Remastered retro serials | RVR | 64 | 1-500 | Ravnica Remastered Collector Boosters |
+| 2024-02 | Murders at Karlov Manor Ravnica City serials | MKM | 7 | 1-250 | Murders at Karlov Manor Collector Boosters |
+| 2024-03 | Fallout Bobbleheads | PIP | 7 | 1-500 | Fallout Collector Boosters |
+| 2024-06 | Modern Horizons 3 concept Eldrazi | MH3 | 3 | 1-250 | Modern Horizons 3 Collector Boosters |
+| 2024-07 | Assassin's Creed historical figures | ACR | 4 | 1-500 | Assassin's Creed Collector Boosters |
 
 ## Implementation Implications
 
