@@ -34,6 +34,7 @@ export async function POST(request: Request) {
     merchant?: unknown;
     href?: unknown;
     label?: unknown;
+    intent?: unknown;
     placement?: unknown;
   };
 
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
         tracker: trackerSlug,
         merchant,
         label: label || allowedLink.label,
+        intent: allowedLink.intent,
         placement,
         clickedAt: new Date().toISOString(),
       }),

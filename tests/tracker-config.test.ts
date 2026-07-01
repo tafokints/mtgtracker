@@ -6,6 +6,11 @@ const requiredLiveMerchants = ['tcgplayer', 'ebay', 'amazon'] as const;
 const tcgplayerPartnerPath = '/DyJ25G';
 const amazonAssociateTag = 'meleeitonme0a-20';
 const ebayCampaignId = '5339113954';
+const expectedIntentByMerchant: Partial<Record<AffiliateLink['merchant'], AffiliateLink['intent']>> = {
+  tcgplayer: 'singles',
+  ebay: 'auction-comps',
+  amazon: 'sealed-product',
+};
 
 function collectAffiliateLinks() {
   return [
@@ -83,6 +88,8 @@ describe('tracker config consistency', () => {
       const url = new URL(link.href);
 
       expect(url.protocol, `${trackerSlug} ${link.merchant} protocol`).toBe('https:');
+      expect(link.intent, `${trackerSlug} ${link.merchant} intent`).toBeTruthy();
+      expect(link.intent, `${trackerSlug} ${link.merchant} expected intent`).toBe(expectedIntentByMerchant[link.merchant] || 'marketplace');
 
       if (link.merchant === 'tcgplayer') {
         expect(url.hostname, `${trackerSlug} TCGplayer host`).toBe('partner.tcgplayer.com');

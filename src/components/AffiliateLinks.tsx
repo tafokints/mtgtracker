@@ -31,8 +31,11 @@ export default function AffiliateLinks({
             link={link}
             trackerSlug={trackerSlug}
             placement={placement}
-            className="bg-ring-dark border border-ring-gold hover:bg-ring-gold hover:text-ring-dark text-ring-gold font-bold py-2 px-4 rounded text-center transition-colors"
-          />
+            className="bg-ring-dark border border-ring-gold hover:bg-ring-gold hover:text-ring-dark text-ring-gold font-bold py-3 px-4 rounded text-center transition-colors"
+          >
+            <span className="block">{link.label}</span>
+            <span className="mt-1 block text-xs font-normal uppercase opacity-70">{link.intent.replace('-', ' ')}</span>
+          </AffiliateOutboundLink>
         ))}
       </div>
     </div>

@@ -2,6 +2,7 @@ export interface AffiliateLink {
   label: string;
   href: string;
   merchant: 'tcgplayer' | 'ebay' | 'amazon' | 'other';
+  intent: 'singles' | 'auction-comps' | 'sealed-product' | 'marketplace';
   ctaEyebrow?: string;
   ctaDetail?: string;
 }
@@ -93,16 +94,19 @@ export const defaultAffiliateLinks: AffiliateLink[] = [
     label: 'MTG Singles on TCGplayer',
     href: buildTcgplayerSearchUrl('serialized mtg', 'serialized-mtg'),
     merchant: 'tcgplayer',
+    intent: 'singles',
   },
   {
     label: 'Serialized MTG on eBay',
     href: buildEbaySearchUrl('serialized mtg card', 'serialized-mtg'),
     merchant: 'ebay',
+    intent: 'auction-comps',
   },
   {
     label: 'Magic: The Gathering on Amazon',
     href: buildAmazonSearchUrl('magic the gathering collector booster'),
     merchant: 'amazon',
+    intent: 'sealed-product',
   },
 ];
 
@@ -143,6 +147,7 @@ export const trackers: TrackerSummary[] = [
         label: 'LOTR Singles on TCGplayer',
         href: buildTcgplayerSearchUrl('The One Ring serialized', 'one-ring'),
         merchant: 'tcgplayer',
+        intent: 'singles',
         ctaEyebrow: 'Singles Market',
         ctaDetail: 'Check LOTR singles and sealed-market pricing.',
       },
@@ -150,6 +155,7 @@ export const trackers: TrackerSummary[] = [
         label: 'Serialized One Ring on eBay',
         href: buildEbaySearchUrl('serialized one ring mtg', 'one-ring'),
         merchant: 'ebay',
+        intent: 'auction-comps',
         ctaEyebrow: 'Auction Watch',
         ctaDetail: 'Search active and sold One Ring serial listings.',
       },
@@ -157,6 +163,7 @@ export const trackers: TrackerSummary[] = [
         label: 'LOTR Collector Boosters on Amazon',
         href: buildAmazonSearchUrl('lord of the rings mtg collector booster'),
         merchant: 'amazon',
+        intent: 'sealed-product',
         ctaEyebrow: 'Sealed Product',
         ctaDetail: 'Browse LOTR collector booster availability.',
       },
@@ -198,6 +205,7 @@ export const trackers: TrackerSummary[] = [
         label: 'Innistrad Remastered Singles on TCGplayer',
         href: buildTcgplayerSearchUrl('Edgar Markov serialized', 'edgar-markov'),
         merchant: 'tcgplayer',
+        intent: 'singles',
         ctaEyebrow: 'Singles Market',
         ctaDetail: 'Check Innistrad Remastered singles demand.',
       },
@@ -205,6 +213,7 @@ export const trackers: TrackerSummary[] = [
         label: 'Serialized Edgar Markov on eBay',
         href: buildEbaySearchUrl('serialized edgar markov mtg', 'edgar-markov'),
         merchant: 'ebay',
+        intent: 'auction-comps',
         ctaEyebrow: 'Auction Watch',
         ctaDetail: 'Search active Edgar Markov serial listings.',
       },
@@ -212,6 +221,7 @@ export const trackers: TrackerSummary[] = [
         label: 'Innistrad Remastered on Amazon',
         href: buildAmazonSearchUrl('innistrad remastered collector booster'),
         merchant: 'amazon',
+        intent: 'sealed-product',
         ctaEyebrow: 'Sealed Product',
         ctaDetail: 'Browse Innistrad Remastered collector boosters.',
       },
@@ -258,6 +268,7 @@ export const trackers: TrackerSummary[] = [
         label: 'LOTR Poster Singles on TCGplayer',
         href: buildTcgplayerSearchUrl('LOTR poster serialized', 'lotr-poster-cards'),
         merchant: 'tcgplayer',
+        intent: 'singles',
         ctaEyebrow: 'Poster Singles',
         ctaDetail: 'Check market listings for LOTR poster cards.',
       },
@@ -265,6 +276,7 @@ export const trackers: TrackerSummary[] = [
         label: 'LOTR Poster Serials on eBay',
         href: buildEbaySearchUrl('serialized lotr poster mtg', 'lotr-poster-cards'),
         merchant: 'ebay',
+        intent: 'auction-comps',
         ctaEyebrow: 'Serial Search',
         ctaDetail: 'Search serialized poster listings and sold comps.',
       },
@@ -272,6 +284,7 @@ export const trackers: TrackerSummary[] = [
         label: 'LOTR Collector Boosters on Amazon',
         href: buildAmazonSearchUrl('lord of the rings mtg special edition collector booster'),
         merchant: 'amazon',
+        intent: 'sealed-product',
         ctaEyebrow: 'Holiday Sealed',
         ctaDetail: 'Browse Special Edition collector booster products.',
       },
@@ -340,6 +353,7 @@ export const trackers: TrackerSummary[] = [
         label: 'Final Fantasy Singles on TCGplayer',
         href: buildTcgplayerSearchUrl('Final Fantasy Traveling Chocobo', 'golden-chocobo'),
         merchant: 'tcgplayer',
+        intent: 'singles',
         ctaEyebrow: 'Singles Market',
         ctaDetail: 'Check Final Fantasy singles marketplace activity.',
       },
@@ -347,6 +361,7 @@ export const trackers: TrackerSummary[] = [
         label: 'Golden Chocobo on eBay',
         href: buildEbaySearchUrl('traveling chocobo serialized mtg', 'golden-chocobo'),
         merchant: 'ebay',
+        intent: 'auction-comps',
         ctaEyebrow: 'Auction Watch',
         ctaDetail: 'Search Traveling Chocobo serial listings.',
       },
@@ -354,6 +369,7 @@ export const trackers: TrackerSummary[] = [
         label: 'Final Fantasy MTG on Amazon',
         href: buildAmazonSearchUrl('final fantasy mtg collector booster'),
         merchant: 'amazon',
+        intent: 'sealed-product',
         ctaEyebrow: 'Sealed Product',
         ctaDetail: 'Browse Final Fantasy collector booster products.',
       },

@@ -64,6 +64,9 @@ export default function PrimaryAffiliateCtas({ links, trackerSlug }: PrimaryAffi
             >
               <span className="block text-xs font-bold uppercase opacity-75">{eyebrow}</span>
               <span className="mt-1 block font-bold">{link.label}</span>
+              <span className="mt-1 inline-block rounded border border-current/30 px-2 py-0.5 text-[0.65rem] font-bold uppercase opacity-75">
+                {link.intent.replace('-', ' ')}
+              </span>
               <span className="mt-1 block text-xs opacity-80">{detail}</span>
             </AffiliateOutboundLink>
           );

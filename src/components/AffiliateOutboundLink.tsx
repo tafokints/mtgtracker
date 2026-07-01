@@ -18,6 +18,7 @@ export default function AffiliateOutboundLink({ link, trackerSlug, placement, cl
       merchant: link.merchant,
       href: link.href,
       label: link.label,
+      intent: link.intent,
       placement,
     });
 

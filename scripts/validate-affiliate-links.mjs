@@ -45,9 +45,22 @@ function collectLinks(trackers, defaultAffiliateLinks) {
 
 function assertUrlShape(link) {
   const url = new URL(link.href);
+  const expectedIntentByMerchant = {
+    tcgplayer: 'singles',
+    ebay: 'auction-comps',
+    amazon: 'sealed-product',
+  };
 
   if (!['https:'].includes(url.protocol)) {
     throw new Error(`${link.tracker} ${link.label} must use https`);
+  }
+
+  if (!link.intent) {
+    throw new Error(`${link.tracker} ${link.label} is missing affiliate intent`);
+  }
+
+  if (expectedIntentByMerchant[link.merchant] && link.intent !== expectedIntentByMerchant[link.merchant]) {
+    throw new Error(`${link.tracker} ${link.label} ${link.merchant} intent must be ${expectedIntentByMerchant[link.merchant]}`);
   }
 
   if (link.merchant === 'ebay') {

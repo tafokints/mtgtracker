@@ -104,7 +104,8 @@ Affiliate click telemetry is stored separately from tracker backups:
 - `affiliate:clicks:{yyyy-mm-dd}:{trackerSlug}:{merchant}:{placement}` counts daily outbound clicks.
 - `affiliate:clicks:total:{trackerSlug}:{merchant}:{placement}` counts all-time outbound clicks.
 - `affiliate:last-click:{trackerSlug}:{merchant}:{placement}` stores the latest click metadata for quick inspection.
-- `GET /api/admin/affiliate-stats` summarizes the tracked click keys for authenticated admins, including tracker, merchant, and placement rollups.
+- `GET /api/admin/affiliate-stats` summarizes the tracked click keys for authenticated admins, including tracker, merchant, intent, and placement rollups.
+- Affiliate links include an intent label: `singles`, `auction-comps`, `sealed-product`, or `marketplace`.
 
 Admin backups are tracker-scoped:
 

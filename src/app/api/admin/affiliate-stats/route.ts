@@ -25,12 +25,14 @@ function summarizeRows(rows: Array<{
   tracker: string;
   trackerTitle: string;
   merchant: string;
+  intent: string;
   placement: string;
   clicksInWindow: number;
   totalClicks: number;
 }>) {
   const byTracker = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
   const byMerchant = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
+  const byIntent = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
   const byPlacement = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
 
   const add = (
@@ -51,6 +53,7 @@ function summarizeRows(rows: Array<{
   for (const row of rows) {
     add(byTracker, row.tracker, row.trackerTitle, row);
     add(byMerchant, row.merchant, row.merchant, row);
+    add(byIntent, row.intent, row.intent, row);
     add(byPlacement, row.placement, row.placement, row);
   }
 
@@ -62,9 +65,11 @@ function summarizeRows(rows: Array<{
     totalClicks,
     bestTracker: sortBreakdown(byTracker.values())[0] || null,
     bestMerchant: sortBreakdown(byMerchant.values())[0] || null,
+    bestIntent: sortBreakdown(byIntent.values())[0] || null,
     bestPlacement: sortBreakdown(byPlacement.values())[0] || null,
     byTracker: sortBreakdown(byTracker.values()),
     byMerchant: sortBreakdown(byMerchant.values()),
+    byIntent: sortBreakdown(byIntent.values()),
     byPlacement: sortBreakdown(byPlacement.values()),
   };
 }
@@ -118,6 +123,7 @@ export async function GET(request: NextRequest) {
             tracker: tracker.slug,
             trackerTitle: tracker.title,
             merchant: link.merchant,
+            intent: link.intent,
             label: link.label,
             href: link.href,
             placement,

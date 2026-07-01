@@ -23,6 +23,7 @@ interface AffiliateStatsRow {
   tracker: string;
   trackerTitle: string;
   merchant: string;
+  intent: string;
   label: string;
   href: string;
   placement: string;
@@ -48,9 +49,11 @@ interface AffiliateStatsResponse {
     totalClicks: number;
     bestTracker: AffiliateStatsBreakdown | null;
     bestMerchant: AffiliateStatsBreakdown | null;
+    bestIntent: AffiliateStatsBreakdown | null;
     bestPlacement: AffiliateStatsBreakdown | null;
     byTracker: AffiliateStatsBreakdown[];
     byMerchant: AffiliateStatsBreakdown[];
+    byIntent: AffiliateStatsBreakdown[];
     byPlacement: AffiliateStatsBreakdown[];
   };
   rows: AffiliateStatsRow[];
@@ -982,12 +985,13 @@ export default function AdminPanel({
                     <AffiliateMetric label={`${affiliateStats.days}d clicks`} value={affiliateStats.summary.clicksInWindow} />
                     <AffiliateMetric label="All-time clicks" value={affiliateStats.summary.totalClicks} />
                     <AffiliateMetric label="Best merchant" value={affiliateStats.summary.bestMerchant?.label || 'None'} detail={affiliateStats.summary.bestMerchant ? `${affiliateStats.summary.bestMerchant.clicksInWindow} clicks` : undefined} />
-                    <AffiliateMetric label="Best placement" value={affiliateStats.summary.bestPlacement?.label || 'None'} detail={affiliateStats.summary.bestPlacement ? `${affiliateStats.summary.bestPlacement.clicksInWindow} clicks` : undefined} />
+                    <AffiliateMetric label="Best intent" value={affiliateStats.summary.bestIntent?.label || 'None'} detail={affiliateStats.summary.bestIntent ? `${affiliateStats.summary.bestIntent.clicksInWindow} clicks` : undefined} />
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                     <AffiliateBreakdown title="Trackers" rows={affiliateStats.summary.byTracker.slice(0, 5)} />
                     <AffiliateBreakdown title="Merchants" rows={affiliateStats.summary.byMerchant} />
+                    <AffiliateBreakdown title="Intent" rows={affiliateStats.summary.byIntent} />
                     <AffiliateBreakdown title="Placements" rows={affiliateStats.summary.byPlacement} />
                   </div>
 
@@ -997,6 +1001,7 @@ export default function AdminPanel({
                         <tr>
                           <th className="px-3 py-2">Tracker</th>
                           <th className="px-3 py-2">Merchant</th>
+                          <th className="px-3 py-2">Intent</th>
                           <th className="px-3 py-2">Placement</th>
                           <th className="px-3 py-2 text-right">30d</th>
                           <th className="px-3 py-2 text-right">Total</th>
@@ -1013,6 +1018,7 @@ export default function AdminPanel({
                               </a>
                             </td>
                             <td className="px-3 py-2 capitalize">{row.merchant}</td>
+                            <td className="px-3 py-2 capitalize">{row.intent.replace('-', ' ')}</td>
                             <td className="px-3 py-2">{row.placement}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{row.clicksInWindow}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{row.totalClicks}</td>

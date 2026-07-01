@@ -256,6 +256,7 @@ describe('tracker API routes', () => {
       tracker: 'one-ring',
       merchant: 'ebay',
       label: link.label,
+      intent: link.intent,
       placement: 'tracker-marketplace',
     });
   });
@@ -332,6 +333,10 @@ describe('tracker API routes', () => {
           key: 'one-ring',
           clicksInWindow: 2,
         }),
+        byIntent: expect.arrayContaining([
+          expect.objectContaining({ key: 'auction-comps', clicksInWindow: 1 }),
+          expect.objectContaining({ key: 'singles', clicksInWindow: 1 }),
+        ]),
         byMerchant: expect.arrayContaining([
           expect.objectContaining({ key: 'ebay', clicksInWindow: 1 }),
           expect.objectContaining({ key: 'tcgplayer', clicksInWindow: 1 }),
@@ -346,6 +351,7 @@ describe('tracker API routes', () => {
           tracker: 'one-ring',
           trackerTitle: 'The One Ring',
           merchant: 'ebay',
+          intent: 'auction-comps',
           label: ebayLink.label,
           href: ebayLink.href,
           placement: 'tracker-marketplace',
@@ -356,6 +362,7 @@ describe('tracker API routes', () => {
           tracker: 'one-ring',
           trackerTitle: 'The One Ring',
           merchant: 'tcgplayer',
+          intent: 'singles',
           label: tcgplayerLink.label,
           href: tcgplayerLink.href,
           placement: 'tracker-top-cta',
