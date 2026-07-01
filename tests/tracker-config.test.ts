@@ -67,4 +67,23 @@ describe('tracker config consistency', () => {
       }
     }
   });
+
+  it('keeps multi-card tracker definitions internally consistent', () => {
+    const multiCardTrackers = trackers.filter((tracker) => (tracker.cardDefinitions || []).length > 0);
+
+    expect(multiCardTrackers.length).toBeGreaterThan(0);
+
+    for (const tracker of multiCardTrackers) {
+      const cardSlugs = new Set<string>();
+
+      for (const definition of tracker.cardDefinitions || []) {
+        expect(definition.slug, `${tracker.slug} card slug`).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+        expect(cardSlugs.has(definition.slug), `${tracker.slug} duplicate card slug ${definition.slug}`).toBe(false);
+        expect(definition.title, `${tracker.slug} card title`).toBeTruthy();
+        expect(definition.total || tracker.total, `${tracker.slug} ${definition.slug} total`).toBeGreaterThan(0);
+        expect(definition.referenceImage || tracker.referenceImage, `${tracker.slug} ${definition.slug} reference image`).toMatch(/^https:\/\//);
+        cardSlugs.add(definition.slug);
+      }
+    }
+  });
 });

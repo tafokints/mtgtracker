@@ -3,6 +3,7 @@
 import React from 'react';
 import { SerializedRingCard } from '../lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
+import { formatTrackerCardLabel } from '@/lib/tracker-data';
 import ExternalImage from '@/components/ExternalImage';
 
 interface CardDetailsProps {
@@ -15,7 +16,7 @@ interface CardDetailsProps {
 export default function CardDetails({ card, tracker, isOpen, onClose }: CardDetailsProps) {
   if (!isOpen) return null;
 
-  const serialLabel = `${card.serialNumber}/${tracker.total}`;
+  const serialLabel = formatTrackerCardLabel(tracker, card);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">

@@ -23,6 +23,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring` and `Edgar Markov` 
 ## Features
 
 - Directory model for multiple serialized-card trackers
+- Multi-card tracker definitions for serialized treatments with many card names
 - Public tracker grid for serials `001/100` through `100/100`
 - Progress, search, located/confirmed/source-linked filters, and sorting
 - Hidden report flow with source type, evidence level, price, image URLs, and notes

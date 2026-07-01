@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry, DiscoverySubmission, VerificationStatus, SubmissionStatus } from '../lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
-import { formatTrackerSerial } from '@/lib/tracker-data';
+import { formatTrackerCardLabel, formatTrackerSerial } from '@/lib/tracker-data';
 import ExternalImage from '@/components/ExternalImage';
 
 interface AdminPanelProps {
@@ -66,7 +66,12 @@ export default function AdminPanel({
   onRefresh,
 }: AdminPanelProps) {
   const trackerApiBase = `/api/trackers/${tracker.slug}`;
-  const serialLabel = (serialNumber: string | number) => `${serialNumber}/${tracker.total}`;
+  const serialLabel = (serialNumber: string | number, serialTotal = tracker.total) => `${serialNumber}/${serialTotal}`;
+  const submissionLabel = (submission: DiscoverySubmission) => (
+    submission.cardTitle && submission.cardTitle !== tracker.title
+      ? `${submission.cardTitle} ${serialLabel(submission.serialNumber, submission.serialTotal)}`
+      : serialLabel(submission.serialNumber, submission.serialTotal)
+  );
   const backupInputRef = useRef<HTMLInputElement>(null);
 
   const [isVisible, setIsVisible] = useState(false);
@@ -298,7 +303,7 @@ export default function AdminPanel({
       });
 
       if (response.ok) {
-        setMessage(`${REVIEW_ACTION_LABELS[action]}: ${serialLabel(submission.serialNumber)}`);
+        setMessage(`${REVIEW_ACTION_LABELS[action]}: ${submissionLabel(submission)}`);
         await fetchSubmissions();
         onRefresh();
       } else {
@@ -342,7 +347,8 @@ export default function AdminPanel({
     }
 
     onPriceUpdate(selectedCard, priceValue);
-    setMessage(`Price updated for serial ${serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
+    const card = cards.find((candidate) => candidate.id === selectedCard);
+    setMessage(`Price updated for ${card ? formatTrackerCardLabel(tracker, card) : serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
     setPrice('');
     setSelectedCard(null);
   };
@@ -369,7 +375,8 @@ export default function AdminPanel({
     }
 
     onImageUpdate(selectedCard, imageUrl);
-    setMessage(`Image updated for serial ${serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
+    const card = cards.find((candidate) => candidate.id === selectedCard);
+    setMessage(`Image updated for ${card ? formatTrackerCardLabel(tracker, card) : serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
     setImageUrl('');
     setSelectedCard(null);
   };
@@ -393,7 +400,8 @@ export default function AdminPanel({
     };
 
     onGradingUpdate(selectedCard, gradingInfo);
-    setMessage(`Grading updated for serial ${serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
+    const card = cards.find((candidate) => candidate.id === selectedCard);
+    setMessage(`Grading updated for ${card ? formatTrackerCardLabel(tracker, card) : serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
     setGradingService('');
     setGrade('');
     setDateGraded('');
@@ -420,7 +428,8 @@ export default function AdminPanel({
     };
 
     onPriceHistoryAdd(selectedCard, historyEntry);
-    setMessage(`Price history added for serial ${serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
+    const card = cards.find((candidate) => candidate.id === selectedCard);
+    setMessage(`Price history added for ${card ? formatTrackerCardLabel(tracker, card) : serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
     setHistoryPrice('');
     setSoldBy('');
     setSoldTo('');
@@ -543,7 +552,7 @@ export default function AdminPanel({
               <option value="">Choose a serial...</option>
               {cards.map((card) => (
                 <option key={card.id} value={card.id}>
-                  {serialLabel(card.serialNumber)} - {card.found ? card.verificationStatus : 'not found'}
+                  {formatTrackerCardLabel(tracker, card)} - {card.found ? card.verificationStatus : 'not found'}
                 </option>
               ))}
             </select>
@@ -630,7 +639,7 @@ export default function AdminPanel({
                 <div key={submission.id} className="rounded border border-ring-gold/40 bg-black/20 p-3 space-y-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="font-bold text-ring-gold">{serialLabel(submission.serialNumber)}</p>
+                      <p className="font-bold text-ring-gold">{submissionLabel(submission)}</p>
                       <p className="text-xs text-ring-light">
                         {submission.sourceType.replace('-', ' ')} - {submission.requestedVerificationStatus.replace('-', ' ')}
                       </p>
@@ -673,7 +682,7 @@ export default function AdminPanel({
                         <a key={image.url} href={image.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded border border-ring-gold/30 bg-ring-light/10">
                           <ExternalImage
                             src={image.url}
-                            alt={`Evidence for ${serialLabel(submission.serialNumber)}`}
+                            alt={`Evidence for ${submissionLabel(submission)}`}
                             className="h-28 w-full object-cover"
                             hideOnError
                           />
@@ -786,7 +795,7 @@ export default function AdminPanel({
                     <div key={submission.id} className="rounded border border-ring-light/20 bg-black/10 p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-bold text-ring-light">{serialLabel(submission.serialNumber)}</p>
+                          <p className="font-bold text-ring-light">{submissionLabel(submission)}</p>
                           <p className="text-xs text-ring-light">
                             {submission.sourceType.replace('-', ' ')} - submitted {new Date(submission.submittedAt).toLocaleString()}
                           </p>

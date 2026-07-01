@@ -5,6 +5,9 @@ import {
   applyApprovedSubmission,
   createInitialTrackerCards,
   formatTrackerSerial,
+  formatTrackerCardLabel,
+  getTrackerSlotId,
+  getTrackerTotalSlots,
   getTrackerDirectoryStats,
   withPendingReportCounts,
 } from '@/lib/tracker-data';
@@ -157,6 +160,33 @@ describe('tracker data helpers', () => {
     const applied = applyApprovedSubmission(tracker, cards, submission({ cardId: 999 }), {});
 
     expect(applied).toBe(false);
+  });
+
+  it('initializes multi-card tracker slots by card and serial', () => {
+    const posterTracker = getTracker('lotr-poster-cards');
+    if (!posterTracker) throw new Error('lotr-poster-cards tracker fixture is missing');
+
+    const cards = createInitialTrackerCards(posterTracker);
+
+    expect(getTrackerTotalSlots(posterTracker)).toBe(2000);
+    expect(cards).toHaveLength(2000);
+    expect(cards[0]).toMatchObject({
+      id: 1,
+      cardSlug: 'dawn-of-a-new-age',
+      cardTitle: 'Dawn of a New Age',
+      serialNumber: '001',
+      serialTotal: 100,
+      name: 'Dawn of a New Age 001/100',
+    });
+    expect(cards[100]).toMatchObject({
+      id: 101,
+      cardSlug: 'gandalf-the-white',
+      cardTitle: 'Gandalf the White',
+      serialNumber: '001',
+      serialTotal: 100,
+    });
+    expect(getTrackerSlotId(posterTracker, 'the-one-ring', 7)).toBe(1707);
+    expect(formatTrackerCardLabel(posterTracker, cards[1706])).toBe('The One Ring 007/100');
   });
 });
 

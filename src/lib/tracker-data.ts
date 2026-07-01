@@ -1,36 +1,119 @@
 import { Redis } from '@upstash/redis';
 import { DiscoverySubmission, EvidenceImage, PriceHistoryEntry, SerializedRingCard, VerificationStatus } from './types';
-import { TrackerSummary } from './trackers';
+import { TrackerCardDefinition, TrackerSummary } from './trackers';
 
-export function formatTrackerSerial(tracker: TrackerSummary, id: number) {
-  return id.toString().padStart(tracker.serialPadding, '0');
+export type ResolvedTrackerCardDefinition = Required<Pick<TrackerCardDefinition, 'slug' | 'title'>> & {
+  total: number;
+  serialPadding: number;
+  referenceImage?: string;
+  scryfallUrl?: string;
+};
+
+export function getTrackerCardDefinitions(tracker: TrackerSummary): ResolvedTrackerCardDefinition[] {
+  if (tracker.cardDefinitions?.length) {
+    return tracker.cardDefinitions.map((definition) => ({
+      slug: definition.slug,
+      title: definition.title,
+      total: definition.total || tracker.total,
+      serialPadding: definition.serialPadding || tracker.serialPadding,
+      referenceImage: definition.referenceImage || tracker.referenceImage,
+      scryfallUrl: definition.scryfallUrl,
+    }));
+  }
+
+  return [{
+    slug: tracker.slug,
+    title: tracker.title,
+    total: tracker.total,
+    serialPadding: tracker.serialPadding,
+    referenceImage: tracker.referenceImage,
+  }];
+}
+
+export function getTrackerTotalSlots(tracker: TrackerSummary) {
+  return getTrackerCardDefinitions(tracker).reduce((total, definition) => total + definition.total, 0);
+}
+
+export function formatTrackerSerial(tracker: TrackerSummary, id: number, definition?: Pick<ResolvedTrackerCardDefinition, 'serialPadding'>) {
+  return id.toString().padStart(definition?.serialPadding || tracker.serialPadding, '0');
+}
+
+export function getTrackerSlotId(tracker: TrackerSummary, cardSlug: string, serialId: number) {
+  let offset = 0;
+
+  for (const definition of getTrackerCardDefinitions(tracker)) {
+    if (definition.slug === cardSlug) {
+      return serialId >= 1 && serialId <= definition.total ? offset + serialId : undefined;
+    }
+
+    offset += definition.total;
+  }
+
+  return undefined;
+}
+
+function buildTrackerCardSlot(tracker: TrackerSummary, definition: ResolvedTrackerCardDefinition, id: number, serialId: number): SerializedRingCard {
+  const serialNumber = formatTrackerSerial(tracker, serialId, definition);
+
+  return {
+    id,
+    cardSlug: definition.slug,
+    cardTitle: definition.title,
+    serialTotal: definition.total,
+    serialNumber,
+    name: `${definition.title} ${serialNumber}/${definition.total}`,
+    found: false,
+    verificationStatus: 'unverified',
+    image: definition.referenceImage,
+    priceHistory: [],
+  };
+}
+
+export function getTrackerCardSlot(tracker: TrackerSummary, id: number) {
+  let offset = 0;
+
+  for (const definition of getTrackerCardDefinitions(tracker)) {
+    if (id > offset && id <= offset + definition.total) {
+      return buildTrackerCardSlot(tracker, definition, id, id - offset);
+    }
+
+    offset += definition.total;
+  }
+
+  return undefined;
 }
 
 export function getTrackerCardName(tracker: TrackerSummary, id: number) {
-  return `${tracker.title} ${formatTrackerSerial(tracker, id)}/${tracker.total}`;
+  return getTrackerCardSlot(tracker, id)?.name || `${tracker.title} ${formatTrackerSerial(tracker, id)}/${tracker.total}`;
+}
+
+export function formatTrackerCardLabel(tracker: TrackerSummary, card: Pick<SerializedRingCard, 'cardTitle' | 'serialNumber' | 'serialTotal'>) {
+  const serialLabel = `${card.serialNumber}/${card.serialTotal || tracker.total}`;
+  return card.cardTitle && card.cardTitle !== tracker.title ? `${card.cardTitle} ${serialLabel}` : serialLabel;
 }
 
 export function createInitialTrackerCards(tracker: TrackerSummary): SerializedRingCard[] {
-  return Array.from({ length: tracker.total }, (_, index) => {
-    const id = index + 1;
+  const cards: SerializedRingCard[] = [];
 
-    return {
-      id,
-      serialNumber: formatTrackerSerial(tracker, id),
-      name: getTrackerCardName(tracker, id),
-      found: false,
-      verificationStatus: 'unverified',
-      image: tracker.referenceImage,
-      priceHistory: [],
-    };
+  getTrackerCardDefinitions(tracker).forEach((definition) => {
+    for (let index = 0; index < definition.total; index += 1) {
+      cards.push(buildTrackerCardSlot(tracker, definition, cards.length + 1, index + 1));
+    }
   });
+
+  return cards;
 }
 
 export function normalizeTrackerCard(tracker: TrackerSummary, card: Partial<SerializedRingCard> & { id: number }): SerializedRingCard {
+  const slot = getTrackerCardSlot(tracker, card.id);
+
   return {
     id: card.id,
-    serialNumber: card.serialNumber || formatTrackerSerial(tracker, card.id),
-    name: card.name || getTrackerCardName(tracker, card.id),
+    cardSlug: card.cardSlug || slot?.cardSlug,
+    cardTitle: card.cardTitle || slot?.cardTitle,
+    serialTotal: card.serialTotal || slot?.serialTotal || tracker.total,
+    serialNumber: card.serialNumber || slot?.serialNumber || formatTrackerSerial(tracker, card.id),
+    name: card.name || slot?.name || getTrackerCardName(tracker, card.id),
     found: Boolean(card.found),
     foundBy: card.foundBy,
     dateFound: card.dateFound,
@@ -38,7 +121,7 @@ export function normalizeTrackerCard(tracker: TrackerSummary, card: Partial<Seri
     sourceType: card.sourceType,
     verificationStatus: card.verificationStatus || 'unverified',
     notes: card.notes,
-    image: card.image || tracker.referenceImage,
+    image: card.image || slot?.image || tracker.referenceImage,
     evidenceImages: card.evidenceImages || [],
     price: card.price,
     priceDate: card.priceDate,

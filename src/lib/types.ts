@@ -28,6 +28,9 @@ export interface EvidenceImage {
 export interface DiscoverySubmission {
   id: string;
   cardId: number;
+  cardSlug?: string;
+  cardTitle?: string;
+  serialTotal?: number;
   serialNumber: string;
   foundBy?: string;
   dateFound?: string;
@@ -49,6 +52,9 @@ export interface DiscoverySubmission {
 
 export interface SerializedRingCard {
   id: number;
+  cardSlug?: string;
+  cardTitle?: string;
+  serialTotal?: number;
   serialNumber: string;
   name: string;
   found: boolean;

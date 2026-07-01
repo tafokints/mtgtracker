@@ -81,9 +81,9 @@
 - [x] Generate sitemap tracker routes from live tracker config.
 - [x] Add Edgar Markov as the first second live single-card tracker.
 - Add multi-card treatment data model:
-  - tracked card definitions
-  - card-plus-serial discovery slots
-  - submission validation for card and serial
+  - [x] tracked card definitions
+  - [x] card-plus-serial discovery slots
+  - [x] submission validation for card and serial
   - admin review filters by card
 - [x] Add scaffold tooling for single-card trackers from `src/lib/serialized-catalog.ts`.
 - [x] Add catalog/tracker consistency checks for live catalog entries.

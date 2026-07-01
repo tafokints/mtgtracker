@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry } from "@/lib/types";
 import type { TrackerSummary } from '@/lib/trackers';
 import Link from "next/link";
+import { formatTrackerCardLabel, getTrackerCardDefinitions } from '@/lib/tracker-data';
 import AffiliateLinks from "@/components/AffiliateLinks";
 import AffiliateDisclosureNotice from "@/components/AffiliateDisclosureNotice";
 import PrimaryAffiliateCtas from '@/components/PrimaryAffiliateCtas';
@@ -25,6 +26,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   const trackerPath = `/trackers/${tracker.slug}`;
   const trackerApiBase = `/api/trackers/${tracker.slug}`;
   const referenceImage = tracker.referenceImage || '/icon.svg';
+  const cardDefinitions = getTrackerCardDefinitions(tracker);
 
   // State for filtering and sorting
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,7 +147,11 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     return cards
       .filter(card => {
         // Search query filter
-        const matchesSearch = card.serialNumber.includes(searchQuery.trim()) || card.id.toString().includes(searchQuery.trim());
+        const normalizedSearch = searchQuery.trim().toLowerCase();
+        const matchesSearch =
+          card.serialNumber.includes(searchQuery.trim()) ||
+          card.id.toString().includes(searchQuery.trim()) ||
+          Boolean(card.cardTitle?.toLowerCase().includes(normalizedSearch));
 
         // Status filter
         const matchesStatus =
@@ -249,7 +255,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
           <PrimaryAffiliateCtas links={tracker.affiliateLinks} trackerSlug={tracker.slug} />
           <ProgressBar current={foundCount} total={totalCount} />
           <p className="text-ring-light mt-3 text-sm">
-            Tracking {tracker.total || totalCount} {tracker.cardType || 'serialized cards'} from {tracker.setName || 'Magic: The Gathering'}. {confirmedCount} confirmed, {foundCount - confirmedCount} source-linked or unverified.
+            Tracking {totalCount} {tracker.cardType || 'serialized cards'}{cardDefinitions.length > 1 ? ` across ${cardDefinitions.length} cards` : ''} from {tracker.setName || 'Magic: The Gathering'}. {confirmedCount} confirmed, {foundCount - confirmedCount} source-linked or unverified.
           </p>
           <ReferenceLinks links={tracker.referenceLinks} compact />
           {dataError && (
@@ -257,7 +263,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
           )}
           {lastFoundCard && (
             <p className="text-ring-light mt-4 text-sm">
-              Last find: {lastFoundCard.serialNumber}/{tracker.total} by {lastFoundCard.foundBy} on {lastFoundCard.dateFound}
+              Last find: {formatTrackerCardLabel(tracker, lastFoundCard)} by {lastFoundCard.foundBy} on {lastFoundCard.dateFound}
             </p>
           )}
           {!lastFoundCard && !dataError && (
@@ -320,7 +326,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                     }}
                     role="button"
                     tabIndex={0}
-                    aria-label={`View larger image of ${tracker.title} ${card.serialNumber}/${tracker.total}`}
+                    aria-label={`View larger image of ${formatTrackerCardLabel(tracker, card)}`}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         setLightboxIndex(index);
@@ -330,13 +336,16 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                   >
                     <ExternalImage
                       src={imageSrc}
-                      alt={`${tracker.title} ${card.serialNumber}/${tracker.total} - ${card.name}`}
+                      alt={`${formatTrackerCardLabel(tracker, card)} - ${card.name}`}
                       className="w-full h-full object-contain bg-black/20"
                       fallbackSrc={referenceImage}
                     />
                   </div>
                   
-                  <h3 className="text-lg font-bold text-ring-gold tabular-nums">{card.serialNumber}/{tracker.total}</h3>
+                  <h3 className="text-lg font-bold text-ring-gold tabular-nums">{card.serialNumber}/{card.serialTotal || tracker.total}</h3>
+                  {card.cardTitle && card.cardTitle !== tracker.title && (
+                    <p className="mb-2 text-sm font-semibold text-ring-light">{card.cardTitle}</p>
+                  )}
                   
                   <div className="flex-grow flex flex-col">
                     <span

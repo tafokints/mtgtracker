@@ -50,7 +50,7 @@ export function validateDiscoverySubmission(body: any, totalCards: number) {
   const cardId = parseInt(body.cardId, 10);
 
   if (!Number.isInteger(cardId) || cardId < 1 || cardId > totalCards) {
-    errors.push(`Serial number must be between 1 and ${totalCards}.`);
+    errors.push(`Serial slot must be between 1 and ${totalCards}.`);
   }
 
   const foundBy = cleanString(body.foundBy);

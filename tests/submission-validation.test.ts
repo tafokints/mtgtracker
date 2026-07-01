@@ -45,7 +45,7 @@ describe('validateDiscoverySubmission', () => {
     }, 100);
 
     expect(result.errors).toEqual(expect.arrayContaining([
-      'Serial number must be between 1 and 100.',
+      'Serial slot must be between 1 and 100.',
       'Source link must be a valid http(s) URL.',
       'Source type is not valid.',
       'Evidence level is not valid.',

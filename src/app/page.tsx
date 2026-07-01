@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { trackers } from '@/lib/trackers';
+import { getTrackerCardDefinitions, getTrackerTotalSlots } from '@/lib/tracker-data';
 
 export default function HomePage() {
   const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');
@@ -54,6 +55,11 @@ export default function HomePage() {
 
 function TrackerCard({ tracker }: { tracker: (typeof trackers)[number] }) {
   const disabled = tracker.status === 'planned';
+  const cardDefinitionCount = getTrackerCardDefinitions(tracker).length;
+  const totalSlots = getTrackerTotalSlots(tracker);
+  const quantityLabel = cardDefinitionCount > 1
+    ? `${totalSlots.toLocaleString()} slots / ${cardDefinitionCount} cards`
+    : `${tracker.total.toLocaleString()} serials`;
 
   return (
     <article className="rounded-lg border border-ring-gold/40 bg-ring-dark/80 p-5 shadow-[0_0_20px_rgba(43,174,158,0.12)]">
@@ -63,7 +69,7 @@ function TrackerCard({ tracker }: { tracker: (typeof trackers)[number] }) {
           <h3 className="mt-2 text-2xl font-bold text-ring-gold">{tracker.title}</h3>
         </div>
         <span className="rounded border border-ring-gold/30 px-2 py-1 text-xs uppercase text-ring-light/70">
-          {tracker.total} cards
+          {quantityLabel}
         </span>
       </div>
       <p className="mt-4 min-h-14 text-sm leading-6 text-ring-light/80">{tracker.description}</p>

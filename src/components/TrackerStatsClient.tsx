@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { SerializedRingCard } from '@/lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
+import { formatTrackerCardLabel } from '@/lib/tracker-data';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import type { PieLabelRenderProps } from 'recharts';
 import Link from 'next/link';
@@ -257,7 +258,7 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
               <ListPanel title="Recent Discoveries">
                 {stats.recentDiscoveries.map((card) => (
                   <div key={card.id} className="flex justify-between items-center gap-4">
-                    <span className="text-ring-light">{card.serialNumber}/{tracker.total} - {card.foundBy}</span>
+                    <span className="text-ring-light">{formatTrackerCardLabel(tracker, card)} - {card.foundBy}</span>
                     <span className="text-ring-gold font-bold">${card.price?.toLocaleString() || 'N/A'}</span>
                   </div>
                 ))}

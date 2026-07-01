@@ -4,11 +4,15 @@ import React, { useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import type { TrackerSummary } from '@/lib/trackers';
-import { formatTrackerSerial } from '@/lib/tracker-data';
+import { formatTrackerSerial, getTrackerCardDefinitions, getTrackerSlotId, getTrackerTotalSlots } from '@/lib/tracker-data';
 import { SourceType, VerificationStatus } from '@/lib/types';
 
 export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSummary }) {
+  const cardDefinitions = getTrackerCardDefinitions(tracker);
+  const hasMultipleCardDefinitions = cardDefinitions.length > 1;
   const [cardId, setCardId] = useState('');
+  const [selectedCardSlug, setSelectedCardSlug] = useState(cardDefinitions[0]?.slug || '');
+  const [selectedSerialId, setSelectedSerialId] = useState('');
   const [foundBy, setFoundBy] = useState('');
   const [dateFound, setDateFound] = useState('');
   const [link, setLink] = useState('');
@@ -38,7 +42,9 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        cardId,
+        cardId: hasMultipleCardDefinitions
+          ? getTrackerSlotId(tracker, selectedCardSlug, parseInt(selectedSerialId, 10)) || ''
+          : cardId,
         foundBy,
         dateFound,
         link,
@@ -55,6 +61,8 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
       setMessage('Submission queued for review. Thank you!');
       setIsError(false);
       setCardId('');
+      setSelectedCardSlug(cardDefinitions[0]?.slug || '');
+      setSelectedSerialId('');
       setFoundBy('');
       setDateFound('');
       setLink('');
@@ -159,23 +167,70 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block uppercase tracking-wide text-ring-gold text-xs font-bold mb-2" htmlFor="serial">
-                Serial Number
+                {hasMultipleCardDefinitions ? 'Card' : 'Serial Number'}
               </label>
-              <select
-                className="block w-full bg-ring-light border border-ring-gold text-ring-dark py-3 px-4 rounded leading-tight focus:outline-none focus:bg-white"
-                id="serial"
-                value={cardId}
-                onChange={(e) => setCardId(e.target.value)}
-                required
-              >
-                <option value="">Select a serial</option>
-                {Array.from({ length: tracker.total }, (_, i) => i + 1).map((id) => (
-                  <option key={id} value={id}>
-                    {tracker.title} {formatTrackerSerial(tracker, id)}/{tracker.total}
-                  </option>
-                ))}
-              </select>
+              {hasMultipleCardDefinitions ? (
+                <select
+                  className="block w-full bg-ring-light border border-ring-gold text-ring-dark py-3 px-4 rounded leading-tight focus:outline-none focus:bg-white"
+                  id="serial"
+                  value={selectedCardSlug}
+                  onChange={(e) => {
+                    setSelectedCardSlug(e.target.value);
+                    setSelectedSerialId('');
+                  }}
+                  required
+                >
+                  {cardDefinitions.map((definition) => (
+                    <option key={definition.slug} value={definition.slug}>
+                      {definition.title}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  className="block w-full bg-ring-light border border-ring-gold text-ring-dark py-3 px-4 rounded leading-tight focus:outline-none focus:bg-white"
+                  id="serial"
+                  value={cardId}
+                  onChange={(e) => setCardId(e.target.value)}
+                  required
+                >
+                  <option value="">Select a serial</option>
+                  {Array.from({ length: tracker.total }, (_, i) => i + 1).map((id) => (
+                    <option key={id} value={id}>
+                      {tracker.title} {formatTrackerSerial(tracker, id)}/{tracker.total}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
+            {hasMultipleCardDefinitions && (
+              <div>
+                <label className="block uppercase tracking-wide text-ring-gold text-xs font-bold mb-2" htmlFor="serial-number">
+                  Serial Number
+                </label>
+                <select
+                  className="block w-full bg-ring-light border border-ring-gold text-ring-dark py-3 px-4 rounded leading-tight focus:outline-none focus:bg-white"
+                  id="serial-number"
+                  value={selectedSerialId}
+                  onChange={(e) => setSelectedSerialId(e.target.value)}
+                  required
+                >
+                  <option value="">Select a serial</option>
+                  {Array.from({
+                    length: cardDefinitions.find((definition) => definition.slug === selectedCardSlug)?.total || 0,
+                  }, (_, i) => i + 1).map((id) => {
+                    const definition = cardDefinitions.find((candidate) => candidate.slug === selectedCardSlug);
+                    if (!definition) return null;
+
+                    return (
+                      <option key={id} value={id}>
+                        {formatTrackerSerial(tracker, id, definition)}/{definition.total}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block uppercase tracking-wide text-ring-gold text-xs font-bold mb-2" htmlFor="found-by">
                 Found By
@@ -341,6 +396,11 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
             </ul>
           )}
         </form>
+        {hasMultipleCardDefinitions && (
+          <p className="mt-4 max-w-2xl text-center text-xs text-ring-light/60">
+            This tracker has {getTrackerTotalSlots(tracker)} serial slots across {cardDefinitions.length} cards.
+          </p>
+        )}
       </main>
     </>
   );

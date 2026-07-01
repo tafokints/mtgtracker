@@ -23,6 +23,15 @@ export interface TrackerStorage {
   legacyCardsKeys?: string[];
 }
 
+export interface TrackerCardDefinition {
+  slug: string;
+  title: string;
+  total?: number;
+  serialPadding?: number;
+  referenceImage?: string;
+  scryfallUrl?: string;
+}
+
 export interface TrackerSummary {
   slug: string;
   catalogSlug?: string;
@@ -40,6 +49,7 @@ export interface TrackerSummary {
   theme: TrackerTheme;
   affiliateLinks?: AffiliateLink[];
   referenceLinks?: ReferenceLink[];
+  cardDefinitions?: TrackerCardDefinition[];
   referenceImage?: string;
 }
 
@@ -205,6 +215,82 @@ export const trackers: TrackerSummary[] = [
       },
     ],
     referenceImage: 'https://cards.scryfall.io/large/front/e/7/e70bfc25-3c0c-4574-b504-1d1f73e9e790.jpg?1782726466',
+  },
+  {
+    slug: 'lotr-poster-cards',
+    catalogSlug: 'lotr-poster-cards',
+    title: 'LOTR Poster Cards',
+    subtitle: 'Serialized borderless poster treatment',
+    description: 'Track every serialized borderless poster card from The Lord of the Rings: Tales of Middle-earth Holiday Release.',
+    setName: 'The Lord of the Rings: Tales of Middle-earth',
+    releaseName: 'Holiday Release',
+    cardType: 'Serialized borderless poster',
+    total: 100,
+    serialPadding: 3,
+    storage: {
+      cardsKey: 'lotr_poster_cards',
+      submissionsKey: 'lotr_poster_submissions',
+    },
+    href: '/trackers/lotr-poster-cards',
+    status: 'planned',
+    theme: {
+      accentClass: 'text-ring-gold',
+      surfaceClass: 'bg-ring-dark',
+      textClass: 'text-ring-light',
+      glowClass: 'shadow-[0_0_15px_rgba(214,167,61,0.5)]',
+    },
+    affiliateLinks: [
+      {
+        label: 'LOTR Poster Singles on TCGplayer',
+        href: buildTcgplayerSearchUrl('LOTR poster serialized', 'lotr-poster-cards'),
+        merchant: 'tcgplayer',
+      },
+      {
+        label: 'LOTR Poster Serials on eBay',
+        href: buildEbaySearchUrl('serialized lotr poster mtg', 'lotr-poster-cards'),
+        merchant: 'ebay',
+      },
+      {
+        label: 'LOTR Collector Boosters on Amazon',
+        href: buildAmazonSearchUrl('lord of the rings mtg special edition collector booster'),
+        merchant: 'amazon',
+      },
+    ],
+    referenceLinks: [
+      {
+        label: 'Wizards collecting guide',
+        href: 'https://magic.wizards.com/en/news/feature/collecting-the-lord-of-the-rings-tales-of-middle-earth',
+        type: 'official',
+      },
+      {
+        label: 'Scryfall poster query',
+        href: 'https://scryfall.com/search?order=set&q=e%3Altr+%28cn%3A%22731z%22+OR+cn%3A%22732z%22+OR+cn%3A%22733z%22+OR+cn%3A%22734z%22+OR+cn%3A%22735z%22+OR+cn%3A%22736z%22+OR+cn%3A%22737z%22+OR+cn%3A%22738z%22+OR+cn%3A%22739z%22+OR+cn%3A%22740z%22+OR+cn%3A%22741z%22+OR+cn%3A%22742z%22+OR+cn%3A%22743z%22+OR+cn%3A%22744z%22+OR+cn%3A%22745z%22+OR+cn%3A%22746z%22+OR+cn%3A%22747z%22+OR+cn%3A%22748z%22+OR+cn%3A%22749z%22+OR+cn%3A%22750z%22%29&unique=prints',
+        type: 'scryfall',
+      },
+    ],
+    cardDefinitions: [
+      { slug: 'dawn-of-a-new-age', title: 'Dawn of a New Age', referenceImage: 'https://cards.scryfall.io/large/front/c/9/c9108db3-93b3-4d15-8d43-8d6908c42a7c.jpg?1782694982', scryfallUrl: 'https://scryfall.com/card/ltr/731z/dawn-of-a-new-age' },
+      { slug: 'gandalf-the-white', title: 'Gandalf the White', referenceImage: 'https://cards.scryfall.io/large/front/c/9/c991916f-b238-459e-9176-a3a6f00c54c2.jpg?1782694980', scryfallUrl: 'https://scryfall.com/card/ltr/732z/gandalf-the-white' },
+      { slug: 'storm-of-saruman', title: 'Storm of Saruman', referenceImage: 'https://cards.scryfall.io/large/front/8/2/8213e598-e594-4db1-aad5-836fa972df8f.jpg?1782694979', scryfallUrl: 'https://scryfall.com/card/ltr/733z/storm-of-saruman' },
+      { slug: 'the-watcher-in-the-water', title: 'The Watcher in the Water', referenceImage: 'https://cards.scryfall.io/large/front/2/2/2256e802-8895-432b-b381-bdca41e7ce06.jpg?1782694977', scryfallUrl: 'https://scryfall.com/card/ltr/734z/the-watcher-in-the-water' },
+      { slug: 'shadow-of-the-enemy', title: 'Shadow of the Enemy', referenceImage: 'https://cards.scryfall.io/large/front/7/b/7b4b6982-c56e-4880-85ee-e24705afff55.jpg?1782694977', scryfallUrl: 'https://scryfall.com/card/ltr/735z/shadow-of-the-enemy' },
+      { slug: 'witch-king-of-angmar', title: 'Witch-king of Angmar', referenceImage: 'https://cards.scryfall.io/large/front/3/d/3de94e93-2021-4d00-a9db-497373994ec3.jpg?1782694976', scryfallUrl: 'https://scryfall.com/card/ltr/736z/witch-king-of-angmar' },
+      { slug: 'hew-the-entwood', title: 'Hew the Entwood', referenceImage: 'https://cards.scryfall.io/large/front/a/6/a614d5f4-cb93-4fdb-a4d6-6a6e14bfd04e.jpg?1782694974', scryfallUrl: 'https://scryfall.com/card/ltr/737z/hew-the-entwood' },
+      { slug: 'spiteful-banditry', title: 'Spiteful Banditry', referenceImage: 'https://cards.scryfall.io/large/front/a/6/a6975ed0-b2f0-4820-9649-6bc5594af19a.jpg?1782694972', scryfallUrl: 'https://scryfall.com/card/ltr/738z/spiteful-banditry' },
+      { slug: 'last-march-of-the-ents', title: 'Last March of the Ents', referenceImage: 'https://cards.scryfall.io/large/front/c/e/cebd776a-92ac-4a4c-a88f-335fbcb84c36.jpg?1782694971', scryfallUrl: 'https://scryfall.com/card/ltr/739z/last-march-of-the-ents' },
+      { slug: 'radagast-the-brown', title: 'Radagast the Brown', referenceImage: 'https://cards.scryfall.io/large/front/3/8/385a0103-f15b-41fa-8d2c-5cf2568c4e13.jpg?1782694969', scryfallUrl: 'https://scryfall.com/card/ltr/740z/radagast-the-brown' },
+      { slug: 'aragorn-the-uniter', title: 'Aragorn, the Uniter', referenceImage: 'https://cards.scryfall.io/large/front/9/d/9d481911-48a9-4cd7-a3b4-14c058dcac19.jpg?1782694968', scryfallUrl: 'https://scryfall.com/card/ltr/741z/aragorn-the-uniter' },
+      { slug: 'arwen-mortal-queen', title: 'Arwen, Mortal Queen', referenceImage: 'https://cards.scryfall.io/large/front/b/a/ba4f80df-841d-4ae3-b33e-d45cdc853761.jpg?1782694967', scryfallUrl: 'https://scryfall.com/card/ltr/742z/arwen-mortal-queen' },
+      { slug: 'saruman-of-many-colors', title: 'Saruman of Many Colors', referenceImage: 'https://cards.scryfall.io/large/front/a/4/a4d16e37-1fa1-4515-b29a-dbabb5c69665.jpg?1782694966', scryfallUrl: 'https://scryfall.com/card/ltr/743z/saruman-of-many-colors' },
+      { slug: 'sauron-the-dark-lord', title: 'Sauron, the Dark Lord', referenceImage: 'https://cards.scryfall.io/large/front/2/7/27251103-e27c-446a-b64c-b7b0d5846b27.jpg?1782694963', scryfallUrl: 'https://scryfall.com/card/ltr/744z/sauron-the-dark-lord' },
+      { slug: 'tom-bombadil', title: 'Tom Bombadil', referenceImage: 'https://cards.scryfall.io/large/front/5/0/50dd89bd-43a2-49c6-bf56-c9fbbf370540.jpg?1782694962', scryfallUrl: 'https://scryfall.com/card/ltr/745z/tom-bombadil' },
+      { slug: 'anduril-flame-of-the-west', title: 'Anduril, Flame of the West', referenceImage: 'https://cards.scryfall.io/large/front/5/a/5a5354dd-ff5f-4231-bf31-039ad3448a09.jpg?1782694961', scryfallUrl: 'https://scryfall.com/card/ltr/746z/and%C3%BAril-flame-of-the-west' },
+      { slug: 'glamdring', title: 'Glamdring', referenceImage: 'https://cards.scryfall.io/large/front/8/a/8a5d405b-dfea-44de-a456-eaac8af73100.jpg?1782694960', scryfallUrl: 'https://scryfall.com/card/ltr/747z/glamdring' },
+      { slug: 'the-one-ring', title: 'The One Ring', referenceImage: 'https://cards.scryfall.io/large/front/4/e/4e6fee52-33a8-4085-b632-bf95dfd2b16d.jpg?1782694957', scryfallUrl: 'https://scryfall.com/card/ltr/748z/the-one-ring' },
+      { slug: 'palantir-of-orthanc', title: 'Palantir of Orthanc', referenceImage: 'https://cards.scryfall.io/large/front/b/9/b9b95f71-ca89-4173-89bf-99abccd259de.jpg?1782694956', scryfallUrl: 'https://scryfall.com/card/ltr/749z/palant%C3%ADr-of-orthanc' },
+      { slug: 'mount-doom', title: 'Mount Doom', referenceImage: 'https://cards.scryfall.io/large/front/6/c/6c53dace-4597-4d34-96d1-7aa6290594d4.jpg?1782694955', scryfallUrl: 'https://scryfall.com/card/ltr/750z/mount-doom' },
+    ],
+    referenceImage: 'https://cards.scryfall.io/large/front/4/e/4e6fee52-33a8-4085-b632-bf95dfd2b16d.jpg?1782694957',
   },
   {
     slug: 'golden-chocobo',

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { getRedis } from '@/lib/redis';
-import { getTrackerCards, getTrackerDirectoryStats, getTrackerSubmissions } from '@/lib/tracker-data';
+import { getTrackerCardDefinitions, getTrackerCards, getTrackerDirectoryStats, getTrackerSubmissions, getTrackerTotalSlots } from '@/lib/tracker-data';
 import { trackers } from '@/lib/trackers';
 import { serializedCatalog } from '@/lib/serialized-catalog';
 import ReferenceLinks from '@/components/ReferenceLinks';
@@ -81,7 +81,12 @@ export default async function TrackersPage() {
             const stats = directoryStats[tracker.slug];
             const foundCount = stats?.foundCount || 0;
             const pendingReportCount = stats?.pendingReportCount || 0;
-            const foundPercentage = tracker.total > 0 ? (foundCount / tracker.total) * 100 : 0;
+            const cardDefinitionCount = getTrackerCardDefinitions(tracker).length;
+            const totalSlots = getTrackerTotalSlots(tracker);
+            const foundPercentage = totalSlots > 0 ? (foundCount / totalSlots) * 100 : 0;
+            const quantityLabel = cardDefinitionCount > 1
+              ? `${totalSlots.toLocaleString()} slots (${tracker.total.toLocaleString()} each)`
+              : tracker.total.toLocaleString();
 
             return (
               <article key={tracker.slug} className="rounded-lg border border-ring-gold/40 bg-ring-dark/80 p-5">
@@ -114,13 +119,19 @@ export default async function TrackersPage() {
                   )}
                   <div className="flex justify-between gap-4">
                     <dt>Serialized Qty</dt>
-                    <dd>{tracker.total}</dd>
+                    <dd>{quantityLabel}</dd>
                   </div>
+                  {cardDefinitionCount > 1 && (
+                    <div className="flex justify-between gap-4">
+                      <dt>Tracked Cards</dt>
+                      <dd>{cardDefinitionCount}</dd>
+                    </div>
+                  )}
                   {!disabled && (
                     <>
                       <div className="flex justify-between gap-4">
                         <dt>Located</dt>
-                        <dd>{foundCount}/{tracker.total}</dd>
+                        <dd>{foundCount}/{totalSlots}</dd>
                       </div>
                       <div className="flex justify-between gap-4">
                         <dt>Pending Reports</dt>
