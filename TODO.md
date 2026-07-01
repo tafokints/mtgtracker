@@ -84,7 +84,7 @@
   - [x] tracked card definitions
   - [x] card-plus-serial discovery slots
   - [x] submission validation for card and serial
-  - admin review filters by card
+  - [x] admin review filters by card
 - [x] Add scaffold tooling for single-card trackers from `src/lib/serialized-catalog.ts`.
 - [x] Add catalog/tracker consistency checks for live catalog entries.
 - Add Golden Chocobo as a second tracker after the generic path is ready.

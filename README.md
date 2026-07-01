@@ -28,6 +28,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring` and `Edgar Markov` 
 - Progress, search, located/confirmed/source-linked filters, and sorting
 - Hidden report flow with source type, evidence level, price, image URLs, and notes
 - Admin review queue before crowd-sourced discoveries become public tracker updates
+- Card-level admin review filtering for multi-card serialized treatments
 - Hidden admin panel with price, image, grading, and price-history updates
 - Curated serialized MTG catalog for future tracker scaffolding
 - Upstash Redis storage for Vercel deployment

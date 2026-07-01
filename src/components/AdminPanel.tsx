@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry, DiscoverySubmission, VerificationStatus, SubmissionStatus } from '../lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
 import { formatTrackerCardLabel, formatTrackerSerial } from '@/lib/tracker-data';
@@ -91,8 +91,37 @@ export default function AdminPanel({
   const [imageOverrides, setImageOverrides] = useState<Record<string, string>>({});
   const [verificationOverrides, setVerificationOverrides] = useState<Record<string, VerificationStatus>>({});
   const [mergeSelections, setMergeSelections] = useState<Record<string, string[]>>({});
+  const [reviewCardFilter, setReviewCardFilter] = useState('all');
+  const reviewCardOptions = useMemo(() => {
+    const optionsBySlug = new Map<string, { slug: string; title: string; count: number }>();
+
+    for (const submission of submissions) {
+      const card = cards.find((candidate) => candidate.id === submission.cardId);
+      const slug = submission.cardSlug || card?.cardSlug || 'single-card';
+      const title = submission.cardTitle || card?.cardTitle || tracker.title;
+      const existingOption = optionsBySlug.get(slug);
+
+      optionsBySlug.set(slug, {
+        slug,
+        title,
+        count: (existingOption?.count || 0) + 1,
+      });
+    }
+
+    return [...optionsBySlug.values()].sort((a, b) => a.title.localeCompare(b.title));
+  }, [cards, submissions, tracker.title]);
   const pendingSubmissions = submissions.filter((submission) => submission.status === 'pending');
   const reviewedSubmissions = submissions.filter((submission) => submission.status !== 'pending');
+  const matchesReviewCardFilter = (submission: DiscoverySubmission) => {
+    if (reviewCardFilter === 'all') {
+      return true;
+    }
+
+    const card = cards.find((candidate) => candidate.id === submission.cardId);
+    return (submission.cardSlug || card?.cardSlug || 'single-card') === reviewCardFilter;
+  };
+  const filteredPendingSubmissions = pendingSubmissions.filter(matchesReviewCardFilter);
+  const filteredReviewedSubmissions = reviewedSubmissions.filter(matchesReviewCardFilter);
   
   // Grading fields
   const [gradingService, setGradingService] = useState('');
@@ -568,7 +597,7 @@ export default function AdminPanel({
                   : 'text-ring-light hover:text-ring-gold'
               }`}
             >
-              Review ({pendingSubmissions.length})
+              Review ({reviewCardFilter === 'all' ? pendingSubmissions.length : `${filteredPendingSubmissions.length}/${pendingSubmissions.length}`})
             </button>
             <button
               onClick={() => setActiveTab('price')}
@@ -624,6 +653,26 @@ export default function AdminPanel({
 
           {activeTab === 'review' && (
             <div className="space-y-4">
+              {reviewCardOptions.length > 1 && (
+                <div className="rounded border border-ring-gold/30 bg-black/20 p-3">
+                  <label className="block text-ring-gold text-xs font-bold mb-2" htmlFor="review-card-filter">
+                    Filter reports by card
+                  </label>
+                  <select
+                    id="review-card-filter"
+                    value={reviewCardFilter}
+                    onChange={(event) => setReviewCardFilter(event.target.value)}
+                    className="w-full bg-ring-light text-ring-dark border border-ring-gold rounded py-2 px-3 text-sm"
+                  >
+                    <option value="all">All cards ({submissions.length})</option>
+                    {reviewCardOptions.map((option) => (
+                      <option key={option.slug} value={option.slug}>
+                        {option.title} ({option.count})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {submissionsLoading && (
                 <p className="text-sm text-ring-light">Loading reports...</p>
               )}
@@ -635,7 +684,15 @@ export default function AdminPanel({
                   </p>
                 </div>
               )}
-              {pendingSubmissions.map((submission) => (
+              {!submissionsLoading && pendingSubmissions.length > 0 && filteredPendingSubmissions.length === 0 && (
+                <div className="rounded border border-ring-gold/30 bg-black/20 p-4">
+                  <p className="text-sm font-bold text-ring-gold">No pending reports for this card</p>
+                  <p className="mt-1 text-xs text-ring-light">
+                    Switch back to all cards to continue reviewing the full queue.
+                  </p>
+                </div>
+              )}
+              {filteredPendingSubmissions.map((submission) => (
                 <div key={submission.id} className="rounded border border-ring-gold/40 bg-black/20 p-3 space-y-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -788,10 +845,10 @@ export default function AdminPanel({
                 </div>
               ))}
 
-              {reviewedSubmissions.length > 0 && (
+              {filteredReviewedSubmissions.length > 0 && (
                 <div className="space-y-2 pt-2">
                   <h4 className="text-ring-gold font-bold text-sm">Reviewed history</h4>
-                  {reviewedSubmissions.slice(0, 20).map((submission) => (
+                  {filteredReviewedSubmissions.slice(0, 20).map((submission) => (
                     <div key={submission.id} className="rounded border border-ring-light/20 bg-black/10 p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div>
