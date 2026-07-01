@@ -45,13 +45,13 @@
 
 ## Image Storage
 
-- Choose image storage provider:
-  - Vercel Blob
-  - S3
-  - Cloudinary
-- Replace URL-only evidence with uploads.
-- Store all submitted evidence images with the report.
-- Let admins choose the canonical card image during approval.
+- [x] Choose image storage provider:
+  - [x] Vercel Blob
+  - [ ] S3
+  - [ ] Cloudinary
+- [x] Replace URL-only evidence with uploads.
+- [x] Store all submitted evidence images with the report.
+- [x] Let admins choose the canonical card image during approval.
 - [x] Keep image provenance attached to each discovery.
 
 ## Modular Tracker Backend

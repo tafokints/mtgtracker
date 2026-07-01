@@ -34,11 +34,23 @@ const redisFixture = vi.hoisted(() => {
   };
 });
 
+const blobFixture = vi.hoisted(() => ({
+  put: vi.fn(async (pathname: string) => ({
+    url: `https://blob.vercel-storage.com/${pathname}`,
+    pathname,
+  })),
+}));
+
 vi.mock('@/lib/redis', () => ({
   getRedis: () => redisFixture.redis,
 }));
 
+vi.mock('@vercel/blob', () => ({
+  put: blobFixture.put,
+}));
+
 import { POST as submitDiscovery } from '@/app/api/trackers/[slug]/submit/route';
+import { POST as uploadEvidenceImage } from '@/app/api/trackers/[slug]/upload-image/route';
 import { POST as reviewSubmission } from '@/app/api/trackers/[slug]/submissions/route';
 import { GET as exportTrackerBackup } from '@/app/api/trackers/[slug]/export/route';
 import { POST as importTrackerBackup } from '@/app/api/trackers/[slug]/import/route';
@@ -63,6 +75,19 @@ function submitRequest(body: unknown, ip = '203.0.113.7') {
       'x-forwarded-for': ip,
     },
     body: typeof body === 'string' ? body : JSON.stringify(body),
+  });
+}
+
+function uploadRequest(file: File, ip = '203.0.113.7') {
+  const formData = new FormData();
+  formData.set('file', file);
+
+  return new Request('https://mtgtrackers.com/api/trackers/one-ring/upload-image', {
+    method: 'POST',
+    headers: {
+      'x-forwarded-for': ip,
+    },
+    body: formData,
   });
 }
 
@@ -123,8 +148,10 @@ describe('tracker API routes', () => {
   beforeEach(() => {
     redisFixture.store.clear();
     redisFixture.counters.clear();
+    blobFixture.put.mockClear();
     process.env.ADMIN_PASSWORD = 'test-admin-password';
     process.env.ADMIN_SESSION_SECRET = 'test-admin-secret';
+    process.env.BLOB_READ_WRITE_TOKEN = 'test-blob-token';
   });
 
   it('returns 400 for malformed public submission JSON', async () => {
@@ -150,6 +177,38 @@ describe('tracker API routes', () => {
       cardId: 7,
       status: 'pending',
     });
+  });
+
+  it('uploads a valid evidence image to blob storage', async () => {
+    const file = new File(['image-bytes'], 'Serial Evidence.PNG', { type: 'image/png' });
+    const response = await uploadEvidenceImage(uploadRequest(file), routeContext());
+    const body = await json(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      url: expect.stringContaining('https://blob.vercel-storage.com/trackers/one-ring/evidence/'),
+      contentType: 'image/png',
+      size: file.size,
+      remaining: 9,
+    });
+    expect(blobFixture.put).toHaveBeenCalledWith(
+      expect.stringMatching(/^trackers\/one-ring\/evidence\/\d+-serial-evidence\.png$/),
+      file,
+      expect.objectContaining({
+        access: 'public',
+        addRandomSuffix: true,
+        contentType: 'image/png',
+      })
+    );
+  });
+
+  it('rejects unsupported evidence upload file types', async () => {
+    const file = new File(['not-image'], 'evidence.txt', { type: 'text/plain' });
+    const response = await uploadEvidenceImage(uploadRequest(file), routeContext());
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: 'Only JPEG, PNG, and WebP images are supported' });
+    expect(blobFixture.put).not.toHaveBeenCalled();
   });
 
   it('marks repeated reports for the same serial as possible duplicates', async () => {

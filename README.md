@@ -53,6 +53,7 @@ KV_REST_API_TOKEN=...
 
 ADMIN_PASSWORD=...
 ADMIN_SESSION_SECRET=...
+BLOB_READ_WRITE_TOKEN=...
 NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=...
 ```
 
@@ -64,8 +65,9 @@ For local development only, the admin password falls back to `dev-admin` if `ADM
 2. Set the project root to `mtg-serial-tracker`.
 3. Add an Upstash Redis database.
 4. Add Redis REST env vars. Vercel may provide `KV_REST_API_URL` and `KV_REST_API_TOKEN`; those are supported. Manual Upstash envs can use `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
-5. Add `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` after creating the property in Google Search Console.
-6. Deploy.
+5. Add a Vercel Blob store and connect it to the project. Vercel should provide `BLOB_READ_WRITE_TOKEN`.
+6. Add `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` after creating the property in Google Search Console.
+7. Deploy.
 
 The first `/api/trackers/one-ring/cards` request initializes Redis with all 100 One Ring serial slots. Public reports are stored in `one_ring_submissions` until approved.
 
@@ -95,6 +97,7 @@ Admin backups are tracker-scoped:
 ## Hidden Workflows
 
 - Report form: enter the Konami code on `/trackers/one-ring` to reveal the `Report a Find` link.
+- Evidence uploads: report forms accept JPEG, PNG, or WebP uploads up to 4 MB per image. Uploaded images are stored in Vercel Blob and saved as evidence image URLs on the queued report.
 - Admin panel: press `Ctrl + Alt + A` on `/trackers/one-ring`.
 - Review queue: use the admin panel `Review` tab to approve or reject pending reports.
 

@@ -17,6 +17,9 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
   const [price, setPrice] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [evidenceImageUrls, setEvidenceImageUrls] = useState('');
+  const [uploadedEvidenceUrls, setUploadedEvidenceUrls] = useState<string[]>([]);
+  const [uploadMessage, setUploadMessage] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [notes, setNotes] = useState('');
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
@@ -43,7 +46,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
         verificationStatus,
         price,
         imageUrl,
-        evidenceImageUrls,
+        evidenceImageUrls: [...uploadedEvidenceUrls, evidenceImageUrls].filter(Boolean).join('\n'),
         notes,
       }),
     });
@@ -58,6 +61,8 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
       setPrice('');
       setImageUrl('');
       setEvidenceImageUrls('');
+      setUploadedEvidenceUrls([]);
+      setUploadMessage('');
       setNotes('');
     } else {
       const data = await response.json().catch(() => null);
@@ -65,6 +70,56 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
       setErrors(Array.isArray(data?.errors) ? data.errors : []);
       setIsError(true);
     }
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+
+    if (files.length === 0) return;
+
+    setUploading(true);
+    setUploadMessage(`Uploading ${files.length} image${files.length === 1 ? '' : 's'}...`);
+    setErrors([]);
+    setIsError(false);
+
+    const uploadedUrls: string[] = [];
+    const uploadErrors: string[] = [];
+
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch(`/api/trackers/${tracker.slug}/upload-image`, {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await response.json().catch(() => null);
+
+        if (response.ok && typeof data?.url === 'string') {
+          uploadedUrls.push(data.url);
+        } else {
+          uploadErrors.push(`${file.name}: ${data?.message || 'upload failed'}`);
+        }
+      } catch {
+        uploadErrors.push(`${file.name}: upload failed`);
+      }
+    }
+
+    if (uploadedUrls.length > 0) {
+      setUploadedEvidenceUrls((currentUrls) => [...currentUrls, ...uploadedUrls]);
+    }
+
+    if (uploadErrors.length > 0) {
+      setErrors(uploadErrors);
+      setIsError(true);
+      setUploadMessage(`Uploaded ${uploadedUrls.length}/${files.length} image${files.length === 1 ? '' : 's'}.`);
+    } else {
+      setUploadMessage(`Uploaded ${uploadedUrls.length} image${uploadedUrls.length === 1 ? '' : 's'}.`);
+    }
+
+    setUploading(false);
   };
 
   const structuredData = {
@@ -230,6 +285,35 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
             />
           </div>
           <div className="mt-6">
+            <label className="block uppercase tracking-wide text-ring-gold text-xs font-bold mb-2" htmlFor="evidence-image-upload">
+              Upload Evidence Images
+            </label>
+            <input
+              className="block w-full rounded border border-ring-gold bg-ring-light px-4 py-3 text-ring-dark file:mr-4 file:rounded file:border-0 file:bg-ring-gold file:px-3 file:py-2 file:font-bold file:text-ring-dark"
+              id="evidence-image-upload"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={handleImageUpload}
+              disabled={uploading}
+            />
+            <p className="mt-2 text-xs text-ring-light/70">
+              JPEG, PNG, or WebP. Max 4 MB per image.
+            </p>
+            {uploadMessage && (
+              <p className="mt-2 text-sm text-ring-light">{uploadMessage}</p>
+            )}
+            {uploadedEvidenceUrls.length > 0 && (
+              <ul className="mt-3 space-y-1 text-xs text-ring-light">
+                {uploadedEvidenceUrls.map((url) => (
+                  <li key={url} className="break-all">
+                    Uploaded: <a href={url} target="_blank" rel="noopener noreferrer" className="text-ring-gold hover:underline">{url}</a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="mt-6">
             <label className="block uppercase tracking-wide text-ring-gold text-xs font-bold mb-2" htmlFor="notes">
               Notes
             </label>
@@ -242,10 +326,11 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
             />
           </div>
           <button
-            className="mt-6 bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            className="mt-6 bg-ring-gold hover:bg-yellow-400 disabled:cursor-not-allowed disabled:bg-ring-light/40 text-ring-dark font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
             type="submit"
+            disabled={uploading}
           >
-            Submit
+            {uploading ? 'Uploading...' : 'Submit'}
           </button>
           {message && <p className={`mt-4 text-center ${isError ? 'text-red-500' : 'text-green-400'}`}>{message}</p>}
           {errors.length > 0 && (
