@@ -17,6 +17,27 @@ interface AdminPanelProps {
 }
 
 type ReviewAction = 'approve' | 'reject' | 'needs-more-info' | 'duplicate' | 'cannot-verify';
+type AdminTab = 'review' | 'price' | 'image' | 'grading' | 'history' | 'affiliate';
+
+interface AffiliateStatsRow {
+  tracker: string;
+  trackerTitle: string;
+  merchant: string;
+  label: string;
+  href: string;
+  placement: string;
+  clicksInWindow: number;
+  totalClicks: number;
+  lastClick?: {
+    clickedAt?: string;
+  } | null;
+}
+
+interface AffiliateStatsResponse {
+  days: number;
+  generatedAt: string;
+  rows: AffiliateStatsRow[];
+}
 
 const REVIEW_ACTION_LABELS: Record<ReviewAction, string> = {
   approve: 'Approve',
@@ -56,9 +77,11 @@ export default function AdminPanel({
   const [price, setPrice] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [message, setMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'review' | 'price' | 'image' | 'grading' | 'history'>('review');
+  const [activeTab, setActiveTab] = useState<AdminTab>('review');
   const [submissions, setSubmissions] = useState<DiscoverySubmission[]>([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  const [affiliateStats, setAffiliateStats] = useState<AffiliateStatsResponse | null>(null);
+  const [affiliateStatsLoading, setAffiliateStatsLoading] = useState(false);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [imageOverrides, setImageOverrides] = useState<Record<string, string>>({});
   const [verificationOverrides, setVerificationOverrides] = useState<Record<string, VerificationStatus>>({});
@@ -93,6 +116,22 @@ export default function AdminPanel({
     }
   }, [trackerApiBase]);
 
+  const fetchAffiliateStats = useCallback(async () => {
+    setAffiliateStatsLoading(true);
+    try {
+      const response = await fetch('/api/admin/affiliate-stats?days=30');
+      if (response.ok) {
+        setAffiliateStats(await response.json());
+      } else if (response.status === 401) {
+        setIsAuthenticated(false);
+      }
+    } catch (error) {
+      console.error('Error fetching affiliate stats:', error);
+    } finally {
+      setAffiliateStatsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       // Secret code: Ctrl + Alt + A
@@ -117,6 +156,12 @@ export default function AdminPanel({
       fetchSubmissions();
     }
   }, [isVisible, isAuthenticated, activeTab, fetchSubmissions]);
+
+  useEffect(() => {
+    if (isVisible && isAuthenticated && activeTab === 'affiliate') {
+      fetchAffiliateStats();
+    }
+  }, [isVisible, isAuthenticated, activeTab, fetchAffiliateStats]);
 
   const checkAuth = async () => {
     setAuthChecked(false);
@@ -556,6 +601,16 @@ export default function AdminPanel({
             >
               History
             </button>
+            <button
+              onClick={() => setActiveTab('affiliate')}
+              className={`flex-none px-2 py-2 text-xs font-bold ${
+                activeTab === 'affiliate'
+                  ? 'text-ring-gold border-b-2 border-ring-gold'
+                  : 'text-ring-light hover:text-ring-gold'
+              }`}
+            >
+              Affiliate
+            </button>
           </div>
 
           {activeTab === 'review' && (
@@ -779,6 +834,74 @@ export default function AdminPanel({
               >
                 Update Price
               </button>
+            </div>
+          )}
+
+          {activeTab === 'affiliate' && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-ring-gold">Affiliate Clicks</h3>
+                  <p className="text-xs text-ring-light">
+                    Last {affiliateStats?.days || 30} days, tracked by outbound marketplace clicks.
+                  </p>
+                </div>
+                <button
+                  onClick={fetchAffiliateStats}
+                  className="rounded border border-ring-gold/50 px-3 py-2 text-xs font-bold text-ring-gold hover:bg-ring-gold hover:text-ring-dark"
+                >
+                  Refresh
+                </button>
+              </div>
+
+              {affiliateStatsLoading && (
+                <p className="text-sm text-ring-light">Loading affiliate stats...</p>
+              )}
+
+              {!affiliateStatsLoading && (!affiliateStats || affiliateStats.rows.length === 0) && (
+                <div className="rounded border border-ring-gold/30 bg-black/20 p-4">
+                  <p className="text-sm font-bold text-ring-gold">No affiliate clicks tracked yet</p>
+                  <p className="mt-1 text-xs text-ring-light">
+                    Click rows will appear after visitors use marketplace links.
+                  </p>
+                </div>
+              )}
+
+              {!affiliateStatsLoading && affiliateStats && affiliateStats.rows.length > 0 && (
+                <div className="overflow-x-auto rounded border border-ring-gold/30">
+                  <table className="min-w-full text-left text-xs">
+                    <thead className="bg-black/20 text-ring-gold">
+                      <tr>
+                        <th className="px-3 py-2">Tracker</th>
+                        <th className="px-3 py-2">Merchant</th>
+                        <th className="px-3 py-2">Placement</th>
+                        <th className="px-3 py-2 text-right">30d</th>
+                        <th className="px-3 py-2 text-right">Total</th>
+                        <th className="px-3 py-2">Last Click</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-ring-gold/15 text-ring-light">
+                      {affiliateStats.rows.map((row) => (
+                        <tr key={`${row.tracker}-${row.merchant}-${row.placement}`}>
+                          <td className="px-3 py-2">
+                            <div className="font-bold text-ring-light">{row.trackerTitle}</div>
+                            <a href={row.href} target="_blank" rel="noopener noreferrer sponsored" className="text-ring-gold hover:underline">
+                              {row.label}
+                            </a>
+                          </td>
+                          <td className="px-3 py-2 capitalize">{row.merchant}</td>
+                          <td className="px-3 py-2">{row.placement}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{row.clicksInWindow}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{row.totalClicks}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            {row.lastClick?.clickedAt ? new Date(row.lastClick.clickedAt).toLocaleString() : 'None'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 

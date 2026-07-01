@@ -12,6 +12,9 @@ const redisFixture = vi.hoisted(() => {
     counters,
     redis: {
       async get(key: string) {
+        if (counters.has(key)) {
+          return counters.get(key);
+        }
         return store.get(key);
       },
       async set(key: string, value: unknown) {
@@ -55,6 +58,7 @@ import { POST as reviewSubmission } from '@/app/api/trackers/[slug]/submissions/
 import { GET as exportTrackerBackup } from '@/app/api/trackers/[slug]/export/route';
 import { POST as importTrackerBackup } from '@/app/api/trackers/[slug]/import/route';
 import { POST as trackAffiliateClick } from '@/app/api/affiliate/click/route';
+import { GET as getAffiliateStats } from '@/app/api/admin/affiliate-stats/route';
 
 const tracker = getTracker('one-ring');
 
@@ -99,6 +103,15 @@ function affiliateClickRequest(body: unknown) {
       'content-type': 'application/json',
     },
     body: JSON.stringify(body),
+  });
+}
+
+function affiliateStatsRequest(session = createAdminSession(), days = 30) {
+  return new NextRequest(`https://mtgtrackers.com/api/admin/affiliate-stats?days=${days}`, {
+    method: 'GET',
+    headers: {
+      cookie: `${ADMIN_COOKIE_NAME}=${session}`,
+    },
   });
 }
 
@@ -258,6 +271,45 @@ describe('tracker API routes', () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ message: 'Unknown affiliate link' });
+  });
+
+  it('requires admin auth to read affiliate stats', async () => {
+    const response = await getAffiliateStats(new NextRequest('https://mtgtrackers.com/api/admin/affiliate-stats'));
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ message: 'Unauthorized' });
+  });
+
+  it('returns affiliate stats for tracked clicks', async () => {
+    const link = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'ebay');
+    if (!link) throw new Error('Expected One Ring eBay affiliate link');
+
+    await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: link.merchant,
+      href: link.href,
+      label: link.label,
+      placement: 'tracker-marketplace',
+    }));
+    const response = await getAffiliateStats(affiliateStatsRequest());
+    const body = await json(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      days: 30,
+      rows: [
+        expect.objectContaining({
+          tracker: 'one-ring',
+          trackerTitle: 'The One Ring',
+          merchant: 'ebay',
+          label: link.label,
+          href: link.href,
+          placement: 'tracker-marketplace',
+          clicksInWindow: 1,
+          totalClicks: 1,
+        }),
+      ],
+    });
   });
 
   it('marks repeated reports for the same serial as possible duplicates', async () => {
