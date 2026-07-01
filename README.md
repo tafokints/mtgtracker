@@ -124,7 +124,7 @@ Generate a reviewable single-card tracker config snippet:
 npm run tracker:scaffold -- innistrad-remastered-edgar-markov --tracker-slug edgar-markov
 ```
 
-The scaffold command reads `src/lib/serialized-catalog.ts`, blocks multi-card treatments that need card-plus-serial support, and tries to fetch direct Scryfall card images when available.
+The scaffold command reads `src/lib/serialized-catalog.ts`, blocks multi-card treatments that need card-plus-serial support, emits the catalog back-reference, uses the current affiliate URL builders, and tries to fetch direct Scryfall card images when available.
 
 ## Promotion Checks
 

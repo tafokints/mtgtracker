@@ -25,6 +25,7 @@ export interface TrackerStorage {
 
 export interface TrackerSummary {
   slug: string;
+  catalogSlug?: string;
   title: string;
   subtitle: string;
   description: string;
@@ -103,6 +104,7 @@ export const defaultTrackerTheme: TrackerTheme = {
 export const trackers: TrackerSummary[] = [
   {
     slug: 'one-ring',
+    catalogSlug: 'lotr-poster-cards',
     title: 'The One Ring',
     subtitle: 'Serialized borderless poster cards',
     description: 'Track the 100 serialized The One Ring cards from MTG The Lord of the Rings: Tales of Middle-earth.',
@@ -157,6 +159,7 @@ export const trackers: TrackerSummary[] = [
   },
   {
     slug: 'edgar-markov',
+    catalogSlug: 'innistrad-remastered-edgar-markov',
     title: 'Edgar Markov',
     subtitle: 'Serialized Innistrad Remastered headliner',
     description: 'Track the 500 serialized Edgar Markov cards from Magic: The Gathering Innistrad Remastered.',
@@ -205,6 +208,7 @@ export const trackers: TrackerSummary[] = [
   },
   {
     slug: 'golden-chocobo',
+    catalogSlug: 'final-fantasy-traveling-chocobo',
     title: 'Golden Chocobo',
     subtitle: 'Coming later',
     description: 'The existing Golden Chocobo tracker can be migrated into this platform when we are ready.',

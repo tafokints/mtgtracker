@@ -187,6 +187,44 @@ function assertCanScaffold(entry) {
   }
 }
 
+function inferReferenceType(sourceUrl) {
+  if (sourceUrl.includes('magic.wizards.com') || sourceUrl.includes('wpn.wizards.com')) {
+    return 'official';
+  }
+
+  if (sourceUrl.includes('scryfall.com')) {
+    return 'scryfall';
+  }
+
+  return 'source';
+}
+
+function formatReferenceLinks(entry) {
+  const sourceUrls = entry.sourceUrls || [];
+  if (sourceUrls.length === 0) {
+    return '  referenceLinks: [],';
+  }
+
+  const links = sourceUrls.map((sourceUrl) => {
+    const type = inferReferenceType(sourceUrl);
+    const label = type === 'scryfall'
+      ? 'Scryfall source'
+      : type === 'official'
+        ? 'Official source'
+        : 'Source';
+
+    return `    {
+      label: '${label}',
+      href: '${sourceUrl.replace(/'/g, "\\'")}',
+      type: '${type}',
+    },`;
+  }).join('\n');
+
+  return `  referenceLinks: [
+${links}
+  ],`;
+}
+
 async function generateTrackerSnippet(entry, options) {
   assertCanScaffold(entry);
 
@@ -205,6 +243,7 @@ async function generateTrackerSnippet(entry, options) {
   }
   console.log(`{
   slug: '${trackerSlug}',
+  catalogSlug: '${entry.slug}',
   title: '${entry.title.replace(/'/g, "\\'")}',
   subtitle: '${entry.treatment.replace(/'/g, "\\'")}',
   description: 'Track the ${entry.defaultSerialTotal} serialized ${entry.title.replace(/'/g, "\\'")} cards from Magic: The Gathering ${entry.setName.replace(/'/g, "\\'")}.',
@@ -223,20 +262,21 @@ async function generateTrackerSnippet(entry, options) {
   affiliateLinks: [
     {
       label: '${entry.setName.replace(/'/g, "\\'")} Singles on TCGplayer',
-      href: 'https://partner.tcgplayer.com/WyLbG3',
+      href: buildTcgplayerSearchUrl('${entry.title.replace(/'/g, "\\'")} serialized', '${trackerSlug}'),
       merchant: 'tcgplayer',
     },
     {
       label: 'Serialized ${entry.title.replace(/'/g, "\\'")} on eBay',
-      href: 'https://ebay.us/MZ8psC',
+      href: buildEbaySearchUrl('serialized ${entry.title.replace(/'/g, "\\'")} mtg', '${trackerSlug}'),
       merchant: 'ebay',
     },
     {
       label: '${entry.setName.replace(/'/g, "\\'")} on Amazon',
-      href: 'https://amzn.to/4kAIv6n',
+      href: buildAmazonSearchUrl('${entry.setName.replace(/'/g, "\\'")} collector booster'),
       merchant: 'amazon',
     },
   ],
+${formatReferenceLinks(entry)}
   referenceImage: '${referenceImage}',
 },`);
 }
