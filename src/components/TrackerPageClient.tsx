@@ -26,10 +26,11 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   const trackerPath = `/trackers/${tracker.slug}`;
   const trackerApiBase = `/api/trackers/${tracker.slug}`;
   const referenceImage = tracker.referenceImage || '/icon.svg';
-  const cardDefinitions = getTrackerCardDefinitions(tracker);
+  const cardDefinitions = useMemo(() => getTrackerCardDefinitions(tracker), [tracker]);
 
   // State for filtering and sorting
   const [searchQuery, setSearchQuery] = useState('');
+  const [cardFilter, setCardFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState('id-asc');
   
@@ -146,9 +147,12 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   const filteredAndSortedCards = useMemo(() => {
     return cards
       .filter(card => {
+        const matchesCard = cardFilter === 'all' || card.cardSlug === cardFilter;
+
         // Search query filter
         const normalizedSearch = searchQuery.trim().toLowerCase();
         const matchesSearch =
+          normalizedSearch === '' ||
           card.serialNumber.includes(searchQuery.trim()) ||
           card.id.toString().includes(searchQuery.trim()) ||
           Boolean(card.cardTitle?.toLowerCase().includes(normalizedSearch));
@@ -162,7 +166,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
           (statusFilter === 'source-linked' && card.verificationStatus === 'source-linked') ||
           (statusFilter === 'not-found' && !card.found);
 
-        return matchesSearch && matchesStatus;
+        return matchesCard && matchesSearch && matchesStatus;
       })
       .sort((a, b) => {
         switch (sortOrder) {
@@ -181,7 +185,22 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
             return a.id - b.id;
         }
       });
-  }, [cards, searchQuery, statusFilter, sortOrder]);
+  }, [cards, cardFilter, searchQuery, statusFilter, sortOrder]);
+
+  const cardFilterOptions = useMemo(() => {
+    const countsBySlug = new Map<string, number>();
+
+    for (const card of cards) {
+      if (!card.cardSlug) continue;
+      countsBySlug.set(card.cardSlug, (countsBySlug.get(card.cardSlug) || 0) + 1);
+    }
+
+    return cardDefinitions.map((definition) => ({
+      slug: definition.slug,
+      title: definition.title,
+      count: countsBySlug.get(definition.slug) || definition.total,
+    }));
+  }, [cards, cardDefinitions]);
 
   const lightboxSlides = useMemo(() => {
     return filteredAndSortedCards
@@ -279,6 +298,9 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
             <FilterControls
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
+              cardFilter={cardFilter}
+              setCardFilter={setCardFilter}
+              cardOptions={cardDefinitions.length > 1 ? cardFilterOptions : []}
               statusFilter={statusFilter}
               setStatusFilter={setStatusFilter}
               sortOrder={sortOrder}
@@ -296,6 +318,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                   <button
                     onClick={() => {
                       setSearchQuery('');
+                      setCardFilter('all');
                       setStatusFilter('all');
                       setSortOrder('id-asc');
                     }}
