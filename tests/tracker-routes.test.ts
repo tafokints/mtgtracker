@@ -320,6 +320,13 @@ describe('tracker API routes', () => {
       label: tcgplayerLink.label,
       placement: 'tracker-top-cta',
     }));
+    await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: ebayLink.merchant,
+      href: ebayLink.href,
+      label: ebayLink.label,
+      placement: 'tracker-directory',
+    }));
     const response = await getAffiliateStats(affiliateStatsRequest());
     const body = await json(response);
 
@@ -327,23 +334,24 @@ describe('tracker API routes', () => {
     expect(body).toMatchObject({
       days: 30,
       summary: {
-        clicksInWindow: 2,
-        totalClicks: 2,
+        clicksInWindow: 3,
+        totalClicks: 3,
         bestTracker: expect.objectContaining({
           key: 'one-ring',
-          clicksInWindow: 2,
+          clicksInWindow: 3,
         }),
         byIntent: expect.arrayContaining([
-          expect.objectContaining({ key: 'auction-comps', clicksInWindow: 1 }),
+          expect.objectContaining({ key: 'auction-comps', clicksInWindow: 2 }),
           expect.objectContaining({ key: 'singles', clicksInWindow: 1 }),
         ]),
         byMerchant: expect.arrayContaining([
-          expect.objectContaining({ key: 'ebay', clicksInWindow: 1 }),
+          expect.objectContaining({ key: 'ebay', clicksInWindow: 2 }),
           expect.objectContaining({ key: 'tcgplayer', clicksInWindow: 1 }),
         ]),
         byPlacement: expect.arrayContaining([
           expect.objectContaining({ key: 'tracker-marketplace', clicksInWindow: 1 }),
           expect.objectContaining({ key: 'tracker-top-cta', clicksInWindow: 1 }),
+          expect.objectContaining({ key: 'tracker-directory', clicksInWindow: 1 }),
         ]),
       },
       rows: expect.arrayContaining([

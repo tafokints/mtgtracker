@@ -4,6 +4,8 @@ import { getTrackerCardDefinitions, getTrackerDirectoryStats, getTrackerDirector
 import { trackers } from '@/lib/trackers';
 import { serializedCatalog } from '@/lib/serialized-catalog';
 import ReferenceLinks from '@/components/ReferenceLinks';
+import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
+import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -149,6 +151,29 @@ export default async function TrackersPage() {
                   </div>
                 )}
                 <ReferenceLinks links={tracker.referenceLinks} compact />
+                {(tracker.affiliateLinks || []).length > 0 && (
+                  <div className="mt-5 border-t border-ring-gold/20 pt-4">
+                    <div className="mb-3">
+                      <AffiliateDisclosureNotice links={tracker.affiliateLinks} compact />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {(tracker.affiliateLinks || []).slice(0, 3).map((link) => (
+                        <AffiliateOutboundLink
+                          key={`${link.merchant}-${link.href}`}
+                          link={link}
+                          trackerSlug={tracker.slug}
+                          placement="tracker-directory"
+                          className="inline-flex min-h-9 items-center rounded border border-ring-gold/35 px-3 py-2 text-xs font-bold text-ring-gold transition-colors hover:border-ring-gold hover:bg-ring-gold hover:text-ring-dark"
+                        >
+                          <span>{link.merchant}</span>
+                          <span className="ml-2 rounded border border-current/25 px-1.5 py-0.5 text-[0.65rem] uppercase opacity-75">
+                            {link.intent.replace('-', ' ')}
+                          </span>
+                        </AffiliateOutboundLink>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {disabled ? (
                   <span className="mt-5 inline-flex h-10 items-center rounded border border-ring-light/20 px-4 text-sm font-bold text-ring-light/50">
                     Coming later
