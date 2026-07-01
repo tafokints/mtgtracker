@@ -96,7 +96,7 @@
   - [x] set name
   - [x] release name
   - [x] card type
-  - [ ] source/reference links
+  - [x] source/reference links
 - [x] Add tracker-specific affiliate links with default fallback.
 - [x] Add tracker-specific theme config placeholders.
 - [x] Improve mobile layout for tracker cards and admin review.

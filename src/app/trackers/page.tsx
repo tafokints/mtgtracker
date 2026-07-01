@@ -3,6 +3,7 @@ import { getRedis } from '@/lib/redis';
 import { getTrackerCards, getTrackerDirectoryStats, getTrackerSubmissions } from '@/lib/tracker-data';
 import { trackers } from '@/lib/trackers';
 import { serializedCatalog } from '@/lib/serialized-catalog';
+import ReferenceLinks from '@/components/ReferenceLinks';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -141,6 +142,7 @@ export default async function TrackersPage() {
                     </p>
                   </div>
                 )}
+                <ReferenceLinks links={tracker.referenceLinks} compact />
                 {disabled ? (
                   <span className="mt-5 inline-flex h-10 items-center rounded border border-ring-light/20 px-4 text-sm font-bold text-ring-light/50">
                     Coming later

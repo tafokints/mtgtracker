@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DiscoverySubmission } from '@/lib/types';
-import { getTracker } from '@/lib/trackers';
+import { getTracker, trackers } from '@/lib/trackers';
 import {
   applyApprovedSubmission,
   createInitialTrackerCards,
@@ -157,5 +157,23 @@ describe('tracker data helpers', () => {
     const applied = applyApprovedSubmission(tracker, cards, submission({ cardId: 999 }), {});
 
     expect(applied).toBe(false);
+  });
+});
+
+describe('tracker config', () => {
+  it('keeps live trackers anchored to external reference sources', () => {
+    const liveTrackers = trackers.filter((entry) => entry.status === 'live');
+
+    expect(liveTrackers.length).toBeGreaterThan(0);
+
+    for (const entry of liveTrackers) {
+      expect(entry.referenceLinks?.length, `${entry.slug} reference links`).toBeGreaterThanOrEqual(2);
+      expect(entry.referenceLinks?.some((link) => link.type === 'official')).toBe(true);
+      expect(entry.referenceLinks?.some((link) => link.type === 'scryfall')).toBe(true);
+
+      for (const link of entry.referenceLinks || []) {
+        expect(link.href, `${entry.slug} ${link.label}`).toMatch(/^https:\/\//);
+      }
+    }
   });
 });

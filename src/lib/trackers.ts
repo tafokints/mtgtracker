@@ -4,6 +4,12 @@ export interface AffiliateLink {
   merchant: 'tcgplayer' | 'ebay' | 'amazon' | 'other';
 }
 
+export interface ReferenceLink {
+  label: string;
+  href: string;
+  type: 'official' | 'scryfall' | 'source' | 'article' | 'other';
+}
+
 export interface TrackerTheme {
   accentClass: string;
   surfaceClass: string;
@@ -32,6 +38,7 @@ export interface TrackerSummary {
   status: 'live' | 'planned';
   theme: TrackerTheme;
   affiliateLinks?: AffiliateLink[];
+  referenceLinks?: ReferenceLink[];
   referenceImage?: string;
 }
 
@@ -134,6 +141,18 @@ export const trackers: TrackerSummary[] = [
         merchant: 'amazon',
       },
     ],
+    referenceLinks: [
+      {
+        label: 'Wizards collecting guide',
+        href: 'https://magic.wizards.com/en/news/feature/collecting-the-lord-of-the-rings-tales-of-middle-earth',
+        type: 'official',
+      },
+      {
+        label: 'Scryfall card page',
+        href: 'https://scryfall.com/card/ltr/748z/the-one-ring',
+        type: 'scryfall',
+      },
+    ],
     referenceImage: 'https://cards.scryfall.io/large/front/4/e/4e6fee52-33a8-4085-b632-bf95dfd2b16d.jpg?1782694957',
   },
   {
@@ -168,6 +187,18 @@ export const trackers: TrackerSummary[] = [
         label: 'Innistrad Remastered on Amazon',
         href: buildAmazonSearchUrl('innistrad remastered collector booster'),
         merchant: 'amazon',
+      },
+    ],
+    referenceLinks: [
+      {
+        label: 'Wizards collecting guide',
+        href: 'https://magic.wizards.com/en/news/feature/collecting-innistrad-remastered',
+        type: 'official',
+      },
+      {
+        label: 'Scryfall card page',
+        href: 'https://scryfall.com/card/inr/491/edgar-markov',
+        type: 'scryfall',
       },
     ],
     referenceImage: 'https://cards.scryfall.io/large/front/e/7/e70bfc25-3c0c-4574-b504-1d1f73e9e790.jpg?1782726466',

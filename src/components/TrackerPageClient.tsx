@@ -7,6 +7,7 @@ import Link from "next/link";
 import AffiliateLinks from "@/components/AffiliateLinks";
 import AffiliateDisclosureNotice from "@/components/AffiliateDisclosureNotice";
 import PrimaryAffiliateCtas from '@/components/PrimaryAffiliateCtas';
+import ReferenceLinks from '@/components/ReferenceLinks';
 import ReportButton from '@/components/ReportButton';
 import AdminPanel from '@/components/AdminPanel';
 import ProgressBar from '@/components/ProgressBar';
@@ -250,6 +251,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
           <p className="text-ring-light mt-3 text-sm">
             Tracking {tracker.total || totalCount} {tracker.cardType || 'serialized cards'} from {tracker.setName || 'Magic: The Gathering'}. {confirmedCount} confirmed, {foundCount - confirmedCount} source-linked or unverified.
           </p>
+          <ReferenceLinks links={tracker.referenceLinks} compact />
           {dataError && (
             <p className="text-ring-light mt-4 text-sm">{dataError}</p>
           )}
