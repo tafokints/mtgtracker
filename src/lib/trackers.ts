@@ -246,7 +246,7 @@ export const trackers: TrackerSummary[] = [
       submissionsKey: 'lotr_poster_submissions',
     },
     href: '/trackers/lotr-poster-cards',
-    status: 'planned',
+    status: 'live',
     theme: {
       accentClass: 'text-ring-gold',
       surfaceClass: 'bg-ring-dark',

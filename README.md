@@ -2,7 +2,7 @@
 
 A Vercel-ready umbrella site for Magic: The Gathering serialized card trackers.
 
-The live trackers are `The One Ring` at `/trackers/one-ring` and `Edgar Markov` at `/trackers/edgar-markov`. The existing Golden Chocobo tracker stays untouched for now and can be migrated later as `/trackers/golden-chocobo`.
+The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at `/trackers/edgar-markov`, and `LOTR Poster Cards` at `/trackers/lotr-poster-cards`. The existing Golden Chocobo tracker stays untouched for now and can be migrated later as `/trackers/golden-chocobo`.
 
 ## Routes
 
@@ -14,6 +14,9 @@ The live trackers are `The One Ring` at `/trackers/one-ring` and `Edgar Markov` 
 - `/trackers/edgar-markov` - Edgar Markov tracker
 - `/trackers/edgar-markov/stats` - Edgar Markov stats
 - `/trackers/edgar-markov/submit` - hidden submit flow target
+- `/trackers/lotr-poster-cards` - LOTR Poster Cards multi-card tracker
+- `/trackers/lotr-poster-cards/stats` - LOTR Poster Cards stats
+- `/trackers/lotr-poster-cards/submit` - hidden submit flow target
 - `/trackers` also includes a serialized scaffold queue sourced from `src/lib/serialized-catalog.ts`
 - `/about` - project purpose and independence notes
 - `/contact` - correction, tracker request, and issue-reporting paths
@@ -73,7 +76,7 @@ For local development only, the admin password falls back to `dev-admin` if `ADM
 6. Add `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` after creating the property in Google Search Console.
 7. Deploy.
 
-The first `/api/trackers/one-ring/cards` request initializes Redis with all 100 One Ring serial slots. Public reports are stored in `one_ring_submissions` until approved.
+The first `/api/trackers/[slug]/cards` request initializes Redis for that tracker. One Ring creates 100 serial slots, Edgar Markov creates 500 serial slots, and LOTR Poster Cards creates 2,000 card-plus-serial slots. Public reports are stored in each tracker's configured submissions key until approved.
 
 ## Redis Keys And Backups
 
@@ -88,6 +91,8 @@ Current live keys:
 - `one_ring_submissions`
 - `edgar_markov_cards`
 - `edgar_markov_submissions`
+- `lotr_poster_cards`
+- `lotr_poster_submissions`
 
 Legacy keys are read once during card initialization, migrated into the configured `cardsKey`, then deleted. Rate-limit keys use the `rate-limit:{trackerSlug}:submit:{clientIp}` and `rate-limit:{trackerSlug}:upload:{clientIp}` patterns and are not included in tracker backups.
 

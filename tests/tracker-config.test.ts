@@ -21,7 +21,16 @@ describe('tracker config consistency', () => {
       expect(catalogEntry.status, `${tracker.slug} catalog status`).toBe('live');
       expect(tracker.setName, `${tracker.slug} setName`).toBe(catalogEntry.setName);
       expect(catalogEntry.defaultSerialTotal, `${tracker.slug} defaultSerialTotal`).toBe(tracker.total);
-      expect(catalogEntry.sampleCards, `${tracker.slug} sampleCards`).toContain(tracker.title);
+
+      if ((tracker.cardDefinitions || []).length > 0) {
+        const trackedCardTitles = new Set((tracker.cardDefinitions || []).map((definition) => definition.title));
+
+        for (const sampleCard of catalogEntry.sampleCards) {
+          expect(trackedCardTitles.has(sampleCard), `${tracker.slug} sample card ${sampleCard}`).toBe(true);
+        }
+      } else {
+        expect(catalogEntry.sampleCards, `${tracker.slug} sampleCards`).toContain(tracker.title);
+      }
     }
   });
 

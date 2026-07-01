@@ -80,6 +80,7 @@
   - [x] `/trackers/[slug]/submit`
 - [x] Generate sitemap tracker routes from live tracker config.
 - [x] Add Edgar Markov as the first second live single-card tracker.
+- [x] Launch LOTR Poster Cards as the first live multi-card tracker.
 - Add multi-card treatment data model:
   - [x] tracked card definitions
   - [x] card-plus-serial discovery slots
