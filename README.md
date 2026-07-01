@@ -112,7 +112,7 @@ Admin backups are tracker-scoped:
 - Admin panel: press `Ctrl + Alt + A` on `/trackers/one-ring`.
 - Review queue: use the admin panel `Review` tab to approve or reject pending reports.
 - Affiliate stats: use the admin panel `Affiliate` tab to inspect tracked marketplace click totals.
-- Primary marketplace CTAs: tracker pages include top-of-page marketplace actions tracked as `tracker-top-cta`.
+- Primary marketplace CTAs: tracker pages include top-of-page marketplace actions tracked as `tracker-top-cta`, with tracker-specific copy when configured.
 
 ## Tracker Scaffolding
 

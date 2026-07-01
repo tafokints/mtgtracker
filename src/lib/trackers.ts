@@ -2,6 +2,8 @@ export interface AffiliateLink {
   label: string;
   href: string;
   merchant: 'tcgplayer' | 'ebay' | 'amazon' | 'other';
+  ctaEyebrow?: string;
+  ctaDetail?: string;
 }
 
 export interface ReferenceLink {
@@ -141,16 +143,22 @@ export const trackers: TrackerSummary[] = [
         label: 'LOTR Singles on TCGplayer',
         href: buildTcgplayerSearchUrl('The One Ring serialized', 'one-ring'),
         merchant: 'tcgplayer',
+        ctaEyebrow: 'Singles Market',
+        ctaDetail: 'Check LOTR singles and sealed-market pricing.',
       },
       {
         label: 'Serialized One Ring on eBay',
         href: buildEbaySearchUrl('serialized one ring mtg', 'one-ring'),
         merchant: 'ebay',
+        ctaEyebrow: 'Auction Watch',
+        ctaDetail: 'Search active and sold One Ring serial listings.',
       },
       {
         label: 'LOTR Collector Boosters on Amazon',
         href: buildAmazonSearchUrl('lord of the rings mtg collector booster'),
         merchant: 'amazon',
+        ctaEyebrow: 'Sealed Product',
+        ctaDetail: 'Browse LOTR collector booster availability.',
       },
     ],
     referenceLinks: [
@@ -190,16 +198,22 @@ export const trackers: TrackerSummary[] = [
         label: 'Innistrad Remastered Singles on TCGplayer',
         href: buildTcgplayerSearchUrl('Edgar Markov serialized', 'edgar-markov'),
         merchant: 'tcgplayer',
+        ctaEyebrow: 'Singles Market',
+        ctaDetail: 'Check Innistrad Remastered singles demand.',
       },
       {
         label: 'Serialized Edgar Markov on eBay',
         href: buildEbaySearchUrl('serialized edgar markov mtg', 'edgar-markov'),
         merchant: 'ebay',
+        ctaEyebrow: 'Auction Watch',
+        ctaDetail: 'Search active Edgar Markov serial listings.',
       },
       {
         label: 'Innistrad Remastered on Amazon',
         href: buildAmazonSearchUrl('innistrad remastered collector booster'),
         merchant: 'amazon',
+        ctaEyebrow: 'Sealed Product',
+        ctaDetail: 'Browse Innistrad Remastered collector boosters.',
       },
     ],
     referenceLinks: [
@@ -244,16 +258,22 @@ export const trackers: TrackerSummary[] = [
         label: 'LOTR Poster Singles on TCGplayer',
         href: buildTcgplayerSearchUrl('LOTR poster serialized', 'lotr-poster-cards'),
         merchant: 'tcgplayer',
+        ctaEyebrow: 'Poster Singles',
+        ctaDetail: 'Check market listings for LOTR poster cards.',
       },
       {
         label: 'LOTR Poster Serials on eBay',
         href: buildEbaySearchUrl('serialized lotr poster mtg', 'lotr-poster-cards'),
         merchant: 'ebay',
+        ctaEyebrow: 'Serial Search',
+        ctaDetail: 'Search serialized poster listings and sold comps.',
       },
       {
         label: 'LOTR Collector Boosters on Amazon',
         href: buildAmazonSearchUrl('lord of the rings mtg special edition collector booster'),
         merchant: 'amazon',
+        ctaEyebrow: 'Holiday Sealed',
+        ctaDetail: 'Browse Special Edition collector booster products.',
       },
     ],
     referenceLinks: [
@@ -320,16 +340,22 @@ export const trackers: TrackerSummary[] = [
         label: 'Final Fantasy Singles on TCGplayer',
         href: buildTcgplayerSearchUrl('Final Fantasy Traveling Chocobo', 'golden-chocobo'),
         merchant: 'tcgplayer',
+        ctaEyebrow: 'Singles Market',
+        ctaDetail: 'Check Final Fantasy singles marketplace activity.',
       },
       {
         label: 'Golden Chocobo on eBay',
         href: buildEbaySearchUrl('traveling chocobo serialized mtg', 'golden-chocobo'),
         merchant: 'ebay',
+        ctaEyebrow: 'Auction Watch',
+        ctaDetail: 'Search Traveling Chocobo serial listings.',
       },
       {
         label: 'Final Fantasy MTG on Amazon',
         href: buildAmazonSearchUrl('final fantasy mtg collector booster'),
         merchant: 'amazon',
+        ctaEyebrow: 'Sealed Product',
+        ctaDetail: 'Browse Final Fantasy collector booster products.',
       },
     ],
   },

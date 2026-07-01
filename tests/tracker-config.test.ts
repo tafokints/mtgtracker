@@ -48,6 +48,15 @@ describe('tracker config consistency', () => {
     }
   });
 
+  it('keeps tracker affiliate CTA copy specific enough for top placements', () => {
+    for (const tracker of trackers) {
+      for (const link of tracker.affiliateLinks || []) {
+        expect(link.ctaEyebrow, `${tracker.slug} ${link.merchant} CTA eyebrow`).toBeTruthy();
+        expect(link.ctaDetail, `${tracker.slug} ${link.merchant} CTA detail`).toBeTruthy();
+      }
+    }
+  });
+
   it('keeps tracker slugs, routes, and storage keys unique', () => {
     const slugs = new Set<string>();
     const hrefs = new Set<string>();
