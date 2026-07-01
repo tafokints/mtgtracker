@@ -9,6 +9,22 @@ export type ResolvedTrackerCardDefinition = Required<Pick<TrackerCardDefinition,
   scryfallUrl?: string;
 };
 
+export interface RecentTrackerDiscovery {
+  trackerSlug: string;
+  trackerTitle: string;
+  trackerHref: string;
+  cardId: number;
+  cardTitle?: string;
+  serialNumber: string;
+  serialTotal?: number;
+  label: string;
+  foundBy?: string;
+  dateFound?: string;
+  verificationStatus: VerificationStatus;
+  sourceType?: string;
+  price?: number;
+}
+
 export function getTrackerCardDefinitions(tracker: TrackerSummary): ResolvedTrackerCardDefinition[] {
   if (tracker.cardDefinitions?.length) {
     return tracker.cardDefinitions.map((definition) => ({
@@ -181,6 +197,39 @@ export async function getTrackerDirectoryStatsSnapshot(redis: Pick<Redis, 'get'>
     cards,
     Array.isArray(submissions) ? submissions : []
   );
+}
+
+export async function getRecentTrackerDiscoveriesSnapshot(redis: Pick<Redis, 'get'>, trackers: TrackerSummary[], limit = 6) {
+  const discoveries = await Promise.all(trackers.map(async (tracker) => {
+    const cards = await getStoredTrackerCardsSnapshot(redis, tracker);
+
+    return cards
+      .filter((card) => card.found)
+      .map((card): RecentTrackerDiscovery => ({
+        trackerSlug: tracker.slug,
+        trackerTitle: tracker.title,
+        trackerHref: tracker.href,
+        cardId: card.id,
+        cardTitle: card.cardTitle,
+        serialNumber: card.serialNumber,
+        serialTotal: card.serialTotal || tracker.total,
+        label: formatTrackerCardLabel(tracker, card),
+        foundBy: card.foundBy,
+        dateFound: card.dateFound,
+        verificationStatus: card.verificationStatus,
+        sourceType: card.sourceType,
+        price: card.price,
+      }));
+  }));
+
+  return discoveries
+    .flat()
+    .sort((a, b) => {
+      const dateDifference = new Date(b.dateFound || 0).getTime() - new Date(a.dateFound || 0).getTime();
+      if (dateDifference !== 0) return dateDifference;
+      return a.trackerTitle.localeCompare(b.trackerTitle) || a.label.localeCompare(b.label);
+    })
+    .slice(0, limit);
 }
 
 export async function getTrackerCards(redis: Redis, tracker: TrackerSummary) {

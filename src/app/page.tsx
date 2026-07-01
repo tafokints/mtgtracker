@@ -1,10 +1,29 @@
 import Link from 'next/link';
+import { getRedis } from '@/lib/redis';
 import { trackers } from '@/lib/trackers';
-import { getTrackerCardDefinitions, getTrackerTotalSlots } from '@/lib/tracker-data';
+import { getRecentTrackerDiscoveriesSnapshot, getTrackerCardDefinitions, getTrackerTotalSlots, type RecentTrackerDiscovery } from '@/lib/tracker-data';
 
-export default function HomePage() {
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+async function getRecentDiscoveries() {
+  try {
+    const redis = getRedis();
+    return await getRecentTrackerDiscoveriesSnapshot(
+      redis,
+      trackers.filter((tracker) => tracker.status === 'live'),
+      5
+    );
+  } catch (error) {
+    console.error('Error loading homepage discoveries:', error);
+    return [];
+  }
+}
+
+export default async function HomePage() {
   const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');
   const plannedTrackers = trackers.filter((tracker) => tracker.status === 'planned');
+  const recentDiscoveries = await getRecentDiscoveries();
 
   return (
     <main className="min-h-screen px-6 py-8 md:px-10">
@@ -24,6 +43,8 @@ export default function HomePage() {
             Browse Trackers
           </Link>
         </header>
+
+        <RecentActivity discoveries={recentDiscoveries} />
 
         <section>
           <div className="mb-4 flex items-center justify-between gap-4">
@@ -50,6 +71,52 @@ export default function HomePage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function RecentActivity({ discoveries }: { discoveries: RecentTrackerDiscovery[] }) {
+  return (
+    <section className="rounded-lg border border-ring-gold/30 bg-ring-dark/70 p-5">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-ring-light">Recent Discoveries</h2>
+          <p className="mt-2 text-sm text-ring-light/65">
+            Fresh located serials from active community trackers.
+          </p>
+        </div>
+        <Link href="/trackers" className="text-sm font-bold text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline">
+          View all trackers
+        </Link>
+      </div>
+
+      {discoveries.length === 0 ? (
+        <div className="mt-5 rounded border border-ring-light/10 bg-black/20 p-4 text-sm text-ring-light/65">
+          No public discoveries have been confirmed yet. New finds will appear here after admin review.
+        </div>
+      ) : (
+        <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-5">
+          {discoveries.map((discovery) => (
+            <Link
+              key={`${discovery.trackerSlug}-${discovery.cardId}`}
+              href={discovery.trackerHref}
+              className="rounded border border-ring-gold/25 bg-black/20 p-4 transition-colors hover:border-ring-gold/70 hover:bg-ring-gold/10"
+            >
+              <p className="text-xs font-bold uppercase text-ring-teal">{discovery.trackerTitle}</p>
+              <h3 className="mt-2 text-lg font-bold text-ring-gold">{discovery.label}</h3>
+              <p className="mt-2 text-xs text-ring-light/60">
+                {discovery.verificationStatus.replace('-', ' ')}
+                {discovery.sourceType ? ` via ${discovery.sourceType.replace('-', ' ')}` : ''}
+              </p>
+              <div className="mt-4 space-y-1 text-xs text-ring-light/70">
+                {discovery.foundBy && <p>Found by {discovery.foundBy}</p>}
+                {discovery.dateFound && <p>{discovery.dateFound}</p>}
+                {discovery.price !== undefined && <p>${discovery.price.toLocaleString()}</p>}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

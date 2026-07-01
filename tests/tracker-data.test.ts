@@ -6,6 +6,7 @@ import {
   createInitialTrackerCards,
   formatTrackerSerial,
   formatTrackerCardLabel,
+  getRecentTrackerDiscoveriesSnapshot,
   getTrackerDirectoryStatsSnapshot,
   getTrackerSlotId,
   getTrackerTotalSlots,
@@ -125,6 +126,62 @@ describe('tracker data helpers', () => {
       tracker.storage.cardsKey,
       tracker.storage.submissionsKey,
       ...(tracker.storage.legacyCardsKeys || []),
+    ]);
+  });
+
+  it('returns recent discoveries across trackers without initializing empty trackers', async () => {
+    const posterTracker = getTracker('lotr-poster-cards');
+    if (!posterTracker) throw new Error('lotr-poster-cards tracker fixture is missing');
+
+    const oneRingCards = createInitialTrackerCards(tracker).slice(0, 2);
+    oneRingCards[0] = {
+      ...oneRingCards[0],
+      found: true,
+      foundBy: 'Collector A',
+      dateFound: '2026-06-29',
+      sourceType: 'marketplace',
+      verificationStatus: 'confirmed',
+      price: 1000,
+    };
+
+    const posterCards = createInitialTrackerCards(posterTracker).slice(0, 2);
+    posterCards[1] = {
+      ...posterCards[1],
+      found: true,
+      foundBy: 'Collector B',
+      dateFound: '2026-07-01',
+      sourceType: 'social',
+      verificationStatus: 'source-linked',
+    };
+
+    const store = new Map<string, unknown>([
+      [tracker.storage.cardsKey, oneRingCards],
+      [posterTracker.storage.cardsKey, posterCards],
+    ]);
+    const readKeys: string[] = [];
+    const redis = {
+      get: async (key: string) => {
+        readKeys.push(key);
+        return store.get(key);
+      },
+    };
+
+    await expect(getRecentTrackerDiscoveriesSnapshot(redis, [tracker, posterTracker], 2)).resolves.toEqual([
+      expect.objectContaining({
+        trackerSlug: 'lotr-poster-cards',
+        label: 'Dawn of a New Age 002/100',
+        foundBy: 'Collector B',
+      }),
+      expect.objectContaining({
+        trackerSlug: 'one-ring',
+        label: '001/100',
+        foundBy: 'Collector A',
+        price: 1000,
+      }),
+    ]);
+    expect(readKeys).toEqual([
+      tracker.storage.cardsKey,
+      posterTracker.storage.cardsKey,
     ]);
   });
 
