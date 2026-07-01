@@ -19,6 +19,16 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import Head from 'next/head';
 
+interface CardSummaryRow {
+  slug: string;
+  title: string;
+  total: number;
+  foundCount: number;
+  confirmedCount: number;
+  pendingReportCount: number;
+  referenceImage?: string;
+}
+
 export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary }) {
   const [cards, setCards] = useState<SerializedRingCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -202,6 +212,26 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     }));
   }, [cards, cardDefinitions]);
 
+  const cardSummaryRows = useMemo<CardSummaryRow[]>(() => {
+    if (cardDefinitions.length <= 1) {
+      return [];
+    }
+
+    return cardDefinitions.map((definition) => {
+      const definitionCards = cards.filter((card) => card.cardSlug === definition.slug);
+
+      return {
+        slug: definition.slug,
+        title: definition.title,
+        total: definitionCards.length || definition.total,
+        foundCount: definitionCards.filter((card) => card.found).length,
+        confirmedCount: definitionCards.filter((card) => card.verificationStatus === 'confirmed').length,
+        pendingReportCount: definitionCards.reduce((total, card) => total + (card.pendingReports || 0), 0),
+        referenceImage: definition.referenceImage,
+      };
+    });
+  }, [cards, cardDefinitions]);
+
   const lightboxSlides = useMemo(() => {
     return filteredAndSortedCards
       .map(card => card.image || referenceImage)
@@ -295,6 +325,15 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
 
         {!dataError && (
           <>
+            <CardSummarySection
+              rows={cardSummaryRows}
+              selectedCardSlug={cardFilter}
+              onSelectCard={(slug) => {
+                setCardFilter(slug);
+                setSearchQuery('');
+              }}
+            />
+
             <FilterControls
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
@@ -464,5 +503,90 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
         )}
       </main>
     </>
+  );
+}
+
+function CardSummarySection({
+  rows,
+  selectedCardSlug,
+  onSelectCard,
+}: {
+  rows: CardSummaryRow[];
+  selectedCardSlug: string;
+  onSelectCard: (slug: string) => void;
+}) {
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const activeRows = rows.filter((row) => row.foundCount > 0 || row.pendingReportCount > 0);
+
+  return (
+    <section className="w-full max-w-5xl mt-8 rounded-lg border border-ring-gold/30 bg-ring-dark/75 p-4" aria-label="Card activity summary">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-bold text-ring-gold">Card Activity</h2>
+        <button
+          onClick={() => onSelectCard('all')}
+          className={`rounded border px-3 py-1.5 text-xs font-bold transition-colors ${
+            selectedCardSlug === 'all'
+              ? 'border-ring-gold bg-ring-gold text-ring-dark'
+              : 'border-ring-gold/40 text-ring-gold hover:bg-ring-gold hover:text-ring-dark'
+          }`}
+        >
+          All Cards
+        </button>
+      </div>
+      {activeRows.length === 0 && (
+        <p className="rounded border border-ring-gold/20 bg-black/20 px-3 py-2 text-sm text-ring-light/70">
+          No card-specific activity has been reviewed yet.
+        </p>
+      )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {rows.map((row) => {
+          const active = selectedCardSlug === row.slug;
+          const foundPercentage = row.total > 0 ? (row.foundCount / row.total) * 100 : 0;
+
+          return (
+            <button
+              key={row.slug}
+              onClick={() => onSelectCard(row.slug)}
+              className={`flex min-h-24 items-center gap-3 rounded border p-3 text-left transition-colors ${
+                active
+                  ? 'border-ring-gold bg-ring-gold/15'
+                  : 'border-ring-gold/25 bg-black/20 hover:border-ring-gold'
+              }`}
+            >
+              <div className="h-16 w-12 flex-none overflow-hidden rounded border border-ring-gold/20 bg-black/30">
+                {row.referenceImage && (
+                  <ExternalImage
+                    src={row.referenceImage}
+                    alt={row.title}
+                    className="h-full w-full object-cover"
+                    hideOnError
+                  />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-ring-light">{row.title}</p>
+                <p className="mt-1 text-xs text-ring-light/65">
+                  {row.foundCount}/{row.total} located - {row.confirmedCount} confirmed
+                </p>
+                <div className="mt-2 h-1.5 overflow-hidden rounded bg-ring-light/10">
+                  <div
+                    className="h-full rounded bg-ring-gold"
+                    style={{ width: `${Math.min(100, foundPercentage)}%` }}
+                  />
+                </div>
+                {row.pendingReportCount > 0 && (
+                  <p className="mt-1 text-xs font-semibold text-ring-teal">
+                    {row.pendingReportCount} pending
+                  </p>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
