@@ -96,8 +96,8 @@
   - [ ] source/reference links
 - [x] Add tracker-specific affiliate links with default fallback.
 - [x] Add tracker-specific theme config placeholders.
-- Improve mobile layout for tracker cards and admin review.
-- Add empty states for no submissions, no prices, and no discoveries.
+- [x] Improve mobile layout for tracker cards and admin review.
+- [x] Add empty states for no submissions, no prices, and no discoveries.
 
 ## Data Safety
 

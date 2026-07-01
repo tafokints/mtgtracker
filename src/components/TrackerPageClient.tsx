@@ -185,6 +185,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   const confirmedCount = cards.filter((card) => card.verificationStatus === 'confirmed').length;
   const foundCount = foundCards.length;
   const totalCount = cards.length || tracker.total || 0;
+  const pendingReportCount = cards.reduce((total, card) => total + (card.pendingReports || 0), 0);
 
   const lastFoundCard = foundCards.sort((a, b) => {
     if (!a.dateFound || !b.dateFound) return 0;
@@ -255,6 +256,12 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
               Last find: {lastFoundCard.serialNumber}/{tracker.total} by {lastFoundCard.foundBy} on {lastFoundCard.dateFound}
             </p>
           )}
+          {!lastFoundCard && !dataError && (
+            <p className="mt-4 rounded border border-ring-gold/30 bg-black/20 px-4 py-3 text-sm text-ring-light">
+              No public discoveries have been verified for this tracker yet. New reports enter admin review before they appear here.
+              {pendingReportCount > 0 && ` ${pendingReportCount} report${pendingReportCount === 1 ? ' is' : 's are'} currently pending.`}
+            </p>
+          )}
         </div>
 
         {!dataError && (
@@ -270,8 +277,26 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
 
             <section className="w-full max-w-5xl mt-8" aria-label={`${tracker.title} serialized cards`}>
               <h2 className="sr-only">{tracker.title} Card Collection</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredAndSortedCards.map((card, index) => {
+              {filteredAndSortedCards.length === 0 ? (
+                <div className="rounded-lg border border-ring-gold/30 bg-ring-dark/80 px-5 py-8 text-center">
+                  <p className="text-lg font-bold text-ring-gold">No serials match these filters.</p>
+                  <p className="mt-2 text-sm text-ring-light/70">
+                    Try clearing the search, switching status filters, or checking back after new reports are reviewed.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setStatusFilter('all');
+                      setSortOrder('id-asc');
+                    }}
+                    className="mt-4 rounded bg-ring-gold px-4 py-2 text-sm font-bold text-ring-dark hover:bg-yellow-400"
+                  >
+                    Reset Filters
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {filteredAndSortedCards.map((card, index) => {
               const imageSrc = card.image || referenceImage;
               const statusLabel = card.found
                 ? card.verificationStatus === 'confirmed'
@@ -364,8 +389,9 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                   </div>
                 </article>
               );
-                })}
-              </div>
+                  })}
+                </div>
+              )}
             </section>
           </>
         )}

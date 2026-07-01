@@ -83,19 +83,23 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
             </div>
           </div>
 
-          {card.price && (
-            <div>
-              <h3 className="text-lg font-bold text-ring-gold mb-2">Current Price</h3>
-              <div className="bg-ring-light bg-opacity-20 p-4 rounded">
+          <div>
+            <h3 className="text-lg font-bold text-ring-gold mb-2">Current Price</h3>
+            <div className="bg-ring-light bg-opacity-20 p-4 rounded">
+              {card.price ? (
+                <>
                 <p className="text-green-400 text-xl font-bold">
                   ${card.price.toLocaleString()}
                 </p>
                 {card.priceDate && (
                   <p className="text-ring-light text-sm">Last updated: {card.priceDate}</p>
                 )}
-              </div>
+                </>
+              ) : (
+                <p className="text-ring-light text-sm">No sale price has been recorded for this serial yet.</p>
+              )}
             </div>
-          )}
+          </div>
 
           {card.grading && (
             <div>
@@ -111,10 +115,10 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
             </div>
           )}
 
-          {card.priceHistory && card.priceHistory.length > 0 && (
-            <div>
-              <h3 className="text-lg font-bold text-ring-gold mb-2">Price History</h3>
-              <div className="bg-ring-light bg-opacity-20 p-4 rounded max-h-60 overflow-y-auto">
+          <div>
+            <h3 className="text-lg font-bold text-ring-gold mb-2">Price History</h3>
+            <div className="bg-ring-light bg-opacity-20 p-4 rounded max-h-60 overflow-y-auto">
+              {card.priceHistory && card.priceHistory.length > 0 ? (
                 <div className="space-y-2">
                   {card.priceHistory.map((entry, index) => (
                     <div key={`${entry.date}-${index}`} className="border-b border-ring-gold border-opacity-30 pb-2 last:border-b-0">
@@ -133,9 +137,11 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
                     </div>
                   ))}
                 </div>
-              </div>
+              ) : (
+                <p className="text-ring-light text-sm">No price history has been added yet.</p>
+              )}
             </div>
-          )}
+          </div>
 
           {card.image && (
             <div>

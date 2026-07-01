@@ -408,11 +408,11 @@ export default function AdminPanel({
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-ring-dark border border-ring-gold rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-ring-dark border border-ring-gold rounded-lg p-4 sm:p-6 w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
           <h2 className="text-xl font-bold text-ring-gold">Admin Panel</h2>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-3">
             {isAuthenticated && (
               <>
                 <button
@@ -505,10 +505,10 @@ export default function AdminPanel({
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex border-b border-ring-gold flex-wrap">
+          <div className="flex border-b border-ring-gold overflow-x-auto">
             <button
               onClick={() => setActiveTab('review')}
-              className={`px-2 py-2 text-xs font-bold ${
+              className={`flex-none px-2 py-2 text-xs font-bold ${
                 activeTab === 'review'
                   ? 'text-ring-gold border-b-2 border-ring-gold'
                   : 'text-ring-light hover:text-ring-gold'
@@ -518,7 +518,7 @@ export default function AdminPanel({
             </button>
             <button
               onClick={() => setActiveTab('price')}
-              className={`px-2 py-2 text-xs font-bold ${
+              className={`flex-none px-2 py-2 text-xs font-bold ${
                 activeTab === 'price' 
                   ? 'text-ring-gold border-b-2 border-ring-gold' 
                   : 'text-ring-light hover:text-ring-gold'
@@ -528,7 +528,7 @@ export default function AdminPanel({
             </button>
             <button
               onClick={() => setActiveTab('image')}
-              className={`px-2 py-2 text-xs font-bold ${
+              className={`flex-none px-2 py-2 text-xs font-bold ${
                 activeTab === 'image' 
                   ? 'text-ring-gold border-b-2 border-ring-gold' 
                   : 'text-ring-light hover:text-ring-gold'
@@ -538,7 +538,7 @@ export default function AdminPanel({
             </button>
             <button
               onClick={() => setActiveTab('grading')}
-              className={`px-2 py-2 text-xs font-bold ${
+              className={`flex-none px-2 py-2 text-xs font-bold ${
                 activeTab === 'grading' 
                   ? 'text-ring-gold border-b-2 border-ring-gold' 
                   : 'text-ring-light hover:text-ring-gold'
@@ -548,7 +548,7 @@ export default function AdminPanel({
             </button>
             <button
               onClick={() => setActiveTab('history')}
-              className={`px-2 py-2 text-xs font-bold ${
+              className={`flex-none px-2 py-2 text-xs font-bold ${
                 activeTab === 'history' 
                   ? 'text-ring-gold border-b-2 border-ring-gold' 
                   : 'text-ring-light hover:text-ring-gold'
@@ -564,11 +564,16 @@ export default function AdminPanel({
                 <p className="text-sm text-ring-light">Loading reports...</p>
               )}
               {!submissionsLoading && pendingSubmissions.length === 0 && (
-                <p className="text-sm text-ring-light">No pending reports.</p>
+                <div className="rounded border border-ring-gold/30 bg-black/20 p-4">
+                  <p className="text-sm font-bold text-ring-gold">No pending reports</p>
+                  <p className="mt-1 text-xs text-ring-light">
+                    Reviewed reports remain below so recent decisions can still be audited.
+                  </p>
+                </div>
               )}
               {pendingSubmissions.map((submission) => (
                 <div key={submission.id} className="rounded border border-ring-gold/40 bg-black/20 p-3 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="font-bold text-ring-gold">{serialLabel(submission.serialNumber)}</p>
                       <p className="text-xs text-ring-light">
@@ -684,7 +689,7 @@ export default function AdminPanel({
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <button
                       onClick={() => reviewSubmission(submission, 'approve')}
                       className="bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-3 rounded text-sm"
@@ -711,7 +716,7 @@ export default function AdminPanel({
                     </button>
                     <button
                       onClick={() => reviewSubmission(submission, 'cannot-verify')}
-                      className="col-span-2 border border-ring-light/40 text-ring-light hover:bg-ring-light/10 font-bold py-2 px-3 rounded text-sm"
+                      className="border border-ring-light/40 text-ring-light hover:bg-ring-light/10 font-bold py-2 px-3 rounded text-sm sm:col-span-2"
                     >
                       Cannot Verify
                     </button>
