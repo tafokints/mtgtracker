@@ -5,6 +5,7 @@ import {
   applyApprovedSubmission,
   createInitialTrackerCards,
   formatTrackerSerial,
+  getTrackerDirectoryStats,
   withPendingReportCounts,
 } from '@/lib/tracker-data';
 
@@ -59,6 +60,24 @@ describe('tracker data helpers', () => {
 
     expect(counted.map((card) => card.pendingReports)).toEqual([2, 0, 0]);
     expect(cards[0].pendingReports).toBeUndefined();
+  });
+
+  it('summarizes directory stats for located, confirmed, and pending records', () => {
+    const cards = createInitialTrackerCards(tracker).slice(0, 4);
+    cards[0] = { ...cards[0], found: true, verificationStatus: 'confirmed' };
+    cards[1] = { ...cards[1], found: true, verificationStatus: 'source-linked' };
+
+    const stats = getTrackerDirectoryStats(cards, [
+      submission({ id: 'a', cardId: 3, status: 'pending' }),
+      submission({ id: 'b', cardId: 4, status: 'pending' }),
+      submission({ id: 'c', cardId: 2, status: 'approved' }),
+    ]);
+
+    expect(stats).toEqual({
+      foundCount: 2,
+      confirmedCount: 1,
+      pendingReportCount: 2,
+    });
   });
 
   it('applies approved submissions to cards with selected evidence and price history', () => {

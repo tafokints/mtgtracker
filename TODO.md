@@ -88,7 +88,7 @@
 
 ## Directory And UX
 
-- Add discovered count and pending report count to tracker directory cards.
+- [x] Add discovered count and pending report count to tracker directory cards.
 - [x] Add richer tracker metadata:
   - [x] set name
   - [x] release name

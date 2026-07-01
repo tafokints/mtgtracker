@@ -62,6 +62,16 @@ export function withPendingReportCounts(cards: SerializedRingCard[], submissions
   }));
 }
 
+export function getTrackerDirectoryStats(cards: SerializedRingCard[], submissions: DiscoverySubmission[]) {
+  const foundCards = cards.filter((card) => card.found);
+
+  return {
+    foundCount: foundCards.length,
+    confirmedCount: foundCards.filter((card) => card.verificationStatus === 'confirmed').length,
+    pendingReportCount: submissions.filter((submission) => submission.status === 'pending').length,
+  };
+}
+
 export async function getTrackerCards(redis: Redis, tracker: TrackerSummary) {
   let cards: SerializedRingCard[] = (await redis.get(tracker.storage.cardsKey)) || [];
 

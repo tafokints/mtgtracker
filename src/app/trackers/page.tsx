@@ -1,6 +1,13 @@
 import Link from 'next/link';
+import { getRedis } from '@/lib/redis';
+import { getTrackerCards, getTrackerDirectoryStats, getTrackerSubmissions } from '@/lib/tracker-data';
 import { trackers } from '@/lib/trackers';
 import { serializedCatalog } from '@/lib/serialized-catalog';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+type DirectoryStats = ReturnType<typeof getTrackerDirectoryStats>;
 
 function getNumberedLabel(entry: (typeof serializedCatalog)[number]) {
   if (entry.serialVariants?.length) {
@@ -29,7 +36,29 @@ const trackingModeLabels: Record<(typeof serializedCatalog)[number]['trackingMod
   'promo-series': 'Promo series',
 };
 
-export default function TrackersPage() {
+async function getDirectoryStats() {
+  try {
+    const redis = getRedis();
+    const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');
+    const entries = await Promise.all(liveTrackers.map(async (tracker) => {
+      const [cards, submissions] = await Promise.all([
+        getTrackerCards(redis, tracker),
+        getTrackerSubmissions(redis, tracker),
+      ]);
+
+      return [tracker.slug, getTrackerDirectoryStats(cards, submissions)] as const;
+    }));
+
+    return Object.fromEntries(entries) as Record<string, DirectoryStats>;
+  } catch (error) {
+    console.error('Error loading tracker directory stats:', error);
+    return {} as Record<string, DirectoryStats>;
+  }
+}
+
+export default async function TrackersPage() {
+  const directoryStats = await getDirectoryStats();
+
   return (
     <main className="min-h-screen px-6 py-8 md:px-10">
       <div className="mx-auto w-full max-w-6xl">
@@ -48,6 +77,10 @@ export default function TrackersPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {trackers.map((tracker) => {
             const disabled = tracker.status === 'planned';
+            const stats = directoryStats[tracker.slug];
+            const foundCount = stats?.foundCount || 0;
+            const pendingReportCount = stats?.pendingReportCount || 0;
+            const foundPercentage = tracker.total > 0 ? (foundCount / tracker.total) * 100 : 0;
 
             return (
               <article key={tracker.slug} className="rounded-lg border border-ring-gold/40 bg-ring-dark/80 p-5">
@@ -82,7 +115,32 @@ export default function TrackersPage() {
                     <dt>Serialized Qty</dt>
                     <dd>{tracker.total}</dd>
                   </div>
+                  {!disabled && (
+                    <>
+                      <div className="flex justify-between gap-4">
+                        <dt>Located</dt>
+                        <dd>{foundCount}/{tracker.total}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt>Pending Reports</dt>
+                        <dd>{pendingReportCount}</dd>
+                      </div>
+                    </>
+                  )}
                 </dl>
+                {!disabled && (
+                  <div className="mt-4">
+                    <div className="h-2 overflow-hidden rounded bg-ring-light/10">
+                      <div
+                        className="h-full rounded bg-ring-gold"
+                        style={{ width: `${Math.min(100, foundPercentage)}%` }}
+                      />
+                    </div>
+                    <p className="mt-2 text-xs text-ring-light/55">
+                      {foundPercentage.toFixed(1)}% located - {stats?.confirmedCount || 0} confirmed
+                    </p>
+                  </div>
+                )}
                 {disabled ? (
                   <span className="mt-5 inline-flex h-10 items-center rounded border border-ring-light/20 px-4 text-sm font-bold text-ring-light/50">
                     Coming later
