@@ -54,6 +54,7 @@ import { POST as uploadEvidenceImage } from '@/app/api/trackers/[slug]/upload-im
 import { POST as reviewSubmission } from '@/app/api/trackers/[slug]/submissions/route';
 import { GET as exportTrackerBackup } from '@/app/api/trackers/[slug]/export/route';
 import { POST as importTrackerBackup } from '@/app/api/trackers/[slug]/import/route';
+import { POST as trackAffiliateClick } from '@/app/api/affiliate/click/route';
 
 const tracker = getTracker('one-ring');
 
@@ -88,6 +89,16 @@ function uploadRequest(file: File, ip = '203.0.113.7') {
       'x-forwarded-for': ip,
     },
     body: formData,
+  });
+}
+
+function affiliateClickRequest(body: unknown) {
+  return new Request('https://mtgtrackers.com/api/affiliate/click', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
   });
 }
 
@@ -209,6 +220,44 @@ describe('tracker API routes', () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ message: 'Only JPEG, PNG, and WebP images are supported' });
     expect(blobFixture.put).not.toHaveBeenCalled();
+  });
+
+  it('tracks known affiliate link clicks without changing the destination URL', async () => {
+    const link = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'ebay');
+    if (!link) throw new Error('Expected One Ring eBay affiliate link');
+
+    const response = await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: link.merchant,
+      href: link.href,
+      label: link.label,
+      placement: 'tracker-marketplace',
+    }));
+    const date = new Date().toISOString().slice(0, 10);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(redisFixture.counters.get(`affiliate:clicks:${date}:one-ring:ebay:tracker-marketplace`)).toBe(1);
+    expect(redisFixture.counters.get('affiliate:clicks:total:one-ring:ebay:tracker-marketplace')).toBe(1);
+    expect(redisFixture.store.get('affiliate:last-click:one-ring:ebay:tracker-marketplace')).toMatchObject({
+      tracker: 'one-ring',
+      merchant: 'ebay',
+      label: link.label,
+      placement: 'tracker-marketplace',
+    });
+  });
+
+  it('rejects unknown affiliate click URLs', async () => {
+    const response = await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: 'ebay',
+      href: 'https://www.ebay.com/sch/i.html?_nkw=not-ours',
+      label: 'Unknown',
+      placement: 'tracker-marketplace',
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: 'Unknown affiliate link' });
   });
 
   it('marks repeated reports for the same serial as possible duplicates', async () => {

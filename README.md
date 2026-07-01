@@ -85,7 +85,13 @@ Current live keys:
 - `edgar_markov_cards`
 - `edgar_markov_submissions`
 
-Legacy keys are read once during card initialization, migrated into the configured `cardsKey`, then deleted. Rate-limit keys use the `rate-limit:{trackerSlug}:submit:{clientIp}` pattern and are not included in tracker backups.
+Legacy keys are read once during card initialization, migrated into the configured `cardsKey`, then deleted. Rate-limit keys use the `rate-limit:{trackerSlug}:submit:{clientIp}` and `rate-limit:{trackerSlug}:upload:{clientIp}` patterns and are not included in tracker backups.
+
+Affiliate click telemetry is stored separately from tracker backups:
+
+- `affiliate:clicks:{yyyy-mm-dd}:{trackerSlug}:{merchant}:{placement}` counts daily outbound clicks.
+- `affiliate:clicks:total:{trackerSlug}:{merchant}:{placement}` counts all-time outbound clicks.
+- `affiliate:last-click:{trackerSlug}:{merchant}:{placement}` stores the latest click metadata for quick inspection.
 
 Admin backups are tracker-scoped:
 

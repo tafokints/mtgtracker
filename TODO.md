@@ -23,6 +23,7 @@
 - [x] Add eBay Partner Network disclosure on tracker pages.
 - [x] Add top-of-page affiliate disclosure on tracker pages.
 - [x] Add affiliate link validation script.
+- [x] Add affiliate outbound click telemetry.
 - [x] Add baseline security headers.
 - [x] Return 400 for malformed JSON request bodies.
 - [x] Remove placeholder aggregate rating structured data.

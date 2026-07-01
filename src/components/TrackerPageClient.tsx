@@ -403,7 +403,12 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
           index={lightboxIndex}
         />
 
-        <AffiliateLinks links={tracker.affiliateLinks} title={`${tracker.title} Marketplace Links`} />
+        <AffiliateLinks
+          links={tracker.affiliateLinks}
+          title={`${tracker.title} Marketplace Links`}
+          trackerSlug={tracker.slug}
+          placement="tracker-marketplace"
+        />
         <AdminPanel 
           tracker={tracker}
           cards={cards} 
