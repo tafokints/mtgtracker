@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { serializedCatalog } from '@/lib/serialized-catalog';
-import { trackers } from '@/lib/trackers';
+import { defaultAffiliateLinks, trackers, type AffiliateLink } from '@/lib/trackers';
 
 const requiredLiveMerchants = ['tcgplayer', 'ebay', 'amazon'] as const;
+const tcgplayerPartnerPath = '/DyJ25G';
+const amazonAssociateTag = 'meleeitonme0a-20';
+const ebayCampaignId = '5339113954';
+
+function collectAffiliateLinks() {
+  return [
+    ...defaultAffiliateLinks.map((link) => ({ trackerSlug: 'default', link })),
+    ...trackers.flatMap((tracker) => (
+      (tracker.affiliateLinks || defaultAffiliateLinks).map((link) => ({ trackerSlug: tracker.slug, link }))
+    )),
+  ] as Array<{ trackerSlug: string; link: AffiliateLink }>;
+}
 
 describe('tracker config consistency', () => {
   it('maps every live tracker to a valid serialized catalog entry', () => {
@@ -62,6 +74,35 @@ describe('tracker config consistency', () => {
       for (const link of tracker.affiliateLinks || []) {
         expect(link.ctaEyebrow, `${tracker.slug} ${link.merchant} CTA eyebrow`).toBeTruthy();
         expect(link.ctaDetail, `${tracker.slug} ${link.merchant} CTA detail`).toBeTruthy();
+      }
+    }
+  });
+
+  it('keeps affiliate attribution parameters consistent across trackers', () => {
+    for (const { trackerSlug, link } of collectAffiliateLinks()) {
+      const url = new URL(link.href);
+
+      expect(url.protocol, `${trackerSlug} ${link.merchant} protocol`).toBe('https:');
+
+      if (link.merchant === 'tcgplayer') {
+        expect(url.hostname, `${trackerSlug} TCGplayer host`).toBe('partner.tcgplayer.com');
+        expect(url.pathname, `${trackerSlug} TCGplayer partner id`).toBe(tcgplayerPartnerPath);
+      }
+
+      if (link.merchant === 'ebay') {
+        const expectedCustomId = trackerSlug === 'default' ? 'serialized-mtg' : trackerSlug;
+
+        expect(url.hostname, `${trackerSlug} eBay host`).toMatch(/(^|\.)ebay\.com$/);
+        expect(url.searchParams.get('campid'), `${trackerSlug} eBay campaign id`).toBe(ebayCampaignId);
+        expect(url.searchParams.get('customid'), `${trackerSlug} eBay customid`).toBe(expectedCustomId);
+        expect(url.searchParams.get('mkevt'), `${trackerSlug} eBay event`).toBe('1');
+        expect(url.searchParams.get('_nkw'), `${trackerSlug} eBay query`).toBeTruthy();
+      }
+
+      if (link.merchant === 'amazon') {
+        expect(url.hostname, `${trackerSlug} Amazon host`).toMatch(/(^|\.)amazon\.com$/);
+        expect(url.searchParams.get('tag'), `${trackerSlug} Amazon associate tag`).toBe(amazonAssociateTag);
+        expect(url.searchParams.get('k'), `${trackerSlug} Amazon query`).toBeTruthy();
       }
     }
   });

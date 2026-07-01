@@ -27,6 +27,7 @@
 - [x] Add admin affiliate click stats view.
 - [x] Add affiliate stats rollups by tracker, merchant, and placement.
 - [x] Add top-of-page affiliate marketplace CTA placement.
+- [x] Add affiliate attribution checks for eBay custom IDs, Amazon tags, and TCGplayer redirects.
 - [x] Add baseline security headers.
 - [x] Return 400 for malformed JSON request bodies.
 - [x] Remove placeholder aggregate rating structured data.

@@ -60,6 +60,10 @@ function assertUrlShape(link) {
     if (!url.searchParams.get('customid')) {
       throw new Error(`${link.tracker} ${link.label} is missing eBay customid`);
     }
+    const expectedCustomId = link.tracker === 'default' ? 'serialized-mtg' : link.tracker;
+    if (url.searchParams.get('customid') !== expectedCustomId) {
+      throw new Error(`${link.tracker} ${link.label} eBay customid must be ${expectedCustomId}`);
+    }
     if (!url.searchParams.get('_nkw')) {
       throw new Error(`${link.tracker} ${link.label} is missing eBay search query`);
     }
@@ -78,7 +82,7 @@ function assertUrlShape(link) {
     if (url.hostname !== 'partner.tcgplayer.com') {
       throw new Error(`${link.tracker} ${link.label} must use the TCGplayer partner redirect`);
     }
-    if (!url.pathname.includes('DyJ25G')) {
+    if (url.pathname !== '/DyJ25G') {
       throw new Error(`${link.tracker} ${link.label} is missing the TCGplayer partner link id`);
     }
   }

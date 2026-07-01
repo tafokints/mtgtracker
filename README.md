@@ -155,6 +155,8 @@ Also verify:
 - Marketplace links are relevant to the tracker subject.
 - Affiliate disclosures are visible near marketplace links.
 - TCGplayer links use the generic `partner.tcgplayer.com/DyJ25G` redirect and validate that the final URL receives `irclickid` and Impact parameters.
+- eBay affiliate links use campaign `5339113954` and a `customid` matching the tracker slug.
+- Amazon affiliate links use Associate tag `meleeitonme0a-20`.
 - `/about`, `/contact`, `/privacy`, and `/affiliate-disclosure` load in production.
 - Google Search Console ownership is verified and `https://mtgtrackers.com/sitemap.xml` is submitted.
 
