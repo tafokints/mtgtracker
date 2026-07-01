@@ -32,6 +32,7 @@
 - [x] Add baseline security headers.
 - [x] Return 400 for malformed JSON request bodies.
 - [x] Remove placeholder aggregate rating structured data.
+- [x] Add verified structured data for tracker pages and directory.
 - [ ] Validate Google Search Console setup.
 - [x] Replace placeholder Google verification metadata.
 - [x] Add privacy/contact/about pages before broad promotion.
