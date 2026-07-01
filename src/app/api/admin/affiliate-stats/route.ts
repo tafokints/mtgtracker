@@ -8,7 +8,7 @@ export const revalidate = 0;
 
 const DEFAULT_DAYS = 30;
 const MAX_DAYS = 90;
-const PLACEMENTS = ['tracker-marketplace', 'marketplace-links'];
+const PLACEMENTS = ['tracker-top-cta', 'tracker-marketplace', 'marketplace-links'];
 
 function dateKey(daysAgo: number) {
   const date = new Date();
@@ -19,6 +19,54 @@ function dateKey(daysAgo: number) {
 function readCount(value: unknown) {
   const numericValue = Number(value || 0);
   return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
+function summarizeRows(rows: Array<{
+  tracker: string;
+  trackerTitle: string;
+  merchant: string;
+  placement: string;
+  clicksInWindow: number;
+  totalClicks: number;
+}>) {
+  const byTracker = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
+  const byMerchant = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
+  const byPlacement = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
+
+  const add = (
+    map: Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>,
+    key: string,
+    label: string,
+    row: { clicksInWindow: number; totalClicks: number }
+  ) => {
+    const current = map.get(key) || { key, label, clicksInWindow: 0, totalClicks: 0 };
+    current.clicksInWindow += row.clicksInWindow;
+    current.totalClicks += row.totalClicks;
+    map.set(key, current);
+  };
+  const sortBreakdown = (items: Iterable<{ key: string; label: string; clicksInWindow: number; totalClicks: number }>) => (
+    [...items].sort((a, b) => b.clicksInWindow - a.clicksInWindow || b.totalClicks - a.totalClicks || a.label.localeCompare(b.label))
+  );
+
+  for (const row of rows) {
+    add(byTracker, row.tracker, row.trackerTitle, row);
+    add(byMerchant, row.merchant, row.merchant, row);
+    add(byPlacement, row.placement, row.placement, row);
+  }
+
+  const clicksInWindow = rows.reduce((total, row) => total + row.clicksInWindow, 0);
+  const totalClicks = rows.reduce((total, row) => total + row.totalClicks, 0);
+
+  return {
+    clicksInWindow,
+    totalClicks,
+    bestTracker: sortBreakdown(byTracker.values())[0] || null,
+    bestMerchant: sortBreakdown(byMerchant.values())[0] || null,
+    bestPlacement: sortBreakdown(byPlacement.values())[0] || null,
+    byTracker: sortBreakdown(byTracker.values()),
+    byMerchant: sortBreakdown(byMerchant.values()),
+    byPlacement: sortBreakdown(byPlacement.values()),
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -87,6 +135,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       days,
       generatedAt: new Date().toISOString(),
+      summary: summarizeRows(rows),
       rows,
     });
   } catch (error) {

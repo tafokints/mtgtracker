@@ -104,7 +104,7 @@ Affiliate click telemetry is stored separately from tracker backups:
 - `affiliate:clicks:{yyyy-mm-dd}:{trackerSlug}:{merchant}:{placement}` counts daily outbound clicks.
 - `affiliate:clicks:total:{trackerSlug}:{merchant}:{placement}` counts all-time outbound clicks.
 - `affiliate:last-click:{trackerSlug}:{merchant}:{placement}` stores the latest click metadata for quick inspection.
-- `GET /api/admin/affiliate-stats` summarizes the tracked click keys for authenticated admins.
+- `GET /api/admin/affiliate-stats` summarizes the tracked click keys for authenticated admins, including tracker, merchant, and placement rollups.
 
 Admin backups are tracker-scoped:
 
@@ -119,7 +119,7 @@ Admin backups are tracker-scoped:
 - Evidence uploads: report forms accept JPEG, PNG, or WebP uploads up to 4 MB per image. Uploaded images are stored in Vercel Blob and saved as evidence image URLs on the queued report.
 - Admin panel: press `Ctrl + Alt + A` on `/trackers/one-ring`.
 - Review queue: use the admin panel `Review` tab to approve or reject pending reports.
-- Affiliate stats: use the admin panel `Affiliate` tab to inspect tracked marketplace click totals.
+- Affiliate stats: use the admin panel `Affiliate` tab to compare tracker, merchant, and placement click totals.
 - Primary marketplace CTAs: tracker pages include top-of-page marketplace actions tracked as `tracker-top-cta`, with tracker-specific copy when configured.
 
 ## Tracker Scaffolding

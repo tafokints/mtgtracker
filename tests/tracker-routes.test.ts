@@ -300,15 +300,24 @@ describe('tracker API routes', () => {
   });
 
   it('returns affiliate stats for tracked clicks', async () => {
-    const link = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'ebay');
-    if (!link) throw new Error('Expected One Ring eBay affiliate link');
+    const ebayLink = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'ebay');
+    const tcgplayerLink = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'tcgplayer');
+    if (!ebayLink) throw new Error('Expected One Ring eBay affiliate link');
+    if (!tcgplayerLink) throw new Error('Expected One Ring TCGplayer affiliate link');
 
     await trackAffiliateClick(affiliateClickRequest({
       tracker: tracker.slug,
-      merchant: link.merchant,
-      href: link.href,
-      label: link.label,
+      merchant: ebayLink.merchant,
+      href: ebayLink.href,
+      label: ebayLink.label,
       placement: 'tracker-marketplace',
+    }));
+    await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: tcgplayerLink.merchant,
+      href: tcgplayerLink.href,
+      label: tcgplayerLink.label,
+      placement: 'tracker-top-cta',
     }));
     const response = await getAffiliateStats(affiliateStatsRequest());
     const body = await json(response);
@@ -316,18 +325,44 @@ describe('tracker API routes', () => {
     expect(response.status).toBe(200);
     expect(body).toMatchObject({
       days: 30,
-      rows: [
+      summary: {
+        clicksInWindow: 2,
+        totalClicks: 2,
+        bestTracker: expect.objectContaining({
+          key: 'one-ring',
+          clicksInWindow: 2,
+        }),
+        byMerchant: expect.arrayContaining([
+          expect.objectContaining({ key: 'ebay', clicksInWindow: 1 }),
+          expect.objectContaining({ key: 'tcgplayer', clicksInWindow: 1 }),
+        ]),
+        byPlacement: expect.arrayContaining([
+          expect.objectContaining({ key: 'tracker-marketplace', clicksInWindow: 1 }),
+          expect.objectContaining({ key: 'tracker-top-cta', clicksInWindow: 1 }),
+        ]),
+      },
+      rows: expect.arrayContaining([
         expect.objectContaining({
           tracker: 'one-ring',
           trackerTitle: 'The One Ring',
           merchant: 'ebay',
-          label: link.label,
-          href: link.href,
+          label: ebayLink.label,
+          href: ebayLink.href,
           placement: 'tracker-marketplace',
           clicksInWindow: 1,
           totalClicks: 1,
         }),
-      ],
+        expect.objectContaining({
+          tracker: 'one-ring',
+          trackerTitle: 'The One Ring',
+          merchant: 'tcgplayer',
+          label: tcgplayerLink.label,
+          href: tcgplayerLink.href,
+          placement: 'tracker-top-cta',
+          clicksInWindow: 1,
+          totalClicks: 1,
+        }),
+      ]),
     });
   });
 

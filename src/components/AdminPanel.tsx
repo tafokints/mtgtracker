@@ -33,9 +33,26 @@ interface AffiliateStatsRow {
   } | null;
 }
 
+interface AffiliateStatsBreakdown {
+  key: string;
+  label: string;
+  clicksInWindow: number;
+  totalClicks: number;
+}
+
 interface AffiliateStatsResponse {
   days: number;
   generatedAt: string;
+  summary: {
+    clicksInWindow: number;
+    totalClicks: number;
+    bestTracker: AffiliateStatsBreakdown | null;
+    bestMerchant: AffiliateStatsBreakdown | null;
+    bestPlacement: AffiliateStatsBreakdown | null;
+    byTracker: AffiliateStatsBreakdown[];
+    byMerchant: AffiliateStatsBreakdown[];
+    byPlacement: AffiliateStatsBreakdown[];
+  };
   rows: AffiliateStatsRow[];
 }
 
@@ -55,6 +72,32 @@ const SUBMISSION_STATUS_LABELS: Record<SubmissionStatus, string> = {
   duplicate: 'Duplicate',
   'cannot-verify': 'Cannot verify',
 };
+
+function AffiliateMetric({ label, value, detail }: { label: string; value: string | number; detail?: string }) {
+  return (
+    <div className="rounded border border-ring-gold/25 bg-black/20 p-3">
+      <p className="text-xs uppercase text-ring-light/55">{label}</p>
+      <p className="mt-1 text-lg font-bold text-ring-gold">{value}</p>
+      {detail && <p className="mt-1 text-xs text-ring-light/65">{detail}</p>}
+    </div>
+  );
+}
+
+function AffiliateBreakdown({ title, rows }: { title: string; rows: AffiliateStatsBreakdown[] }) {
+  return (
+    <div className="rounded border border-ring-gold/25 bg-black/20 p-3">
+      <h4 className="text-xs font-bold uppercase text-ring-gold">{title}</h4>
+      <div className="mt-2 space-y-2">
+        {rows.map((row) => (
+          <div key={row.key} className="flex items-center justify-between gap-3 text-xs text-ring-light">
+            <span className="truncate capitalize">{row.label}</span>
+            <span className="tabular-nums text-ring-light/70">{row.clicksInWindow}/{row.totalClicks}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function AdminPanel({ 
   tracker,
@@ -934,38 +977,53 @@ export default function AdminPanel({
               )}
 
               {!affiliateStatsLoading && affiliateStats && affiliateStats.rows.length > 0 && (
-                <div className="overflow-x-auto rounded border border-ring-gold/30">
-                  <table className="min-w-full text-left text-xs">
-                    <thead className="bg-black/20 text-ring-gold">
-                      <tr>
-                        <th className="px-3 py-2">Tracker</th>
-                        <th className="px-3 py-2">Merchant</th>
-                        <th className="px-3 py-2">Placement</th>
-                        <th className="px-3 py-2 text-right">30d</th>
-                        <th className="px-3 py-2 text-right">Total</th>
-                        <th className="px-3 py-2">Last Click</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-ring-gold/15 text-ring-light">
-                      {affiliateStats.rows.map((row) => (
-                        <tr key={`${row.tracker}-${row.merchant}-${row.placement}`}>
-                          <td className="px-3 py-2">
-                            <div className="font-bold text-ring-light">{row.trackerTitle}</div>
-                            <a href={row.href} target="_blank" rel="noopener noreferrer sponsored" className="text-ring-gold hover:underline">
-                              {row.label}
-                            </a>
-                          </td>
-                          <td className="px-3 py-2 capitalize">{row.merchant}</td>
-                          <td className="px-3 py-2">{row.placement}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{row.clicksInWindow}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{row.totalClicks}</td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            {row.lastClick?.clickedAt ? new Date(row.lastClick.clickedAt).toLocaleString() : 'None'}
-                          </td>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                    <AffiliateMetric label={`${affiliateStats.days}d clicks`} value={affiliateStats.summary.clicksInWindow} />
+                    <AffiliateMetric label="All-time clicks" value={affiliateStats.summary.totalClicks} />
+                    <AffiliateMetric label="Best merchant" value={affiliateStats.summary.bestMerchant?.label || 'None'} detail={affiliateStats.summary.bestMerchant ? `${affiliateStats.summary.bestMerchant.clicksInWindow} clicks` : undefined} />
+                    <AffiliateMetric label="Best placement" value={affiliateStats.summary.bestPlacement?.label || 'None'} detail={affiliateStats.summary.bestPlacement ? `${affiliateStats.summary.bestPlacement.clicksInWindow} clicks` : undefined} />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <AffiliateBreakdown title="Trackers" rows={affiliateStats.summary.byTracker.slice(0, 5)} />
+                    <AffiliateBreakdown title="Merchants" rows={affiliateStats.summary.byMerchant} />
+                    <AffiliateBreakdown title="Placements" rows={affiliateStats.summary.byPlacement} />
+                  </div>
+
+                  <div className="overflow-x-auto rounded border border-ring-gold/30">
+                    <table className="min-w-full text-left text-xs">
+                      <thead className="bg-black/20 text-ring-gold">
+                        <tr>
+                          <th className="px-3 py-2">Tracker</th>
+                          <th className="px-3 py-2">Merchant</th>
+                          <th className="px-3 py-2">Placement</th>
+                          <th className="px-3 py-2 text-right">30d</th>
+                          <th className="px-3 py-2 text-right">Total</th>
+                          <th className="px-3 py-2">Last Click</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-ring-gold/15 text-ring-light">
+                        {affiliateStats.rows.map((row) => (
+                          <tr key={`${row.tracker}-${row.merchant}-${row.placement}`}>
+                            <td className="px-3 py-2">
+                              <div className="font-bold text-ring-light">{row.trackerTitle}</div>
+                              <a href={row.href} target="_blank" rel="noopener noreferrer sponsored" className="text-ring-gold hover:underline">
+                                {row.label}
+                              </a>
+                            </td>
+                            <td className="px-3 py-2 capitalize">{row.merchant}</td>
+                            <td className="px-3 py-2">{row.placement}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{row.clicksInWindow}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{row.totalClicks}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              {row.lastClick?.clickedAt ? new Date(row.lastClick.clickedAt).toLocaleString() : 'None'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
