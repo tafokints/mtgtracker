@@ -260,6 +260,25 @@ describe('tracker API routes', () => {
     });
   });
 
+  it('tracks primary top CTA affiliate placement separately', async () => {
+    const link = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'tcgplayer');
+    if (!link) throw new Error('Expected One Ring TCGplayer affiliate link');
+
+    const response = await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: link.merchant,
+      href: link.href,
+      label: link.label,
+      placement: 'tracker-top-cta',
+    }));
+    const date = new Date().toISOString().slice(0, 10);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(redisFixture.counters.get(`affiliate:clicks:${date}:one-ring:tcgplayer:tracker-top-cta`)).toBe(1);
+    expect(redisFixture.counters.get('affiliate:clicks:total:one-ring:tcgplayer:tracker-top-cta')).toBe(1);
+  });
+
   it('rejects unknown affiliate click URLs', async () => {
     const response = await trackAffiliateClick(affiliateClickRequest({
       tracker: tracker.slug,

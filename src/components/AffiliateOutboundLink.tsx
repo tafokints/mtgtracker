@@ -1,5 +1,6 @@
 'use client';
 
+import type React from 'react';
 import { AffiliateLink } from '@/lib/trackers';
 
 interface AffiliateOutboundLinkProps {
@@ -7,9 +8,10 @@ interface AffiliateOutboundLinkProps {
   trackerSlug: string;
   placement: string;
   className?: string;
+  children?: React.ReactNode;
 }
 
-export default function AffiliateOutboundLink({ link, trackerSlug, placement, className }: AffiliateOutboundLinkProps) {
+export default function AffiliateOutboundLink({ link, trackerSlug, placement, className, children }: AffiliateOutboundLinkProps) {
   const trackClick = () => {
     const payload = JSON.stringify({
       tracker: trackerSlug,
@@ -42,7 +44,7 @@ export default function AffiliateOutboundLink({ link, trackerSlug, placement, cl
       className={className}
       onClick={trackClick}
     >
-      {link.label}
+      {children || link.label}
     </a>
   );
 }
