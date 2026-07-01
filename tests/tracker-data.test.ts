@@ -6,6 +6,7 @@ import {
   createInitialTrackerCards,
   formatTrackerSerial,
   formatTrackerCardLabel,
+  getTrackerDirectoryStatsSnapshot,
   getTrackerSlotId,
   getTrackerTotalSlots,
   getTrackerDirectoryStats,
@@ -81,6 +82,50 @@ describe('tracker data helpers', () => {
       confirmedCount: 1,
       pendingReportCount: 2,
     });
+  });
+
+  it('reads directory stats from stored data without initializing tracker slots', async () => {
+    const cards = createInitialTrackerCards(tracker).slice(0, 2);
+    cards[0] = { ...cards[0], found: true, verificationStatus: 'confirmed' };
+
+    const store = new Map<string, unknown>([
+      [tracker.storage.cardsKey, cards],
+      [tracker.storage.submissionsKey, [
+        submission({ id: 'a', cardId: 1, status: 'pending' }),
+        submission({ id: 'b', cardId: 2, status: 'approved' }),
+      ]],
+    ]);
+
+    const redis = {
+      get: async (key: string) => store.get(key),
+    };
+
+    await expect(getTrackerDirectoryStatsSnapshot(redis, tracker)).resolves.toEqual({
+      foundCount: 1,
+      confirmedCount: 1,
+      pendingReportCount: 1,
+    });
+  });
+
+  it('does not create directory stats data when a tracker has not been initialized', async () => {
+    const readKeys: string[] = [];
+    const redis = {
+      get: async (key: string) => {
+        readKeys.push(key);
+        return undefined;
+      },
+    };
+
+    await expect(getTrackerDirectoryStatsSnapshot(redis, tracker)).resolves.toEqual({
+      foundCount: 0,
+      confirmedCount: 0,
+      pendingReportCount: 0,
+    });
+    expect(readKeys).toEqual([
+      tracker.storage.cardsKey,
+      tracker.storage.submissionsKey,
+      ...(tracker.storage.legacyCardsKeys || []),
+    ]);
   });
 
   it('applies approved submissions to cards with selected evidence and price history', () => {

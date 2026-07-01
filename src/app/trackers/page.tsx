@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { getRedis } from '@/lib/redis';
-import { getTrackerCardDefinitions, getTrackerCards, getTrackerDirectoryStats, getTrackerSubmissions, getTrackerTotalSlots } from '@/lib/tracker-data';
+import { getTrackerCardDefinitions, getTrackerDirectoryStats, getTrackerDirectoryStatsSnapshot, getTrackerTotalSlots } from '@/lib/tracker-data';
 import { trackers } from '@/lib/trackers';
 import { serializedCatalog } from '@/lib/serialized-catalog';
 import ReferenceLinks from '@/components/ReferenceLinks';
@@ -42,12 +42,7 @@ async function getDirectoryStats() {
     const redis = getRedis();
     const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');
     const entries = await Promise.all(liveTrackers.map(async (tracker) => {
-      const [cards, submissions] = await Promise.all([
-        getTrackerCards(redis, tracker),
-        getTrackerSubmissions(redis, tracker),
-      ]);
-
-      return [tracker.slug, getTrackerDirectoryStats(cards, submissions)] as const;
+      return [tracker.slug, await getTrackerDirectoryStatsSnapshot(redis, tracker)] as const;
     }));
 
     return Object.fromEntries(entries) as Record<string, DirectoryStats>;

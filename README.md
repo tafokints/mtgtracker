@@ -78,6 +78,8 @@ For local development only, the admin password falls back to `dev-admin` if `ADM
 
 The first `/api/trackers/[slug]/cards` request initializes Redis for that tracker. One Ring creates 100 serial slots, Edgar Markov creates 500 serial slots, and LOTR Poster Cards creates 2,000 card-plus-serial slots. Public reports are stored in each tracker's configured submissions key until approved.
 
+The `/trackers` directory uses read-only stats snapshots so new multi-card trackers are not initialized just because someone browses the directory.
+
 ## Redis Keys And Backups
 
 Each live tracker owns two Redis JSON values defined in `src/lib/trackers.ts`:

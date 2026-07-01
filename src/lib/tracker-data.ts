@@ -155,6 +155,34 @@ export function getTrackerDirectoryStats(cards: SerializedRingCard[], submission
   };
 }
 
+async function getStoredTrackerCardsSnapshot(redis: Pick<Redis, 'get'>, tracker: TrackerSummary) {
+  const cards = await redis.get(tracker.storage.cardsKey);
+  if (Array.isArray(cards) && cards.length > 0) {
+    return cards.map((card) => normalizeTrackerCard(tracker, card));
+  }
+
+  for (const legacyKey of tracker.storage.legacyCardsKeys || []) {
+    const legacyCards = await redis.get(legacyKey);
+    if (Array.isArray(legacyCards) && legacyCards.length > 0) {
+      return legacyCards.map((card) => normalizeTrackerCard(tracker, card));
+    }
+  }
+
+  return [];
+}
+
+export async function getTrackerDirectoryStatsSnapshot(redis: Pick<Redis, 'get'>, tracker: TrackerSummary) {
+  const [cards, submissions] = await Promise.all([
+    getStoredTrackerCardsSnapshot(redis, tracker),
+    redis.get(tracker.storage.submissionsKey),
+  ]);
+
+  return getTrackerDirectoryStats(
+    cards,
+    Array.isArray(submissions) ? submissions : []
+  );
+}
+
 export async function getTrackerCards(redis: Redis, tracker: TrackerSummary) {
   let cards: SerializedRingCard[] = (await redis.get(tracker.storage.cardsKey)) || [];
 
