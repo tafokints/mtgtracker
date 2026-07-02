@@ -105,6 +105,7 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
       confirmedCount: confirmedCards.length,
       sourceLinkedCount: sourceLinkedCards.length,
       unverifiedCount: unverifiedCards.length,
+      pricedCount: prices.length,
       foundPercentage: (foundCards.length / (tracker.total || cards.length || 1)) * 100,
       averagePrice,
       totalValue,
@@ -185,21 +186,35 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatCard title="Located" value={`${stats.foundCount}/${stats.totalCards}`} detail={`${stats.foundPercentage.toFixed(1)}% complete`} />
               <StatCard title="Confirmed" value={stats.confirmedCount.toString()} detail="Primary or grading-backed" />
-              <StatCard title="Total Value" value={`$${stats.totalValue.toLocaleString()}`} detail="Tracked sale prices" />
-              <StatCard title="Average Price" value={`$${Math.round(stats.averagePrice).toLocaleString()}`} detail="Per priced copy" />
+              <StatCard
+                title="Total Value"
+                value={stats.pricedCount > 0 ? `$${stats.totalValue.toLocaleString()}` : 'No prices'}
+                detail={stats.pricedCount > 0 ? `${stats.pricedCount} priced ${stats.pricedCount === 1 ? 'copy' : 'copies'}` : 'Awaiting public sale data'}
+              />
+              <StatCard
+                title="Average Price"
+                value={stats.pricedCount > 0 ? `$${Math.round(stats.averagePrice).toLocaleString()}` : 'N/A'}
+                detail={stats.pricedCount > 0 ? 'Per priced copy' : 'No public prices yet'}
+              />
             </div>
 
-            <ChartPanel title="Price Distribution">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={stats.priceRanges}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(214, 167, 61, 0.2)" />
-                  <XAxis dataKey="range" stroke="#D6A73D" />
-                  <YAxis allowDecimals={false} stroke="#D6A73D" />
-                  <Tooltip contentStyle={{ backgroundColor: '#101413', border: '1px solid #D6A73D' }} />
-                  <Bar dataKey="count" fill="#2BAE9E" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartPanel>
+            {stats.pricedCount > 0 ? (
+              <ChartPanel title="Price Distribution">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={stats.priceRanges}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(214, 167, 61, 0.2)" />
+                    <XAxis dataKey="range" stroke="#D6A73D" />
+                    <YAxis allowDecimals={false} stroke="#D6A73D" />
+                    <Tooltip contentStyle={{ backgroundColor: '#101413', border: '1px solid #D6A73D' }} />
+                    <Bar dataKey="count" fill="#2BAE9E" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartPanel>
+            ) : (
+              <ChartPanel title="Price Distribution">
+                <p className="text-sm text-ring-light/70">No public sale prices have been approved for this tracker yet.</p>
+              </ChartPanel>
+            )}
 
             {stats.gradingStats.totalGraded > 0 && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -277,7 +292,7 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
                     >
                       {formatTrackerCardLabel(tracker, card)} - {card.foundBy}
                     </Link>
-                    <span className="shrink-0 text-ring-gold font-bold">${card.price?.toLocaleString() || 'N/A'}</span>
+                    <span className="shrink-0 text-ring-gold font-bold">{card.price !== undefined ? `$${card.price.toLocaleString()}` : 'No price'}</span>
                   </div>
                 ))}
               </ListPanel>

@@ -122,6 +122,7 @@
 - [x] Link tracker latest-find summaries to exact serial detail modals.
 - [x] Link stats-page recent discoveries to exact serial detail views.
 - [x] Add stats-page source-quality breakdowns.
+- [x] Make stats-page pricing coverage explicit when sale data is missing.
 
 ## Data Safety
 
