@@ -91,6 +91,12 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
       return acc;
     }, {} as Record<string, number>);
 
+    const sourceTypeCounts = foundCards.reduce((acc, card) => {
+      const sourceType = card.sourceType || 'other';
+      acc[sourceType] = (acc[sourceType] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
     const priceRanges = [
       { range: 'Under $10k', count: prices.filter(p => p < 10000).length },
       { range: '$10k-$25k', count: prices.filter(p => p >= 10000 && p < 25000).length },
@@ -117,6 +123,9 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
         .map(([finder, count]) => ({ finder, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10),
+      sourceTypes: Object.entries(sourceTypeCounts)
+        .map(([sourceType, count]) => ({ sourceType, count }))
+        .sort((a, b) => b.count - a.count),
       recentDiscoveries: foundCards
         .filter(card => card.dateFound)
         .sort((a, b) => new Date(b.dateFound!).getTime() - new Date(a.dateFound!).getTime())
@@ -265,7 +274,7 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
               </ResponsiveContainer>
             </ChartPanel>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               <ListPanel title="Top Discoverers">
                 {stats.topFinders.length > 0 ? (
                   stats.topFinders.map((finder, index) => (
@@ -282,6 +291,16 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
                 <QualityRow label="Confirmed" count={stats.confirmedCount} total={stats.foundCount} />
                 <QualityRow label="Source-linked" count={stats.sourceLinkedCount} total={stats.foundCount} />
                 <QualityRow label="Unverified" count={stats.unverifiedCount} total={stats.foundCount} />
+              </ListPanel>
+              <ListPanel title="Source Types">
+                {stats.sourceTypes.map((sourceType) => (
+                  <QualityRow
+                    key={sourceType.sourceType}
+                    label={formatSourceTypeLabel(sourceType.sourceType)}
+                    count={sourceType.count}
+                    total={stats.foundCount}
+                  />
+                ))}
               </ListPanel>
               <ListPanel title="Recent Discoveries">
                 {stats.recentDiscoveries.map((card) => (
@@ -302,6 +321,13 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
       </main>
     </>
   );
+}
+
+function formatSourceTypeLabel(sourceType: string) {
+  return sourceType
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
 
 function QualityRow({ label, count, total }: { label: string; count: number; total: number }) {
