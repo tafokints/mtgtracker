@@ -9,7 +9,7 @@ src/app/page.tsx                         MTG Trackers homepage
 src/app/trackers/page.tsx                tracker directory
 src/app/trackers/[slug]/page.tsx         dynamic tracker page
 src/app/trackers/[slug]/stats/page.tsx   dynamic tracker stats
-src/app/trackers/[slug]/submit/page.tsx  dynamic hidden report form
+src/app/trackers/[slug]/submit/page.tsx  dynamic public discovery report form
 src/app/api/trackers/[slug]/*            generic tracker API routes
 src/app/api/health/route.ts              Redis/runtime health check
 src/components/Tracker*Client.tsx        shared client tracker views

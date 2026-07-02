@@ -10,13 +10,13 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - `/trackers` - tracker directory
 - `/trackers/one-ring` - The One Ring tracker
 - `/trackers/one-ring/stats` - The One Ring stats
-- `/trackers/one-ring/submit` - hidden submit flow target
+- `/trackers/one-ring/submit` - public discovery report flow
 - `/trackers/edgar-markov` - Edgar Markov tracker
 - `/trackers/edgar-markov/stats` - Edgar Markov stats
-- `/trackers/edgar-markov/submit` - hidden submit flow target
+- `/trackers/edgar-markov/submit` - public discovery report flow
 - `/trackers/lotr-poster-cards` - LOTR Poster Cards multi-card tracker
 - `/trackers/lotr-poster-cards/stats` - LOTR Poster Cards stats
-- `/trackers/lotr-poster-cards/submit` - hidden submit flow target
+- `/trackers/lotr-poster-cards/submit` - public discovery report flow
 - `/trackers` also includes a serialized scaffold queue sourced from `src/lib/serialized-catalog.ts`
 - `/about` - project purpose and independence notes
 - `/contact` - correction, tracker request, and issue-reporting paths
@@ -33,7 +33,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - Progress, search, located/confirmed/source-linked filters, and sorting
 - Card-level public filtering for multi-card serialized treatments
 - Card activity summaries for multi-card tracker pages
-- Hidden report flow with source type, evidence level, price, image URLs, and notes
+- Public report flow with source type, evidence level, price, image uploads, image URLs, and notes
 - Admin review queue before crowd-sourced discoveries become public tracker updates
 - Card-level admin review filtering for multi-card serialized treatments
 - Hidden admin panel with price, image, grading, and price-history updates
@@ -115,9 +115,9 @@ Admin backups are tracker-scoped:
 - Restore requests must include `confirm: "RESTORE_TRACKER_BACKUP"` and overwrite only that tracker's `cardsKey` and `submissionsKey`.
 - The hidden admin panel includes `Export Backup` and `Restore Backup` controls after login.
 
-## Hidden Workflows
+## Admin And Review Workflows
 
-- Report form: enter the Konami code on `/trackers/one-ring` to reveal the `Report a Find` link.
+- Report form: use the `Report a Find` link on any live tracker page to send a discovery into admin review.
 - Evidence uploads: report forms accept JPEG, PNG, or WebP uploads up to 4 MB per image. Uploaded images are stored in Vercel Blob and saved as evidence image URLs on the queued report.
 - Admin panel: press `Ctrl + Alt + A` on `/trackers/one-ring`.
 - Review queue: use the admin panel `Review` tab to approve or reject pending reports.
