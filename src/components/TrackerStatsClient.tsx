@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { SerializedRingCard } from '@/lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
-import { formatTrackerCardLabel } from '@/lib/tracker-data';
+import { formatTrackerCardLabel, getTrackerCardDeepLinkParams } from '@/lib/tracker-data';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import type { PieLabelRenderProps } from 'recharts';
 import Link from 'next/link';
@@ -258,8 +258,13 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
               <ListPanel title="Recent Discoveries">
                 {stats.recentDiscoveries.map((card) => (
                   <div key={card.id} className="flex justify-between items-center gap-4">
-                    <span className="text-ring-light">{formatTrackerCardLabel(tracker, card)} - {card.foundBy}</span>
-                    <span className="text-ring-gold font-bold">${card.price?.toLocaleString() || 'N/A'}</span>
+                    <Link
+                      href={`${trackerPath}?${getTrackerCardDeepLinkParams(tracker, card).toString()}`}
+                      className="min-w-0 break-words text-ring-light underline-offset-4 transition-colors hover:text-ring-gold hover:underline"
+                    >
+                      {formatTrackerCardLabel(tracker, card)} - {card.foundBy}
+                    </Link>
+                    <span className="shrink-0 text-ring-gold font-bold">${card.price?.toLocaleString() || 'N/A'}</span>
                   </div>
                 ))}
               </ListPanel>
