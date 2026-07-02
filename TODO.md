@@ -102,6 +102,7 @@
 ## Directory And UX
 
 - [x] Add cross-tracker recent discovery feed to the homepage.
+- [x] Link homepage recent discoveries to exact serial detail URLs.
 - [x] Add discovered count and pending report count to tracker directory cards.
 - [x] Keep directory stats read-only so multi-card trackers are not initialized from directory visits.
 - [x] Add tracked marketplace links to tracker directory cards.

@@ -98,7 +98,7 @@ function RecentActivity({ discoveries }: { discoveries: RecentTrackerDiscovery[]
           {discoveries.map((discovery) => (
             <Link
               key={`${discovery.trackerSlug}-${discovery.cardId}`}
-              href={discovery.trackerHref}
+              href={discovery.detailHref}
               className="rounded border border-ring-gold/25 bg-black/20 p-4 transition-colors hover:border-ring-gold/70 hover:bg-ring-gold/10"
             >
               <p className="text-xs font-bold uppercase text-ring-teal">{discovery.trackerTitle}</p>

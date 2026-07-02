@@ -13,6 +13,7 @@ export interface RecentTrackerDiscovery {
   trackerSlug: string;
   trackerTitle: string;
   trackerHref: string;
+  detailHref: string;
   cardId: number;
   cardTitle?: string;
   serialNumber: string;
@@ -253,6 +254,7 @@ export async function getRecentTrackerDiscoveriesSnapshot(redis: Pick<Redis, 'ge
         trackerSlug: tracker.slug,
         trackerTitle: tracker.title,
         trackerHref: tracker.href,
+        detailHref: `${tracker.href}?${getTrackerCardDeepLinkParams(tracker, card).toString()}`,
         cardId: card.id,
         cardTitle: card.cardTitle,
         serialNumber: card.serialNumber,

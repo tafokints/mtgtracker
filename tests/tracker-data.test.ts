@@ -173,11 +173,13 @@ describe('tracker data helpers', () => {
       expect.objectContaining({
         trackerSlug: 'lotr-poster-cards',
         label: 'Dawn of a New Age 002/100',
+        detailHref: '/trackers/lotr-poster-cards?card=dawn-of-a-new-age&serial=002',
         foundBy: 'Collector B',
       }),
       expect.objectContaining({
         trackerSlug: 'one-ring',
         label: '001/100',
+        detailHref: '/trackers/one-ring?serial=001',
         foundBy: 'Collector A',
         price: 1000,
       }),
