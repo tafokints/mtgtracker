@@ -119,6 +119,7 @@
 - [x] Add shareable serial detail links with URL state.
 - [x] Add one-click copy for serial detail links.
 - [x] Add serial-specific report links that prefill the submit form.
+- [x] Link tracker latest-find summaries to exact serial detail modals.
 
 ## Data Safety
 

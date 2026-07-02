@@ -372,7 +372,15 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
           )}
           {lastFoundCard && (
             <p className="text-ring-light mt-4 text-sm">
-              Last find: {formatTrackerCardLabel(tracker, lastFoundCard)} by {lastFoundCard.foundBy} on {lastFoundCard.dateFound}
+              Last find:{' '}
+              <button
+                type="button"
+                onClick={() => openCardDetails(lastFoundCard)}
+                className="text-ring-gold underline-offset-4 transition-colors hover:text-yellow-400 hover:underline"
+              >
+                {formatTrackerCardLabel(tracker, lastFoundCard)}
+              </button>{' '}
+              by {lastFoundCard.foundBy} on {lastFoundCard.dateFound}
             </p>
           )}
           {!lastFoundCard && !dataError && (
