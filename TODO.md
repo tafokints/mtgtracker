@@ -54,6 +54,7 @@
   - [x] cannot verify
 - [x] Allow admins to merge evidence from multiple pending reports.
 - [x] Add audit trail for who reviewed each report.
+- [x] Add public report evidence image count guardrails and removal controls.
 
 ## Image Storage
 

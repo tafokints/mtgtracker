@@ -14,6 +14,8 @@ import {
 } from '@/lib/tracker-data';
 import { SourceType, VerificationStatus } from '@/lib/types';
 
+const MAX_EVIDENCE_IMAGES = 8;
+
 export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSummary }) {
   const cardDefinitions = useMemo(() => getTrackerCardDefinitions(tracker), [tracker]);
   const hasMultipleCardDefinitions = cardDefinitions.length > 1;
@@ -36,6 +38,14 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
   const [errors, setErrors] = useState<string[]>([]);
   const [isError, setIsError] = useState(false);
   const trackerPath = `/trackers/${tracker.slug}`;
+  const manualEvidenceUrlCount = useMemo(() => (
+    evidenceImageUrls
+      .split(/[\s,]+/)
+      .map((url) => url.trim())
+      .filter(Boolean).length
+  ), [evidenceImageUrls]);
+  const totalEvidenceImageCount = uploadedEvidenceUrls.length + manualEvidenceUrlCount;
+  const evidenceLimitExceeded = totalEvidenceImageCount > MAX_EVIDENCE_IMAGES;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -58,6 +68,13 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
     setMessage('');
     setErrors([]);
     setIsError(false);
+
+    if (evidenceLimitExceeded) {
+      setMessage('Too many evidence images.');
+      setErrors([`Please submit no more than ${MAX_EVIDENCE_IMAGES} evidence images total.`]);
+      setIsError(true);
+      return;
+    }
 
     const response = await fetch(`/api/trackers/${tracker.slug}/submit`, {
       method: 'POST',
@@ -381,11 +398,23 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
             {uploadMessage && (
               <p className="mt-2 text-sm text-ring-light">{uploadMessage}</p>
             )}
+            <p className={`mt-2 text-xs ${evidenceLimitExceeded ? 'text-red-300' : 'text-ring-light/70'}`}>
+              Evidence images queued: {totalEvidenceImageCount}/{MAX_EVIDENCE_IMAGES}
+            </p>
             {uploadedEvidenceUrls.length > 0 && (
               <ul className="mt-3 space-y-1 text-xs text-ring-light">
                 {uploadedEvidenceUrls.map((url) => (
-                  <li key={url} className="break-all">
-                    Uploaded: <a href={url} target="_blank" rel="noopener noreferrer" className="text-ring-gold hover:underline">{url}</a>
+                  <li key={url} className="flex items-start justify-between gap-3">
+                    <span className="min-w-0 break-all">
+                      Uploaded: <a href={url} target="_blank" rel="noopener noreferrer" className="text-ring-gold hover:underline">{url}</a>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setUploadedEvidenceUrls((currentUrls) => currentUrls.filter((currentUrl) => currentUrl !== url))}
+                      className="shrink-0 text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline"
+                    >
+                      Remove
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -406,7 +435,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
           <button
             className="mt-6 bg-ring-gold hover:bg-yellow-400 disabled:cursor-not-allowed disabled:bg-ring-light/40 text-ring-dark font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
             type="submit"
-            disabled={uploading}
+            disabled={uploading || evidenceLimitExceeded}
           >
             {uploading ? 'Uploading...' : 'Submit'}
           </button>
