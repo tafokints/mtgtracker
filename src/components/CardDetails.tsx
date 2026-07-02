@@ -4,6 +4,8 @@ import React from 'react';
 import { SerializedRingCard } from '../lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
 import { formatTrackerCardLabel } from '@/lib/tracker-data';
+import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
+import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 import ExternalImage from '@/components/ExternalImage';
 
 interface CardDetailsProps {
@@ -17,6 +19,7 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
   if (!isOpen) return null;
 
   const serialLabel = formatTrackerCardLabel(tracker, card);
+  const marketplaceLinks = tracker.affiliateLinks || [];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
@@ -101,6 +104,29 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
               )}
             </div>
           </div>
+
+          {marketplaceLinks.length > 0 && (
+            <div>
+              <h3 className="text-lg font-bold text-ring-gold mb-2">Marketplace Check</h3>
+              <div className="bg-ring-light bg-opacity-20 p-4 rounded">
+                <AffiliateDisclosureNotice links={marketplaceLinks} compact />
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {marketplaceLinks.slice(0, 3).map((link) => (
+                    <AffiliateOutboundLink
+                      key={`${link.merchant}-${link.href}`}
+                      link={link}
+                      trackerSlug={tracker.slug}
+                      placement="serial-detail"
+                      className="rounded border border-ring-gold/40 px-3 py-2 text-center text-xs font-bold text-ring-gold transition-colors hover:border-ring-gold hover:bg-ring-gold hover:text-ring-dark"
+                    >
+                      <span className="block capitalize">{link.merchant}</span>
+                      <span className="mt-1 block font-normal uppercase opacity-75">{link.intent.replace('-', ' ')}</span>
+                    </AffiliateOutboundLink>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {card.grading && (
             <div>

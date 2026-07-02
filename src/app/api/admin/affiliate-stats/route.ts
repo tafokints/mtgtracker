@@ -8,7 +8,7 @@ export const revalidate = 0;
 
 const DEFAULT_DAYS = 30;
 const MAX_DAYS = 90;
-const PLACEMENTS = ['tracker-top-cta', 'tracker-directory', 'tracker-marketplace', 'marketplace-links'];
+const PLACEMENTS = ['tracker-top-cta', 'tracker-directory', 'tracker-marketplace', 'serial-detail', 'marketplace-links'];
 
 function dateKey(daysAgo: number) {
   const date = new Date();

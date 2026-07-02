@@ -124,6 +124,7 @@ Admin backups are tracker-scoped:
 - Affiliate stats: use the admin panel `Affiliate` tab to compare tracker, merchant, and placement click totals.
 - Directory marketplace links are tracked as `tracker-directory`.
 - Primary marketplace CTAs: tracker pages include top-of-page marketplace actions tracked as `tracker-top-cta`, with tracker-specific copy when configured.
+- Serial detail marketplace links are tracked as `serial-detail`.
 
 ## Tracker Scaffolding
 
