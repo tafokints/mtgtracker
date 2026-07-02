@@ -157,6 +157,7 @@ Also verify:
 - `/api/health` returns `ok: true` in production.
 - `https://mtgtrackers.com/robots.txt` advertises `https://mtgtrackers.com/sitemap.xml`.
 - Live tracker pages load on `https://mtgtrackers.com`.
+- Live tracker submit pages load and show the public discovery report form.
 - Marketplace links are relevant to the tracker subject.
 - Affiliate disclosures are visible near marketplace links.
 - TCGplayer links use the generic `partner.tcgplayer.com/DyJ25G` redirect and validate that the final URL receives `irclickid` and Impact parameters.
@@ -165,7 +166,7 @@ Also verify:
 - `/about`, `/contact`, `/privacy`, and `/affiliate-disclosure` load in production.
 - Google Search Console ownership is verified and `https://mtgtrackers.com/sitemap.xml` is submitted.
 
-`npm run smoke` defaults to `https://mtgtrackers.com`. To check another deployment, run `npm run smoke -- https://your-preview-url.vercel.app` or set `SMOKE_BASE_URL`.
+`npm run smoke` defaults to `https://mtgtrackers.com`. To check another deployment, run `npm run smoke -- https://your-preview-url.vercel.app` or set `SMOKE_BASE_URL`. For local production-build smoke checks without Redis health, set `SMOKE_SKIP_HEALTH=1` and `SMOKE_CANONICAL_BASE_URL=https://mtgtrackers.com`.
 
 ## References
 

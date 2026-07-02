@@ -6,6 +6,8 @@ import ts from 'typescript';
 const rootDir = process.cwd();
 const trackerPath = path.join(rootDir, 'src', 'lib', 'trackers.ts');
 const baseUrl = normalizeBaseUrl(process.env.SMOKE_BASE_URL || process.argv[2] || 'https://mtgtrackers.com');
+const canonicalBaseUrl = normalizeBaseUrl(process.env.SMOKE_CANONICAL_BASE_URL || baseUrl);
+const skipHealth = process.env.SMOKE_SKIP_HEALTH === '1';
 
 function normalizeBaseUrl(value) {
   return value.replace(/\/+$/, '');
@@ -78,12 +80,13 @@ async function checkHealth() {
 async function checkSitemap(liveTrackers) {
   const { text } = await fetchText('/sitemap.xml');
   const requiredUrls = [
-    `${baseUrl}/`,
-    `${baseUrl}/trackers`,
-    `${baseUrl}/affiliate-disclosure`,
+    `${canonicalBaseUrl}/`,
+    `${canonicalBaseUrl}/trackers`,
+    `${canonicalBaseUrl}/affiliate-disclosure`,
     ...liveTrackers.flatMap((tracker) => [
-      `${baseUrl}/trackers/${tracker.slug}`,
-      `${baseUrl}/trackers/${tracker.slug}/stats`,
+      `${canonicalBaseUrl}/trackers/${tracker.slug}`,
+      `${canonicalBaseUrl}/trackers/${tracker.slug}/stats`,
+      `${canonicalBaseUrl}/trackers/${tracker.slug}/submit`,
     ]),
   ];
 
@@ -99,7 +102,7 @@ async function checkRobots() {
 
   assertIncludes(text, 'User-agent: *', '/robots.txt');
   assertIncludes(text, 'Allow: /', '/robots.txt');
-  assertIncludes(text, `Sitemap: ${baseUrl}/sitemap.xml`, '/robots.txt');
+  assertIncludes(text, `Sitemap: ${canonicalBaseUrl}/sitemap.xml`, '/robots.txt');
   assertIncludes(text, 'Disallow: /api/', '/robots.txt');
 
   return { path: '/robots.txt', ok: true };
@@ -112,12 +115,13 @@ async function main() {
     checkPage('/', ['MTG Trackers', 'Live Trackers']),
     checkPage('/trackers', ['Trackers', 'Serialized Scaffold Queue', 'Marketplace links are affiliate links']),
     checkPage('/affiliate-disclosure', ['Affiliate Disclosure', 'eBay Partner Network', 'Amazon Associate']),
-    checkHealth(),
+    ...(skipHealth ? [] : [checkHealth()]),
     checkRobots(),
     checkSitemap(liveTrackers),
     ...liveTrackers.flatMap((tracker) => [
       checkPage(`/trackers/${tracker.slug}`, [tracker.title, `${tracker.title} Tracker`, 'CollectionPage', 'application/ld+json']),
       checkPage(`/trackers/${tracker.slug}/stats`, [`${tracker.title} Statistics`]),
+      checkPage(`/trackers/${tracker.slug}/submit`, ['Report a Find', 'Reports are queued for admin review', 'Source Link', 'Upload Evidence Images']),
     ]),
   ];
 
