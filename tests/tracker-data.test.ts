@@ -10,6 +10,7 @@ import {
   getRecentTrackerDiscoveriesSnapshot,
   getTrackerCardDeepLinkParams,
   getTrackerDirectoryStatsSnapshot,
+  getTrackerSlotIdFromDeepLinkParams,
   getTrackerSlotId,
   getTrackerTotalSlots,
   getTrackerDirectoryStats,
@@ -306,6 +307,7 @@ describe('tracker data helpers', () => {
       id: 7,
       serialNumber: '007',
     });
+    expect(getTrackerSlotIdFromDeepLinkParams(tracker, new URLSearchParams('serial=007'))).toBe(7);
   });
 
   it('builds and resolves multi-card serial deep links with card slug disambiguation', () => {
@@ -327,6 +329,8 @@ describe('tracker data helpers', () => {
       cardSlug: 'gandalf-the-white',
       serialNumber: '007',
     });
+    expect(getTrackerSlotIdFromDeepLinkParams(posterTracker, new URLSearchParams('card=the-one-ring&serial=007'))).toBe(1707);
+    expect(getTrackerSlotIdFromDeepLinkParams(posterTracker, new URLSearchParams('slot=1707'))).toBe(1707);
   });
 });
 

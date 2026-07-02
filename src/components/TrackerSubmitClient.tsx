@@ -1,14 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import type { TrackerSummary } from '@/lib/trackers';
-import { formatTrackerSerial, getTrackerCardDefinitions, getTrackerSlotId, getTrackerTotalSlots } from '@/lib/tracker-data';
+import {
+  formatTrackerSerial,
+  getTrackerCardDefinitions,
+  getTrackerCardSlot,
+  getTrackerSlotId,
+  getTrackerSlotIdFromDeepLinkParams,
+  getTrackerTotalSlots,
+} from '@/lib/tracker-data';
 import { SourceType, VerificationStatus } from '@/lib/types';
 
 export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSummary }) {
-  const cardDefinitions = getTrackerCardDefinitions(tracker);
+  const cardDefinitions = useMemo(() => getTrackerCardDefinitions(tracker), [tracker]);
   const hasMultipleCardDefinitions = cardDefinitions.length > 1;
   const [cardId, setCardId] = useState('');
   const [selectedCardSlug, setSelectedCardSlug] = useState(cardDefinitions[0]?.slug || '');
@@ -29,6 +36,22 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
   const [errors, setErrors] = useState<string[]>([]);
   const [isError, setIsError] = useState(false);
   const trackerPath = `/trackers/${tracker.slug}`;
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const slotId = getTrackerSlotIdFromDeepLinkParams(tracker, params);
+    if (!slotId) return;
+
+    const slot = getTrackerCardSlot(tracker, slotId);
+    if (!slot) return;
+
+    if (hasMultipleCardDefinitions) {
+      setSelectedCardSlug(slot.cardSlug || cardDefinitions[0]?.slug || '');
+      setSelectedSerialId(String(Number(slot.serialNumber)));
+    } else {
+      setCardId(String(slotId));
+    }
+  }, [cardDefinitions, hasMultipleCardDefinitions, tracker]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

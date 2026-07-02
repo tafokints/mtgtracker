@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { SerializedRingCard } from '../lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
-import { formatTrackerCardLabel } from '@/lib/tracker-data';
+import { formatTrackerCardLabel, getTrackerCardDeepLinkParams } from '@/lib/tracker-data';
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 import ExternalImage from '@/components/ExternalImage';
@@ -33,6 +34,8 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
 
   const serialLabel = formatTrackerCardLabel(tracker, card);
   const marketplaceLinks = tracker.affiliateLinks || [];
+  const reportParams = getTrackerCardDeepLinkParams(tracker, card);
+  const reportHref = `${tracker.href}/submit?${reportParams.toString()}`;
   const clearCopyMessageSoon = () => {
     if (copyMessageTimeoutRef.current) {
       window.clearTimeout(copyMessageTimeoutRef.current);
@@ -86,6 +89,12 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
             >
               Copy Link
             </button>
+            <Link
+              href={reportHref}
+              className="rounded bg-ring-gold px-3 py-1.5 text-xs font-bold text-ring-dark transition-colors hover:bg-yellow-400"
+            >
+              Report This Serial
+            </Link>
             <button
               onClick={onClose}
               className="text-ring-gold hover:text-yellow-400 rounded px-2 py-1"

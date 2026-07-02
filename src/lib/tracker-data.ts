@@ -108,17 +108,6 @@ export function formatTrackerCardLabel(tracker: TrackerSummary, card: Pick<Seria
   return card.cardTitle && card.cardTitle !== tracker.title ? `${card.cardTitle} ${serialLabel}` : serialLabel;
 }
 
-function normalizeSerialLookup(value: string) {
-  const trimmed = value.trim();
-  const numericValue = Number(trimmed);
-
-  if (Number.isInteger(numericValue) && numericValue > 0) {
-    return String(numericValue);
-  }
-
-  return trimmed.toLowerCase();
-}
-
 export function getTrackerCardDeepLinkParams(tracker: TrackerSummary, card: Pick<SerializedRingCard, 'cardSlug' | 'serialNumber'>) {
   const params = new URLSearchParams();
 
@@ -135,26 +124,32 @@ export function findTrackerCardByDeepLinkParams(
   cards: SerializedRingCard[],
   params: URLSearchParams
 ) {
-  const slotId = Number(params.get('slot') || params.get('id') || '');
+  const slotId = getTrackerSlotIdFromDeepLinkParams(tracker, params);
 
-  if (Number.isInteger(slotId) && slotId > 0) {
+  if (slotId) {
     return cards.find((card) => card.id === slotId);
+  }
+
+  return undefined;
+}
+
+export function getTrackerSlotIdFromDeepLinkParams(tracker: TrackerSummary, params: URLSearchParams) {
+  const exactSlotId = Number(params.get('slot') || params.get('id') || '');
+
+  if (Number.isInteger(exactSlotId) && exactSlotId > 0 && exactSlotId <= getTrackerTotalSlots(tracker)) {
+    return exactSlotId;
   }
 
   const serial = params.get('serial');
   if (!serial) return undefined;
 
-  const cardSlug = params.get('card');
-  const normalizedSerial = normalizeSerialLookup(serial);
-  const hasMultipleCardDefinitions = getTrackerCardDefinitions(tracker).length > 1;
+  const serialId = Number(serial);
+  if (!Number.isInteger(serialId) || serialId < 1) return undefined;
 
-  return cards.find((card) => {
-    if (hasMultipleCardDefinitions && cardSlug && card.cardSlug !== cardSlug) {
-      return false;
-    }
+  const cardSlug = params.get('card') || getTrackerCardDefinitions(tracker)[0]?.slug;
+  if (!cardSlug) return undefined;
 
-    return normalizeSerialLookup(card.serialNumber) === normalizedSerial;
-  });
+  return getTrackerSlotId(tracker, cardSlug, serialId);
 }
 
 export function createInitialTrackerCards(tracker: TrackerSummary): SerializedRingCard[] {
