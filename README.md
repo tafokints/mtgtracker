@@ -155,6 +155,7 @@ npm run smoke
 Also verify:
 
 - `/api/health` returns `ok: true` in production.
+- `https://mtgtrackers.com/robots.txt` advertises `https://mtgtrackers.com/sitemap.xml`.
 - Live tracker pages load on `https://mtgtrackers.com`.
 - Marketplace links are relevant to the tracker subject.
 - Affiliate disclosures are visible near marketplace links.

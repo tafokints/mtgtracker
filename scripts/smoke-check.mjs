@@ -94,6 +94,17 @@ async function checkSitemap(liveTrackers) {
   return { path: '/sitemap.xml', ok: true };
 }
 
+async function checkRobots() {
+  const { text } = await fetchText('/robots.txt');
+
+  assertIncludes(text, 'User-agent: *', '/robots.txt');
+  assertIncludes(text, 'Allow: /', '/robots.txt');
+  assertIncludes(text, `Sitemap: ${baseUrl}/sitemap.xml`, '/robots.txt');
+  assertIncludes(text, 'Disallow: /api/', '/robots.txt');
+
+  return { path: '/robots.txt', ok: true };
+}
+
 async function main() {
   const { trackers } = loadTrackerModule();
   const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');
@@ -102,6 +113,7 @@ async function main() {
     checkPage('/trackers', ['Trackers', 'Serialized Scaffold Queue', 'Marketplace links are affiliate links']),
     checkPage('/affiliate-disclosure', ['Affiliate Disclosure', 'eBay Partner Network', 'Amazon Associate']),
     checkHealth(),
+    checkRobots(),
     checkSitemap(liveTrackers),
     ...liveTrackers.flatMap((tracker) => [
       checkPage(`/trackers/${tracker.slug}`, [tracker.title, `${tracker.title} Tracker`, 'CollectionPage', 'application/ld+json']),

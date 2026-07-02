@@ -34,6 +34,7 @@
 - [x] Remove placeholder aggregate rating structured data.
 - [x] Add verified structured data for tracker pages and directory.
 - [x] Add production smoke-check script for core pages, health, sitemap, and live trackers.
+- [x] Add robots.txt verification to production smoke checks.
 - [ ] Validate Google Search Console setup.
 - [x] Replace placeholder Google verification metadata.
 - [x] Add privacy/contact/about pages before broad promotion.
