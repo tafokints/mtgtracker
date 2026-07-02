@@ -32,6 +32,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - Multi-card tracker definitions for serialized treatments with many card names
 - Public tracker grid for serials `001/100` through `100/100`
 - Progress, search, located/confirmed/source-linked filters, and sorting
+- Stats-page source-quality breakdowns for confirmed, source-linked, and unverified discoveries
 - Shareable serial detail links through `serial`, `card`, or exact `slot` URL parameters, with one-click copy from the detail modal
 - Card-level public filtering for multi-card serialized treatments
 - Card activity summaries for multi-card tracker pages

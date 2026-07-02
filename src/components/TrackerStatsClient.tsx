@@ -46,6 +46,8 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
   const foundCards = useMemo(() => cards.filter(c => c.found), [cards]);
   const gradedCards = useMemo(() => foundCards.filter(c => c.grading), [foundCards]);
   const confirmedCards = useMemo(() => foundCards.filter(c => c.verificationStatus === 'confirmed'), [foundCards]);
+  const sourceLinkedCards = useMemo(() => foundCards.filter(c => c.verificationStatus === 'source-linked'), [foundCards]);
+  const unverifiedCards = useMemo(() => foundCards.filter(c => c.verificationStatus === 'unverified'), [foundCards]);
 
   const stats = useMemo(() => {
     const prices = foundCards.map(c => c.price).filter(p => p != null) as number[];
@@ -101,6 +103,8 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
       totalCards: tracker.total || cards.length,
       foundCount: foundCards.length,
       confirmedCount: confirmedCards.length,
+      sourceLinkedCount: sourceLinkedCards.length,
+      unverifiedCount: unverifiedCards.length,
       foundPercentage: (foundCards.length / (tracker.total || cards.length || 1)) * 100,
       averagePrice,
       totalValue,
@@ -118,7 +122,7 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
         .slice(0, 10),
       priceRanges,
     };
-  }, [cards.length, foundCards, gradedCards, confirmedCards, tracker.total]);
+  }, [cards.length, foundCards, gradedCards, confirmedCards, sourceLinkedCards, unverifiedCards, tracker.total]);
 
   const structuredData = {
     '@context': 'https://schema.org',
@@ -246,14 +250,23 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
               </ResponsiveContainer>
             </ChartPanel>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <ListPanel title="Top Discoverers">
-                {stats.topFinders.map((finder, index) => (
-                  <div key={finder.finder} className="flex justify-between items-center gap-4">
-                    <span className="text-ring-light">{index + 1}. {finder.finder}</span>
-                    <span className="text-ring-gold font-bold">{finder.count} cards</span>
-                  </div>
-                ))}
+                {stats.topFinders.length > 0 ? (
+                  stats.topFinders.map((finder, index) => (
+                    <div key={finder.finder} className="flex justify-between items-center gap-4">
+                      <span className="min-w-0 break-words text-ring-light">{index + 1}. {finder.finder}</span>
+                      <span className="shrink-0 text-ring-gold font-bold">{finder.count} cards</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-ring-light/70">No public discoverer names yet.</p>
+                )}
+              </ListPanel>
+              <ListPanel title="Source Quality">
+                <QualityRow label="Confirmed" count={stats.confirmedCount} total={stats.foundCount} />
+                <QualityRow label="Source-linked" count={stats.sourceLinkedCount} total={stats.foundCount} />
+                <QualityRow label="Unverified" count={stats.unverifiedCount} total={stats.foundCount} />
               </ListPanel>
               <ListPanel title="Recent Discoveries">
                 {stats.recentDiscoveries.map((card) => (
@@ -273,6 +286,17 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
         )}
       </main>
     </>
+  );
+}
+
+function QualityRow({ label, count, total }: { label: string; count: number; total: number }) {
+  const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+
+  return (
+    <div className="flex justify-between items-center gap-4">
+      <span className="text-ring-light">{label}</span>
+      <span className="shrink-0 text-ring-gold font-bold">{count} ({percentage}%)</span>
+    </div>
   );
 }
 
