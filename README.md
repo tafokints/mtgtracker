@@ -40,6 +40,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - Card activity summaries for multi-card tracker pages
 - Public report flow with source type, evidence level, price, image uploads, image URLs, and notes
 - Serial detail report links preselect the matching card and serial in the report form
+- Serial detail pages show approved evidence image thumbnails with provenance links when available
 - Admin review queue before crowd-sourced discoveries become public tracker updates
 - Card-level admin review filtering for multi-card serialized treatments
 - Hidden admin panel with price, image, grading, and price-history updates

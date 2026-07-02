@@ -251,6 +251,40 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
               </div>
             </div>
           )}
+
+          {card.evidenceImages && card.evidenceImages.length > 0 && (
+            <div>
+              <h3 className="text-lg font-bold text-ring-gold mb-2">Evidence Images</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {card.evidenceImages.slice(0, 6).map((image, index) => (
+                  <div key={`${image.url}-${index}`} className="bg-ring-light bg-opacity-20 p-3 rounded">
+                    <a href={image.url} target="_blank" rel="noopener noreferrer" className="block">
+                      <ExternalImage
+                        src={image.url}
+                        alt={image.caption || `${serialLabel} evidence ${index + 1}`}
+                        className="aspect-[4/3] w-full rounded object-cover"
+                        fallbackSrc={tracker.referenceImage || '/icon.svg'}
+                      />
+                    </a>
+                    <div className="mt-2 space-y-1 text-xs text-ring-light">
+                      <p>{image.caption || `Evidence ${index + 1}`}</p>
+                      {image.sourceType && <p>Source type: {image.sourceType.replace('-', ' ')}</p>}
+                      {image.sourceUrl && (
+                        <a href={image.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-ring-gold hover:underline">
+                          View evidence source
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {card.evidenceImages.length > 6 && (
+                <p className="mt-2 text-xs text-ring-light/70">
+                  Showing 6 of {card.evidenceImages.length} saved evidence images.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
