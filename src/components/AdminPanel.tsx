@@ -31,6 +31,7 @@ interface AffiliateStatsRow {
   totalClicks: number;
   lastClick?: {
     clickedAt?: string;
+    sourcePath?: string;
   } | null;
 }
 
@@ -1023,7 +1024,14 @@ export default function AdminPanel({
                             <td className="px-3 py-2 text-right tabular-nums">{row.clicksInWindow}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{row.totalClicks}</td>
                             <td className="px-3 py-2 whitespace-nowrap">
-                              {row.lastClick?.clickedAt ? new Date(row.lastClick.clickedAt).toLocaleString() : 'None'}
+                              {row.lastClick?.clickedAt ? (
+                                <>
+                                  <span className="block">{new Date(row.lastClick.clickedAt).toLocaleString()}</span>
+                                  {row.lastClick.sourcePath && (
+                                    <span className="block max-w-48 truncate text-xs text-ring-light/60">{row.lastClick.sourcePath}</span>
+                                  )}
+                                </>
+                              ) : 'None'}
                             </td>
                           </tr>
                         ))}

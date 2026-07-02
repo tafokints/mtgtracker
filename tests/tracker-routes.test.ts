@@ -245,6 +245,7 @@ describe('tracker API routes', () => {
       href: link.href,
       label: link.label,
       placement: 'tracker-marketplace',
+      sourcePath: '/trackers/one-ring?serial=007',
     }));
     const date = new Date().toISOString().slice(0, 10);
 
@@ -258,6 +259,7 @@ describe('tracker API routes', () => {
       label: link.label,
       intent: link.intent,
       placement: 'tracker-marketplace',
+      sourcePath: '/trackers/one-ring?serial=007',
     });
   });
 
@@ -312,6 +314,7 @@ describe('tracker API routes', () => {
       href: ebayLink.href,
       label: ebayLink.label,
       placement: 'tracker-marketplace',
+      sourcePath: '/trackers/one-ring?serial=007',
     }));
     await trackAffiliateClick(affiliateClickRequest({
       tracker: tracker.slug,
@@ -365,6 +368,9 @@ describe('tracker API routes', () => {
           placement: 'tracker-marketplace',
           clicksInWindow: 1,
           totalClicks: 1,
+          lastClick: expect.objectContaining({
+            sourcePath: '/trackers/one-ring?serial=007',
+          }),
         }),
         expect.objectContaining({
           tracker: 'one-ring',

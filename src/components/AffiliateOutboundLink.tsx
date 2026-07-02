@@ -20,14 +20,21 @@ export default function AffiliateOutboundLink({ link, trackerSlug, placement, cl
       label: link.label,
       intent: link.intent,
       placement,
+      sourcePath: `${window.location.pathname}${window.location.search}`,
     });
 
     if (navigator.sendBeacon) {
-      navigator.sendBeacon('/api/affiliate/click', new Blob([payload], { type: 'application/json' }));
+      const queued = navigator.sendBeacon('/api/affiliate/click', new Blob([payload], { type: 'application/json' }));
+      if (queued) {
+        return;
+      }
+    }
+
+    if (typeof fetch !== 'function') {
       return;
     }
 
-    fetch('/api/affiliate/click', {
+    void fetch('/api/affiliate/click', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

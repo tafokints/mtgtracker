@@ -36,6 +36,7 @@ export async function POST(request: Request) {
     label?: unknown;
     intent?: unknown;
     placement?: unknown;
+    sourcePath?: unknown;
   };
 
   const trackerSlug = typeof input.tracker === 'string' ? input.tracker : '';
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
   const href = typeof input.href === 'string' ? input.href : '';
   const label = typeof input.label === 'string' ? input.label.slice(0, 120) : undefined;
   const placement = typeof input.placement === 'string' ? input.placement.slice(0, 80) : 'unknown';
+  const sourcePath = typeof input.sourcePath === 'string' ? input.sourcePath.slice(0, 200) : undefined;
 
   if (!trackerSlug || !isKnownTrackerSlug(trackerSlug)) {
     return NextResponse.json({ message: 'Unknown tracker' }, { status: 400 });
@@ -71,6 +73,7 @@ export async function POST(request: Request) {
         label: label || allowedLink.label,
         intent: allowedLink.intent,
         placement,
+        sourcePath,
         clickedAt: new Date().toISOString(),
       }),
     ]);
