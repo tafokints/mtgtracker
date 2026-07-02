@@ -44,6 +44,12 @@ export default function AffiliateOutboundLink({ link, trackerSlug, placement, cl
     }).catch(() => undefined);
   };
 
+  const trackAuxClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (event.button !== 0) {
+      trackClick();
+    }
+  };
+
   return (
     <a
       href={link.href}
@@ -51,6 +57,7 @@ export default function AffiliateOutboundLink({ link, trackerSlug, placement, cl
       rel="noopener noreferrer sponsored"
       className={className}
       onClick={trackClick}
+      onAuxClick={trackAuxClick}
     >
       {children || link.label}
     </a>

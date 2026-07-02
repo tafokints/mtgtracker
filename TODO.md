@@ -24,6 +24,7 @@
 - [x] Add top-of-page affiliate disclosure on tracker pages.
 - [x] Add affiliate link validation script.
 - [x] Add affiliate outbound click telemetry.
+- [x] Track auxiliary new-tab affiliate clicks through shared outbound links.
 - [x] Add admin affiliate click stats view.
 - [x] Add affiliate stats rollups by tracker, merchant, and placement.
 - [x] Store affiliate click source paths for better CTA and page attribution.

@@ -110,6 +110,7 @@ Legacy keys are read once during card initialization, migrated into the configur
 
 Affiliate click telemetry is stored separately from tracker backups:
 
+- Shared outbound affiliate links track normal clicks and auxiliary new-tab clicks.
 - `affiliate:clicks:{yyyy-mm-dd}:{trackerSlug}:{merchant}:{placement}` counts daily outbound clicks.
 - `affiliate:clicks:total:{trackerSlug}:{merchant}:{placement}` counts all-time outbound clicks.
 - `affiliate:last-click:{trackerSlug}:{merchant}:{placement}` stores the latest click metadata, including source page path when available, for quick inspection.
