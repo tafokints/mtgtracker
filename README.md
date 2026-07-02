@@ -149,6 +149,7 @@ Before promoting the site, run:
 npm run lint
 npm run build
 npm run links:validate
+npm run smoke
 ```
 
 Also verify:
@@ -162,6 +163,8 @@ Also verify:
 - Amazon affiliate links use Associate tag `meleeitonme0a-20`.
 - `/about`, `/contact`, `/privacy`, and `/affiliate-disclosure` load in production.
 - Google Search Console ownership is verified and `https://mtgtrackers.com/sitemap.xml` is submitted.
+
+`npm run smoke` defaults to `https://mtgtrackers.com`. To check another deployment, run `npm run smoke -- https://your-preview-url.vercel.app` or set `SMOKE_BASE_URL`.
 
 ## References
 

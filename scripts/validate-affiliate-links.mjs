@@ -101,7 +101,7 @@ function assertUrlShape(link) {
   }
 }
 
-async function fetchStatus(link) {
+async function fetchStatusOnce(link) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
 
@@ -130,6 +130,19 @@ async function fetchStatus(link) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function fetchStatus(link) {
+  let lastResult;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    lastResult = await fetchStatusOnce(link);
+    if (lastResult.ok || lastResult.status !== 'ERROR') {
+      return lastResult;
+    }
+  }
+
+  return lastResult;
 }
 
 async function main() {

@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "catalog:list": "node scripts/scaffold-tracker.mjs list",
     "tracker:scaffold": "node scripts/scaffold-tracker.mjs generate",
-    "links:validate": "node scripts/validate-affiliate-links.mjs"
+    "links:validate": "node scripts/validate-affiliate-links.mjs",
+    "smoke": "node scripts/smoke-check.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
