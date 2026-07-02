@@ -499,6 +499,11 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                         {card.sourceType.replace('-', ' ')}
                       </span>
                     )}
+                    {(card.evidenceImages || []).length > 0 && (
+                      <span className="mt-2 inline-block rounded border border-ring-teal/40 px-2 py-0.5 text-xs text-ring-teal">
+                        {(card.evidenceImages || []).length} evidence image{(card.evidenceImages || []).length === 1 ? '' : 's'}
+                      </span>
+                    )}
                     
                     {card.price && (
                       <div className="text-sm mt-2 text-green-400">
