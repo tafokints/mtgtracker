@@ -108,6 +108,55 @@ export function formatTrackerCardLabel(tracker: TrackerSummary, card: Pick<Seria
   return card.cardTitle && card.cardTitle !== tracker.title ? `${card.cardTitle} ${serialLabel}` : serialLabel;
 }
 
+function normalizeSerialLookup(value: string) {
+  const trimmed = value.trim();
+  const numericValue = Number(trimmed);
+
+  if (Number.isInteger(numericValue) && numericValue > 0) {
+    return String(numericValue);
+  }
+
+  return trimmed.toLowerCase();
+}
+
+export function getTrackerCardDeepLinkParams(tracker: TrackerSummary, card: Pick<SerializedRingCard, 'cardSlug' | 'serialNumber'>) {
+  const params = new URLSearchParams();
+
+  if (getTrackerCardDefinitions(tracker).length > 1 && card.cardSlug) {
+    params.set('card', card.cardSlug);
+  }
+
+  params.set('serial', card.serialNumber);
+  return params;
+}
+
+export function findTrackerCardByDeepLinkParams(
+  tracker: TrackerSummary,
+  cards: SerializedRingCard[],
+  params: URLSearchParams
+) {
+  const slotId = Number(params.get('slot') || params.get('id') || '');
+
+  if (Number.isInteger(slotId) && slotId > 0) {
+    return cards.find((card) => card.id === slotId);
+  }
+
+  const serial = params.get('serial');
+  if (!serial) return undefined;
+
+  const cardSlug = params.get('card');
+  const normalizedSerial = normalizeSerialLookup(serial);
+  const hasMultipleCardDefinitions = getTrackerCardDefinitions(tracker).length > 1;
+
+  return cards.find((card) => {
+    if (hasMultipleCardDefinitions && cardSlug && card.cardSlug !== cardSlug) {
+      return false;
+    }
+
+    return normalizeSerialLookup(card.serialNumber) === normalizedSerial;
+  });
+}
+
 export function createInitialTrackerCards(tracker: TrackerSummary): SerializedRingCard[] {
   const cards: SerializedRingCard[] = [];
 

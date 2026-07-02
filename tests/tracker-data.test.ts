@@ -6,7 +6,9 @@ import {
   createInitialTrackerCards,
   formatTrackerSerial,
   formatTrackerCardLabel,
+  findTrackerCardByDeepLinkParams,
   getRecentTrackerDiscoveriesSnapshot,
+  getTrackerCardDeepLinkParams,
   getTrackerDirectoryStatsSnapshot,
   getTrackerSlotId,
   getTrackerTotalSlots,
@@ -289,6 +291,42 @@ describe('tracker data helpers', () => {
     });
     expect(getTrackerSlotId(posterTracker, 'the-one-ring', 7)).toBe(1707);
     expect(formatTrackerCardLabel(posterTracker, cards[1706])).toBe('The One Ring 007/100');
+  });
+
+  it('builds and resolves single-card serial deep links', () => {
+    const cards = createInitialTrackerCards(tracker);
+    const params = getTrackerCardDeepLinkParams(tracker, cards[6]);
+
+    expect(params.toString()).toBe('serial=007');
+    expect(findTrackerCardByDeepLinkParams(tracker, cards, new URLSearchParams('serial=7'))).toMatchObject({
+      id: 7,
+      serialNumber: '007',
+    });
+    expect(findTrackerCardByDeepLinkParams(tracker, cards, new URLSearchParams('slot=7'))).toMatchObject({
+      id: 7,
+      serialNumber: '007',
+    });
+  });
+
+  it('builds and resolves multi-card serial deep links with card slug disambiguation', () => {
+    const posterTracker = getTracker('lotr-poster-cards');
+    if (!posterTracker) throw new Error('lotr-poster-cards tracker fixture is missing');
+
+    const cards = createInitialTrackerCards(posterTracker);
+    const oneRingSeven = cards[1706];
+    const params = getTrackerCardDeepLinkParams(posterTracker, oneRingSeven);
+
+    expect(params.toString()).toBe('card=the-one-ring&serial=007');
+    expect(findTrackerCardByDeepLinkParams(posterTracker, cards, params)).toMatchObject({
+      id: 1707,
+      cardSlug: 'the-one-ring',
+      serialNumber: '007',
+    });
+    expect(findTrackerCardByDeepLinkParams(posterTracker, cards, new URLSearchParams('card=gandalf-the-white&serial=7'))).toMatchObject({
+      id: 107,
+      cardSlug: 'gandalf-the-white',
+      serialNumber: '007',
+    });
   });
 });
 

@@ -4,7 +4,12 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry } from "@/lib/types";
 import type { TrackerSummary } from '@/lib/trackers';
 import Link from "next/link";
-import { formatTrackerCardLabel, getTrackerCardDefinitions } from '@/lib/tracker-data';
+import {
+  findTrackerCardByDeepLinkParams,
+  formatTrackerCardLabel,
+  getTrackerCardDeepLinkParams,
+  getTrackerCardDefinitions,
+} from '@/lib/tracker-data';
 import AffiliateLinks from "@/components/AffiliateLinks";
 import AffiliateDisclosureNotice from "@/components/AffiliateDisclosureNotice";
 import PrimaryAffiliateCtas from '@/components/PrimaryAffiliateCtas';
@@ -51,6 +56,38 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   // State for card details
   const [selectedCardForDetails, setSelectedCardForDetails] = useState<SerializedRingCard | null>(null);
 
+  const openCardDetails = useCallback((card: SerializedRingCard) => {
+    setSelectedCardForDetails(card);
+
+    const params = new URLSearchParams(window.location.search);
+    const deepLinkParams = getTrackerCardDeepLinkParams(tracker, card);
+
+    params.delete('card');
+    params.delete('serial');
+    params.delete('slot');
+    params.delete('id');
+
+    for (const [key, value] of deepLinkParams) {
+      params.set(key, value);
+    }
+
+    const query = params.toString();
+    window.history.pushState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+  }, [tracker]);
+
+  const closeCardDetails = useCallback(() => {
+    setSelectedCardForDetails(null);
+
+    const params = new URLSearchParams(window.location.search);
+    params.delete('card');
+    params.delete('serial');
+    params.delete('slot');
+    params.delete('id');
+
+    const query = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+  }, []);
+
   const fetchCards = useCallback(async () => {
     try {
       const response = await fetch(`${trackerApiBase}/cards`);
@@ -77,6 +114,29 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   useEffect(() => {
     fetchCards();
   }, [fetchCards]);
+
+  useEffect(() => {
+    if (cards.length === 0) return;
+
+    const syncDetailsFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const card = findTrackerCardByDeepLinkParams(tracker, cards, params);
+
+      setSelectedCardForDetails(card || null);
+
+      if (card?.cardSlug) {
+        setCardFilter(card.cardSlug);
+        setSearchQuery('');
+      }
+    };
+
+    syncDetailsFromUrl();
+    window.addEventListener('popstate', syncDetailsFromUrl);
+
+    return () => {
+      window.removeEventListener('popstate', syncDetailsFromUrl);
+    };
+  }, [cards, tracker]);
 
   const handlePriceUpdate = async (cardId: number, price: number) => {
     try {
@@ -456,7 +516,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
 
                     {/* Details button */}
                     <button
-                      onClick={() => setSelectedCardForDetails(card)}
+                      onClick={() => openCardDetails(card)}
                       className="w-full mt-auto bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-4 rounded text-sm"
                     >
                       View Details
@@ -498,7 +558,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
             tracker={tracker}
             card={selectedCardForDetails}
             isOpen={!!selectedCardForDetails}
-            onClose={() => setSelectedCardForDetails(null)}
+            onClose={closeCardDetails}
           />
         )}
       </main>
