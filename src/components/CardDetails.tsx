@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { SerializedRingCard } from '../lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
 import { formatTrackerCardLabel } from '@/lib/tracker-data';
@@ -16,25 +16,84 @@ interface CardDetailsProps {
 }
 
 export default function CardDetails({ card, tracker, isOpen, onClose }: CardDetailsProps) {
+  const [copyMessage, setCopyMessage] = useState('');
+  const copyMessageTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (isOpen) return;
+
+    setCopyMessage('');
+    if (copyMessageTimeoutRef.current) {
+      window.clearTimeout(copyMessageTimeoutRef.current);
+      copyMessageTimeoutRef.current = null;
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const serialLabel = formatTrackerCardLabel(tracker, card);
   const marketplaceLinks = tracker.affiliateLinks || [];
+  const clearCopyMessageSoon = () => {
+    if (copyMessageTimeoutRef.current) {
+      window.clearTimeout(copyMessageTimeoutRef.current);
+    }
+
+    copyMessageTimeoutRef.current = window.setTimeout(() => {
+      setCopyMessage('');
+      copyMessageTimeoutRef.current = null;
+    }, 1800);
+  };
+  const copyDetailLink = async () => {
+    const href = window.location.href;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(href);
+      } else {
+        const input = document.createElement('input');
+        input.value = href;
+        input.setAttribute('readonly', '');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+
+      setCopyMessage('Copied');
+      clearCopyMessageSoon();
+    } catch {
+      setCopyMessage('Copy failed');
+      clearCopyMessageSoon();
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
       <div className="bg-ring-dark border border-ring-gold rounded-lg p-6 w-[min(90vw,42rem)] max-h-[90vh] overflow-y-auto divide-y divide-ring-gold/20">
-        <div className="flex justify-between items-center pb-4 gap-4">
+        <div className="flex flex-wrap justify-between items-center pb-4 gap-4">
           <h2 className="text-xl font-bold text-ring-gold">
             {tracker.title} {serialLabel} Details
           </h2>
-          <button
-            onClick={onClose}
-            className="text-ring-gold hover:text-yellow-400 rounded px-2 py-1"
-            aria-label="Close details"
-          >
-            x
-          </button>
+          <div className="flex items-center gap-2">
+            {copyMessage && (
+              <span className="text-xs font-bold text-ring-light/70" role="status">{copyMessage}</span>
+            )}
+            <button
+              onClick={copyDetailLink}
+              className="rounded border border-ring-gold/40 px-3 py-1.5 text-xs font-bold text-ring-gold transition-colors hover:border-ring-gold hover:bg-ring-gold hover:text-ring-dark"
+            >
+              Copy Link
+            </button>
+            <button
+              onClick={onClose}
+              className="text-ring-gold hover:text-yellow-400 rounded px-2 py-1"
+              aria-label="Close details"
+            >
+              x
+            </button>
+          </div>
         </div>
 
         <div className="space-y-6 pt-4">
