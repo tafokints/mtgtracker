@@ -245,7 +245,17 @@ describe('tracker API routes', () => {
       href: link.href,
       label: link.label,
       placement: 'tracker-marketplace',
-      sourcePath: '/trackers/one-ring?serial=007',
+      sourcePath: '/trackers/one-ring?filter=has-evidence&sort=evidence-desc&serial=007',
+      viewContext: {
+        query: 'foil',
+        filter: 'has-evidence',
+        sort: 'evidence-desc',
+        cardFilter: 'all',
+        card: 'the-one-ring',
+        serial: '007',
+        slot: '7',
+        ignored: 'not stored',
+      },
     }));
     const date = new Date().toISOString().slice(0, 10);
 
@@ -259,7 +269,52 @@ describe('tracker API routes', () => {
       label: link.label,
       intent: link.intent,
       placement: 'tracker-marketplace',
-      sourcePath: '/trackers/one-ring?serial=007',
+      sourcePath: '/trackers/one-ring?filter=has-evidence&sort=evidence-desc&serial=007',
+      viewContext: {
+        query: 'foil',
+        filter: 'has-evidence',
+        sort: 'evidence-desc',
+        cardFilter: 'all',
+        card: 'the-one-ring',
+        serial: '007',
+        slot: '7',
+      },
+    });
+  });
+
+  it('sanitizes affiliate click view context before storing last-click metadata', async () => {
+    const link = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'amazon');
+    if (!link) throw new Error('Expected One Ring Amazon affiliate link');
+
+    const response = await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: link.merchant,
+      href: link.href,
+      label: link.label,
+      placement: 'tracker-top-cta',
+      sourcePath: `/trackers/one-ring?${'x'.repeat(260)}`,
+      viewContext: {
+        query: 'x'.repeat(120),
+        filter: 'source-marketplace',
+        sort: 'date-desc',
+        cardFilter: 'the-one-ring',
+        serial: '123456789012345678901234567890',
+        slot: '123456789012345678901234567890',
+        card: 123,
+      },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(redisFixture.store.get('affiliate:last-click:one-ring:amazon:tracker-top-cta')).toMatchObject({
+      sourcePath: `/trackers/one-ring?${'x'.repeat(181)}`,
+      viewContext: {
+        query: 'x'.repeat(80),
+        filter: 'source-marketplace',
+        sort: 'date-desc',
+        cardFilter: 'the-one-ring',
+        serial: '123456789012345678901234',
+        slot: '123456789012345678901234',
+      },
     });
   });
 
@@ -314,7 +369,12 @@ describe('tracker API routes', () => {
       href: ebayLink.href,
       label: ebayLink.label,
       placement: 'tracker-marketplace',
-      sourcePath: '/trackers/one-ring?serial=007',
+      sourcePath: '/trackers/one-ring?filter=has-evidence&sort=evidence-desc&serial=007',
+      viewContext: {
+        filter: 'has-evidence',
+        sort: 'evidence-desc',
+        serial: '007',
+      },
     }));
     await trackAffiliateClick(affiliateClickRequest({
       tracker: tracker.slug,
@@ -378,7 +438,12 @@ describe('tracker API routes', () => {
           clicksInWindow: 1,
           totalClicks: 1,
           lastClick: expect.objectContaining({
-            sourcePath: '/trackers/one-ring?serial=007',
+            sourcePath: '/trackers/one-ring?filter=has-evidence&sort=evidence-desc&serial=007',
+            viewContext: {
+              filter: 'has-evidence',
+              sort: 'evidence-desc',
+              serial: '007',
+            },
           }),
         }),
         expect.objectContaining({
