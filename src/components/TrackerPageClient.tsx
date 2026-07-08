@@ -234,6 +234,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
           (statusFilter === 'pending' && !card.found && (card.pendingReports || 0) > 0) ||
           (statusFilter === 'confirmed' && card.verificationStatus === 'confirmed') ||
           (statusFilter === 'source-linked' && card.verificationStatus === 'source-linked') ||
+          (statusFilter === 'has-evidence' && (card.evidenceImages || []).length > 0) ||
           (statusFilter === 'not-found' && !card.found);
 
         return matchesCard && matchesSearch && matchesStatus;

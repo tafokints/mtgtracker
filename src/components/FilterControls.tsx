@@ -72,6 +72,7 @@ export default function FilterControls({
             <option value="pending">Show Pending Review</option>
             <option value="confirmed">Show Confirmed</option>
             <option value="source-linked">Show Source-Linked</option>
+            <option value="has-evidence">Show With Evidence</option>
             <option value="not-found">Show Not Found</option>
           </select>
         </div>

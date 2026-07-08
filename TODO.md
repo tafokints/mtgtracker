@@ -119,6 +119,7 @@
 - [x] Add empty states for no submissions, no prices, and no discoveries.
 - [x] Make `Report a Find` visible on live tracker pages so new discoveries can enter admin review.
 - [x] Highlight saved evidence image counts on tracker cards.
+- [x] Add tracker filter for discoveries with saved evidence.
 - [x] Add shareable serial detail links with URL state.
 - [x] Add one-click copy for serial detail links.
 - [x] Add serial-specific report links that prefill the submit form.
