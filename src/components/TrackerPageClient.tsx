@@ -644,6 +644,19 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
               setSortOrder={setSortOrder}
             />
 
+            <div className="mt-3 flex w-full max-w-5xl flex-wrap items-center justify-between gap-2 rounded border border-ring-gold/25 bg-ring-dark/70 px-4 py-3 text-sm text-ring-light">
+              <p>
+                Showing <span className="font-bold text-ring-gold">{filteredAndSortedCards.length}</span> of{' '}
+                <span className="font-bold text-ring-gold">{totalCount}</span> serials
+                {hasActiveViewFilters ? ` for ${activeViewSummary}` : ' in this tracker'}.
+              </p>
+              {pendingReportCount > 0 && (
+                <p className="text-xs text-ring-light/70">
+                  {pendingReportCount} pending report{pendingReportCount === 1 ? '' : 's'} awaiting review.
+                </p>
+              )}
+            </div>
+
             {activeFilterChips.length > 0 && (
               <div className="mt-3 flex w-full max-w-5xl flex-wrap items-center gap-2">
                 {activeFilterChips.map((chip) => (
