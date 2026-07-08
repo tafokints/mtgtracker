@@ -73,6 +73,12 @@ export default function FilterControls({
             <option value="confirmed">Show Confirmed</option>
             <option value="source-linked">Show Source-Linked</option>
             <option value="has-evidence">Show With Evidence</option>
+            <option value="source-marketplace">Show Marketplace Sources</option>
+            <option value="source-grading-pop">Show Grading Pop Sources</option>
+            <option value="source-social">Show Social Sources</option>
+            <option value="source-article">Show Article Sources</option>
+            <option value="source-private-sale">Show Private Sale Sources</option>
+            <option value="source-other">Show Other Sources</option>
             <option value="not-found">Show Not Found</option>
           </select>
         </div>

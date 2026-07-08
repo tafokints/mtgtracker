@@ -120,6 +120,7 @@
 - [x] Make `Report a Find` visible on live tracker pages so new discoveries can enter admin review.
 - [x] Highlight saved evidence image counts on tracker cards.
 - [x] Add tracker filter for discoveries with saved evidence.
+- [x] Add tracker source-type filters for marketplace, grading, social, article, private sale, and other discoveries.
 - [x] Add evidence-count sorting on tracker pages.
 - [x] Add shareable serial detail links with URL state.
 - [x] Add one-click copy for serial detail links.

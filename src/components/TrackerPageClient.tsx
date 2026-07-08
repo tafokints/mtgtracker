@@ -235,6 +235,12 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
           (statusFilter === 'confirmed' && card.verificationStatus === 'confirmed') ||
           (statusFilter === 'source-linked' && card.verificationStatus === 'source-linked') ||
           (statusFilter === 'has-evidence' && (card.evidenceImages || []).length > 0) ||
+          (statusFilter === 'source-marketplace' && card.sourceType === 'marketplace') ||
+          (statusFilter === 'source-grading-pop' && card.sourceType === 'grading-pop') ||
+          (statusFilter === 'source-social' && card.sourceType === 'social') ||
+          (statusFilter === 'source-article' && card.sourceType === 'article') ||
+          (statusFilter === 'source-private-sale' && card.sourceType === 'private-sale') ||
+          (statusFilter === 'source-other' && card.sourceType === 'other') ||
           (statusFilter === 'not-found' && !card.found);
 
         return matchesCard && matchesSearch && matchesStatus;
