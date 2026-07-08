@@ -60,6 +60,30 @@ const VALID_SORT_ORDERS = new Set([
   'evidence-desc',
 ]);
 
+const STATUS_FILTER_LABELS: Record<string, string> = {
+  found: 'located serials',
+  pending: 'pending reports',
+  confirmed: 'confirmed discoveries',
+  'source-linked': 'source-linked discoveries',
+  'has-evidence': 'proof-backed discoveries',
+  'source-marketplace': 'marketplace-sourced discoveries',
+  'source-grading-pop': 'grading pop discoveries',
+  'source-social': 'social-sourced discoveries',
+  'source-article': 'article-sourced discoveries',
+  'source-private-sale': 'private sale discoveries',
+  'source-other': 'other sourced discoveries',
+  'not-found': 'unlocated serials',
+};
+
+const SORT_ORDER_LABELS: Record<string, string> = {
+  'id-desc': 'highest serials first',
+  'price-desc': 'highest prices first',
+  'price-asc': 'lowest prices first',
+  'date-desc': 'newest finds first',
+  'date-asc': 'oldest finds first',
+  'evidence-desc': 'most evidence first',
+};
+
 export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary }) {
   const [cards, setCards] = useState<SerializedRingCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -448,6 +472,25 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     cardFilter !== 'all' ||
     statusFilter !== 'all' ||
     sortOrder !== 'id-asc';
+  const activeViewSummary = useMemo(() => {
+    const parts = [];
+    const selectedCardDefinition = cardDefinitions.find((definition) => definition.slug === cardFilter);
+
+    if (selectedCardDefinition) {
+      parts.push(selectedCardDefinition.title);
+    }
+    if (statusFilter !== 'all') {
+      parts.push(STATUS_FILTER_LABELS[statusFilter] || statusFilter);
+    }
+    if (searchQuery.trim()) {
+      parts.push(`search "${searchQuery.trim()}"`);
+    }
+    if (sortOrder !== 'id-asc') {
+      parts.push(SORT_ORDER_LABELS[sortOrder] || sortOrder);
+    }
+
+    return parts.length > 0 ? parts.join(' / ') : 'current tracker view';
+  }, [cardDefinitions, cardFilter, searchQuery, sortOrder, statusFilter]);
 
   const lastFoundCard = foundCards.sort((a, b) => {
     if (!a.dateFound || !b.dateFound) return 0;
@@ -573,6 +616,8 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                   links={tracker.affiliateLinks}
                   trackerSlug={tracker.slug}
                   placement="tracker-filtered-cta"
+                  title="Marketplace Links For This View"
+                  description={`${filteredAndSortedCards.length} matching serial${filteredAndSortedCards.length === 1 ? '' : 's'}: ${activeViewSummary}.`}
                 />
               </div>
             )}

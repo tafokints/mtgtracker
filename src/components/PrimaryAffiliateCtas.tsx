@@ -5,6 +5,8 @@ interface PrimaryAffiliateCtasProps {
   links?: AffiliateLink[];
   trackerSlug: string;
   placement?: string;
+  title?: string;
+  description?: string;
 }
 
 const merchantCopy: Record<AffiliateLink['merchant'], { eyebrow: string; detail: string }> = {
@@ -40,7 +42,13 @@ function orderLinks(links: AffiliateLink[]) {
   return [...uniqueByMerchant.values()];
 }
 
-export default function PrimaryAffiliateCtas({ links, trackerSlug, placement = 'tracker-top-cta' }: PrimaryAffiliateCtasProps) {
+export default function PrimaryAffiliateCtas({
+  links,
+  trackerSlug,
+  placement = 'tracker-top-cta',
+  title,
+  description,
+}: PrimaryAffiliateCtasProps) {
   const resolvedLinks = orderLinks(links && links.length > 0 ? links : defaultAffiliateLinks);
 
   if (resolvedLinks.length === 0) {
@@ -49,6 +57,12 @@ export default function PrimaryAffiliateCtas({ links, trackerSlug, placement = '
 
   return (
     <section className="mb-5 rounded-lg border border-ring-gold/30 bg-black/20 p-4" aria-label="Primary marketplace links">
+      {(title || description) && (
+        <div className="mb-3 text-left">
+          {title && <h2 className="text-sm font-bold uppercase text-ring-gold">{title}</h2>}
+          {description && <p className="mt-1 text-xs text-ring-light/70">{description}</p>}
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         {resolvedLinks.slice(0, 3).map((link) => {
           const copy = merchantCopy[link.merchant];
