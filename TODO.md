@@ -122,6 +122,7 @@
 - [x] Add tracker filter for discoveries with saved evidence.
 - [x] Add tracker source-type filters for marketplace, grading, social, article, private sale, and other discoveries.
 - [x] Add evidence-count sorting on tracker pages.
+- [x] Preserve tracker search, filter, card, and sort state in shareable URLs.
 - [x] Add shareable serial detail links with URL state.
 - [x] Add one-click copy for serial detail links.
 - [x] Add serial-specific report links that prefill the submit form.

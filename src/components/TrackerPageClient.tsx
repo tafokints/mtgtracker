@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry } from "@/lib/types";
 import type { TrackerSummary } from '@/lib/trackers';
 import Link from "next/link";
@@ -34,6 +34,32 @@ interface CardSummaryRow {
   referenceImage?: string;
 }
 
+const VALID_STATUS_FILTERS = new Set([
+  'all',
+  'found',
+  'pending',
+  'confirmed',
+  'source-linked',
+  'has-evidence',
+  'source-marketplace',
+  'source-grading-pop',
+  'source-social',
+  'source-article',
+  'source-private-sale',
+  'source-other',
+  'not-found',
+]);
+
+const VALID_SORT_ORDERS = new Set([
+  'id-asc',
+  'id-desc',
+  'price-desc',
+  'price-asc',
+  'date-desc',
+  'date-asc',
+  'evidence-desc',
+]);
+
 export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary }) {
   const [cards, setCards] = useState<SerializedRingCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +74,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   const [cardFilter, setCardFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState('id-asc');
+  const viewStateInitializedRef = useRef(false);
   
   // State for lightbox
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -55,6 +82,70 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
 
   // State for card details
   const [selectedCardForDetails, setSelectedCardForDetails] = useState<SerializedRingCard | null>(null);
+
+  const syncViewStateFromUrl = useCallback(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nextStatusFilter = params.get('filter') || 'all';
+    const nextSortOrder = params.get('sort') || 'id-asc';
+    const nextCardFilter = params.get('cardFilter') || 'all';
+    const isKnownCardFilter =
+      nextCardFilter === 'all' || cardDefinitions.some((definition) => definition.slug === nextCardFilter);
+
+    setSearchQuery(params.get('q') || '');
+    setStatusFilter(VALID_STATUS_FILTERS.has(nextStatusFilter) ? nextStatusFilter : 'all');
+    setSortOrder(VALID_SORT_ORDERS.has(nextSortOrder) ? nextSortOrder : 'id-asc');
+    setCardFilter(isKnownCardFilter ? nextCardFilter : 'all');
+  }, [cardDefinitions]);
+
+  useEffect(() => {
+    syncViewStateFromUrl();
+    viewStateInitializedRef.current = true;
+
+    window.addEventListener('popstate', syncViewStateFromUrl);
+
+    return () => {
+      window.removeEventListener('popstate', syncViewStateFromUrl);
+    };
+  }, [syncViewStateFromUrl]);
+
+  useEffect(() => {
+    if (!viewStateInitializedRef.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const trimmedSearchQuery = searchQuery.trim();
+
+    if (trimmedSearchQuery) {
+      params.set('q', trimmedSearchQuery);
+    } else {
+      params.delete('q');
+    }
+
+    if (statusFilter !== 'all') {
+      params.set('filter', statusFilter);
+    } else {
+      params.delete('filter');
+    }
+
+    if (sortOrder !== 'id-asc') {
+      params.set('sort', sortOrder);
+    } else {
+      params.delete('sort');
+    }
+
+    if (cardFilter !== 'all') {
+      params.set('cardFilter', cardFilter);
+    } else {
+      params.delete('cardFilter');
+    }
+
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+
+    if (nextUrl !== currentUrl) {
+      window.history.replaceState(null, '', nextUrl);
+    }
+  }, [cardFilter, searchQuery, sortOrder, statusFilter]);
 
   const openCardDetails = useCallback((card: SerializedRingCard) => {
     setSelectedCardForDetails(card);
