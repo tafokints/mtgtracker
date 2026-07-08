@@ -21,6 +21,23 @@ function readCount(value: unknown) {
   return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
+function readLastClickViewContext(lastClick: unknown) {
+  if (!lastClick || typeof lastClick !== 'object' || Array.isArray(lastClick)) {
+    return undefined;
+  }
+
+  const value = lastClick as { viewContext?: unknown };
+  if (!value.viewContext || typeof value.viewContext !== 'object' || Array.isArray(value.viewContext)) {
+    return undefined;
+  }
+
+  return value.viewContext as {
+    filter?: string;
+    sort?: string;
+    cardFilter?: string;
+  };
+}
+
 function summarizeRows(rows: Array<{
   tracker: string;
   trackerTitle: string;
@@ -29,11 +46,15 @@ function summarizeRows(rows: Array<{
   placement: string;
   clicksInWindow: number;
   totalClicks: number;
+  lastClick?: unknown;
 }>) {
   const byTracker = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
   const byMerchant = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
   const byIntent = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
   const byPlacement = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
+  const byLastClickFilter = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
+  const byLastClickSort = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
+  const byLastClickCardFilter = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
 
   const add = (
     map: Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>,
@@ -55,6 +76,17 @@ function summarizeRows(rows: Array<{
     add(byMerchant, row.merchant, row.merchant, row);
     add(byIntent, row.intent, row.intent, row);
     add(byPlacement, row.placement, row.placement, row);
+
+    const viewContext = readLastClickViewContext(row.lastClick);
+    if (viewContext?.filter) {
+      add(byLastClickFilter, viewContext.filter, viewContext.filter, row);
+    }
+    if (viewContext?.sort) {
+      add(byLastClickSort, viewContext.sort, viewContext.sort, row);
+    }
+    if (viewContext?.cardFilter) {
+      add(byLastClickCardFilter, viewContext.cardFilter, viewContext.cardFilter, row);
+    }
   }
 
   const clicksInWindow = rows.reduce((total, row) => total + row.clicksInWindow, 0);
@@ -71,6 +103,9 @@ function summarizeRows(rows: Array<{
     byMerchant: sortBreakdown(byMerchant.values()),
     byIntent: sortBreakdown(byIntent.values()),
     byPlacement: sortBreakdown(byPlacement.values()),
+    byLastClickFilter: sortBreakdown(byLastClickFilter.values()),
+    byLastClickSort: sortBreakdown(byLastClickSort.values()),
+    byLastClickCardFilter: sortBreakdown(byLastClickCardFilter.values()),
   };
 }
 

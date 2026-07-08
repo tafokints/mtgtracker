@@ -29,6 +29,7 @@
 - [x] Add affiliate stats rollups by tracker, merchant, and placement.
 - [x] Store affiliate click source paths for better CTA and page attribution.
 - [x] Store shareable tracker view context with affiliate click metadata.
+- [x] Surface last-click view-context rollups in affiliate stats.
 - [x] Add top-of-page affiliate marketplace CTA placement.
 - [x] Add serial detail marketplace CTA placement.
 - [x] Add affiliate attribution checks for eBay custom IDs, Amazon tags, and TCGplayer redirects.

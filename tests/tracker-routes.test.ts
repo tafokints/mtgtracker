@@ -425,6 +425,12 @@ describe('tracker API routes', () => {
           expect.objectContaining({ key: 'tracker-directory', clicksInWindow: 1 }),
           expect.objectContaining({ key: 'serial-detail', clicksInWindow: 1 }),
         ]),
+        byLastClickFilter: expect.arrayContaining([
+          expect.objectContaining({ key: 'has-evidence', clicksInWindow: 1 }),
+        ]),
+        byLastClickSort: expect.arrayContaining([
+          expect.objectContaining({ key: 'evidence-desc', clicksInWindow: 1 }),
+        ]),
       },
       rows: expect.arrayContaining([
         expect.objectContaining({
