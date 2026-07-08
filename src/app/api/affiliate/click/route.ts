@@ -25,6 +25,26 @@ function isKnownTrackerSlug(trackerSlug: string) {
   return trackerSlug === 'default' || trackers.some((tracker) => tracker.slug === trackerSlug);
 }
 
+function sanitizeViewContext(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const input = value as Record<string, unknown>;
+  const context = {
+    query: typeof input.query === 'string' ? input.query.slice(0, 80) : undefined,
+    filter: typeof input.filter === 'string' ? input.filter.slice(0, 80) : undefined,
+    sort: typeof input.sort === 'string' ? input.sort.slice(0, 80) : undefined,
+    cardFilter: typeof input.cardFilter === 'string' ? input.cardFilter.slice(0, 80) : undefined,
+    card: typeof input.card === 'string' ? input.card.slice(0, 80) : undefined,
+    serial: typeof input.serial === 'string' ? input.serial.slice(0, 24) : undefined,
+    slot: typeof input.slot === 'string' ? input.slot.slice(0, 24) : undefined,
+  };
+  const entries = Object.entries(context).filter(([, item]) => Boolean(item));
+
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
+
 export async function POST(request: Request) {
   const body = await readJsonBody(request);
   if (!body.ok) return body.response;
@@ -37,6 +57,7 @@ export async function POST(request: Request) {
     intent?: unknown;
     placement?: unknown;
     sourcePath?: unknown;
+    viewContext?: unknown;
   };
 
   const trackerSlug = typeof input.tracker === 'string' ? input.tracker : '';
@@ -45,6 +66,7 @@ export async function POST(request: Request) {
   const label = typeof input.label === 'string' ? input.label.slice(0, 120) : undefined;
   const placement = typeof input.placement === 'string' ? input.placement.slice(0, 80) : 'unknown';
   const sourcePath = typeof input.sourcePath === 'string' ? input.sourcePath.slice(0, 200) : undefined;
+  const viewContext = sanitizeViewContext(input.viewContext);
 
   if (!trackerSlug || !isKnownTrackerSlug(trackerSlug)) {
     return NextResponse.json({ message: 'Unknown tracker' }, { status: 400 });
@@ -74,6 +96,7 @@ export async function POST(request: Request) {
         intent: allowedLink.intent,
         placement,
         sourcePath,
+        viewContext,
         clickedAt: new Date().toISOString(),
       }),
     ]);

@@ -11,6 +11,21 @@ interface AffiliateOutboundLinkProps {
   children?: React.ReactNode;
 }
 
+function getViewContext() {
+  const params = new URLSearchParams(window.location.search);
+  const context = {
+    query: params.get('q') || undefined,
+    filter: params.get('filter') || undefined,
+    sort: params.get('sort') || undefined,
+    cardFilter: params.get('cardFilter') || undefined,
+    card: params.get('card') || undefined,
+    serial: params.get('serial') || undefined,
+    slot: params.get('slot') || params.get('id') || undefined,
+  };
+
+  return Object.fromEntries(Object.entries(context).filter(([, value]) => Boolean(value)));
+}
+
 export default function AffiliateOutboundLink({ link, trackerSlug, placement, className, children }: AffiliateOutboundLinkProps) {
   const trackClick = () => {
     const payload = JSON.stringify({
@@ -21,6 +36,7 @@ export default function AffiliateOutboundLink({ link, trackerSlug, placement, cl
       intent: link.intent,
       placement,
       sourcePath: `${window.location.pathname}${window.location.search}`,
+      viewContext: getViewContext(),
     });
 
     if (navigator.sendBeacon) {

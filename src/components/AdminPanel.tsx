@@ -32,6 +32,15 @@ interface AffiliateStatsRow {
   lastClick?: {
     clickedAt?: string;
     sourcePath?: string;
+    viewContext?: {
+      query?: string;
+      filter?: string;
+      sort?: string;
+      cardFilter?: string;
+      card?: string;
+      serial?: string;
+      slot?: string;
+    };
   } | null;
 }
 
@@ -1029,6 +1038,18 @@ export default function AdminPanel({
                                   <span className="block">{new Date(row.lastClick.clickedAt).toLocaleString()}</span>
                                   {row.lastClick.sourcePath && (
                                     <span className="block max-w-48 truncate text-xs text-ring-light/60">{row.lastClick.sourcePath}</span>
+                                  )}
+                                  {row.lastClick.viewContext && (
+                                    <span className="block max-w-64 text-xs text-ring-light/60">
+                                      {[
+                                        row.lastClick.viewContext.filter && `filter: ${row.lastClick.viewContext.filter}`,
+                                        row.lastClick.viewContext.sort && `sort: ${row.lastClick.viewContext.sort}`,
+                                        row.lastClick.viewContext.cardFilter && `card: ${row.lastClick.viewContext.cardFilter}`,
+                                        row.lastClick.viewContext.query && `q: ${row.lastClick.viewContext.query}`,
+                                        row.lastClick.viewContext.serial && `serial: ${row.lastClick.viewContext.serial}`,
+                                        row.lastClick.viewContext.slot && `slot: ${row.lastClick.viewContext.slot}`,
+                                      ].filter(Boolean).join(' | ')}
+                                    </span>
                                   )}
                                 </>
                               ) : 'None'}
