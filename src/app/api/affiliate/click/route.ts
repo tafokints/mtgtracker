@@ -25,6 +25,10 @@ function isKnownTrackerSlug(trackerSlug: string) {
   return trackerSlug === 'default' || trackers.some((tracker) => tracker.slug === trackerSlug);
 }
 
+function safeKeyPart(value: string) {
+  return value.replace(/[^a-z0-9._-]/gi, '-');
+}
+
 function sanitizeViewContext(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return undefined;
@@ -84,7 +88,21 @@ export async function POST(request: Request) {
   try {
     const redis = getRedis();
     const date = new Date().toISOString().slice(0, 10);
-    const keyParts = [trackerSlug, merchant, placement].map((part) => part.replace(/[^a-z0-9._-]/gi, '-'));
+    const keyParts = [trackerSlug, merchant, placement].map(safeKeyPart);
+    const contextCounterIncrements: Array<Promise<unknown>> = [];
+    const addContextCounter = (field: 'filter' | 'sort' | 'cardFilter', value?: unknown) => {
+      if (typeof value !== 'string' || !value) return;
+
+      const contextKeyParts = [trackerSlug, field, value].map(safeKeyPart);
+      contextCounterIncrements.push(
+        redis.incr(`affiliate:context:${date}:${contextKeyParts.join(':')}`),
+        redis.incr(`affiliate:context:total:${contextKeyParts.join(':')}`)
+      );
+    };
+
+    addContextCounter('filter', viewContext?.filter);
+    addContextCounter('sort', viewContext?.sort);
+    addContextCounter('cardFilter', viewContext?.cardFilter);
 
     await Promise.all([
       redis.incr(`affiliate:clicks:${date}:${keyParts.join(':')}`),
@@ -99,6 +117,7 @@ export async function POST(request: Request) {
         viewContext,
         clickedAt: new Date().toISOString(),
       }),
+      ...contextCounterIncrements,
     ]);
 
     return NextResponse.json({ ok: true });

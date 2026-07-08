@@ -65,6 +65,9 @@ interface AffiliateStatsResponse {
     byMerchant: AffiliateStatsBreakdown[];
     byIntent: AffiliateStatsBreakdown[];
     byPlacement: AffiliateStatsBreakdown[];
+    byViewFilter: AffiliateStatsBreakdown[];
+    byViewSort: AffiliateStatsBreakdown[];
+    byViewCardFilter: AffiliateStatsBreakdown[];
     byLastClickFilter: AffiliateStatsBreakdown[];
     byLastClickSort: AffiliateStatsBreakdown[];
     byLastClickCardFilter: AffiliateStatsBreakdown[];
@@ -1007,6 +1010,16 @@ export default function AdminPanel({
                     <AffiliateBreakdown title="Intent" rows={affiliateStats.summary.byIntent} />
                     <AffiliateBreakdown title="Placements" rows={affiliateStats.summary.byPlacement} />
                   </div>
+
+                  {(affiliateStats.summary.byViewFilter.length > 0 ||
+                    affiliateStats.summary.byViewSort.length > 0 ||
+                    affiliateStats.summary.byViewCardFilter.length > 0) && (
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                      <AffiliateBreakdown title="View Filters" rows={affiliateStats.summary.byViewFilter} />
+                      <AffiliateBreakdown title="View Sorts" rows={affiliateStats.summary.byViewSort} />
+                      <AffiliateBreakdown title="View Cards" rows={affiliateStats.summary.byViewCardFilter} />
+                    </div>
+                  )}
 
                   {(affiliateStats.summary.byLastClickFilter.length > 0 ||
                     affiliateStats.summary.byLastClickSort.length > 0 ||

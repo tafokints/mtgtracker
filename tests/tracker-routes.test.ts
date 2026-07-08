@@ -263,6 +263,12 @@ describe('tracker API routes', () => {
     await expect(response.json()).resolves.toEqual({ ok: true });
     expect(redisFixture.counters.get(`affiliate:clicks:${date}:one-ring:ebay:tracker-marketplace`)).toBe(1);
     expect(redisFixture.counters.get('affiliate:clicks:total:one-ring:ebay:tracker-marketplace')).toBe(1);
+    expect(redisFixture.counters.get(`affiliate:context:${date}:one-ring:filter:has-evidence`)).toBe(1);
+    expect(redisFixture.counters.get('affiliate:context:total:one-ring:filter:has-evidence')).toBe(1);
+    expect(redisFixture.counters.get(`affiliate:context:${date}:one-ring:sort:evidence-desc`)).toBe(1);
+    expect(redisFixture.counters.get('affiliate:context:total:one-ring:sort:evidence-desc')).toBe(1);
+    expect(redisFixture.counters.get(`affiliate:context:${date}:one-ring:cardFilter:all`)).toBe(1);
+    expect(redisFixture.counters.get('affiliate:context:total:one-ring:cardFilter:all')).toBe(1);
     expect(redisFixture.store.get('affiliate:last-click:one-ring:ebay:tracker-marketplace')).toMatchObject({
       tracker: 'one-ring',
       merchant: 'ebay',
@@ -373,6 +379,7 @@ describe('tracker API routes', () => {
       viewContext: {
         filter: 'has-evidence',
         sort: 'evidence-desc',
+        cardFilter: 'all',
         serial: '007',
       },
     }));
@@ -425,6 +432,15 @@ describe('tracker API routes', () => {
           expect.objectContaining({ key: 'tracker-directory', clicksInWindow: 1 }),
           expect.objectContaining({ key: 'serial-detail', clicksInWindow: 1 }),
         ]),
+        byViewFilter: expect.arrayContaining([
+          expect.objectContaining({ key: 'has-evidence', clicksInWindow: 1, totalClicks: 1 }),
+        ]),
+        byViewSort: expect.arrayContaining([
+          expect.objectContaining({ key: 'evidence-desc', clicksInWindow: 1, totalClicks: 1 }),
+        ]),
+        byViewCardFilter: expect.arrayContaining([
+          expect.objectContaining({ key: 'all', clicksInWindow: 1, totalClicks: 1 }),
+        ]),
         byLastClickFilter: expect.arrayContaining([
           expect.objectContaining({ key: 'has-evidence', clicksInWindow: 1 }),
         ]),
@@ -448,6 +464,7 @@ describe('tracker API routes', () => {
             viewContext: {
               filter: 'has-evidence',
               sort: 'evidence-desc',
+              cardFilter: 'all',
               serial: '007',
             },
           }),

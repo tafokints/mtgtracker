@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { getRedis } from '@/lib/redis';
 import { defaultAffiliateLinks, trackers } from '@/lib/trackers';
+import { getTrackerCardDefinitions } from '@/lib/tracker-data';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -9,6 +10,32 @@ export const revalidate = 0;
 const DEFAULT_DAYS = 30;
 const MAX_DAYS = 90;
 const PLACEMENTS = ['tracker-top-cta', 'tracker-directory', 'tracker-marketplace', 'serial-detail', 'marketplace-links'];
+const VIEW_FILTERS = [
+  'found',
+  'pending',
+  'confirmed',
+  'source-linked',
+  'has-evidence',
+  'source-marketplace',
+  'source-grading-pop',
+  'source-social',
+  'source-article',
+  'source-private-sale',
+  'source-other',
+  'not-found',
+];
+const VIEW_SORTS = ['id-desc', 'price-desc', 'price-asc', 'date-desc', 'date-asc', 'evidence-desc'];
+
+interface AffiliateStatsTrackerEntry {
+  slug: string;
+  title: string;
+  affiliateLinks: typeof defaultAffiliateLinks;
+  cardFilterValues: string[];
+}
+
+interface RedisCounterReader {
+  get(key: string): Promise<unknown>;
+}
 
 function dateKey(daysAgo: number) {
   const date = new Date();
@@ -19,6 +46,26 @@ function dateKey(daysAgo: number) {
 function readCount(value: unknown) {
   const numericValue = Number(value || 0);
   return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
+function safeKeyPart(value: string) {
+  return value.replace(/[^a-z0-9._-]/gi, '-');
+}
+
+function addBreakdown(
+  map: Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>,
+  key: string,
+  label: string,
+  row: { clicksInWindow: number; totalClicks: number }
+) {
+  const current = map.get(key) || { key, label, clicksInWindow: 0, totalClicks: 0 };
+  current.clicksInWindow += row.clicksInWindow;
+  current.totalClicks += row.totalClicks;
+  map.set(key, current);
+}
+
+function sortBreakdown(items: Iterable<{ key: string; label: string; clicksInWindow: number; totalClicks: number }>) {
+  return [...items].sort((a, b) => b.clicksInWindow - a.clicksInWindow || b.totalClicks - a.totalClicks || a.label.localeCompare(b.label));
 }
 
 function readLastClickViewContext(lastClick: unknown) {
@@ -56,36 +103,21 @@ function summarizeRows(rows: Array<{
   const byLastClickSort = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
   const byLastClickCardFilter = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
 
-  const add = (
-    map: Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>,
-    key: string,
-    label: string,
-    row: { clicksInWindow: number; totalClicks: number }
-  ) => {
-    const current = map.get(key) || { key, label, clicksInWindow: 0, totalClicks: 0 };
-    current.clicksInWindow += row.clicksInWindow;
-    current.totalClicks += row.totalClicks;
-    map.set(key, current);
-  };
-  const sortBreakdown = (items: Iterable<{ key: string; label: string; clicksInWindow: number; totalClicks: number }>) => (
-    [...items].sort((a, b) => b.clicksInWindow - a.clicksInWindow || b.totalClicks - a.totalClicks || a.label.localeCompare(b.label))
-  );
-
   for (const row of rows) {
-    add(byTracker, row.tracker, row.trackerTitle, row);
-    add(byMerchant, row.merchant, row.merchant, row);
-    add(byIntent, row.intent, row.intent, row);
-    add(byPlacement, row.placement, row.placement, row);
+    addBreakdown(byTracker, row.tracker, row.trackerTitle, row);
+    addBreakdown(byMerchant, row.merchant, row.merchant, row);
+    addBreakdown(byIntent, row.intent, row.intent, row);
+    addBreakdown(byPlacement, row.placement, row.placement, row);
 
     const viewContext = readLastClickViewContext(row.lastClick);
     if (viewContext?.filter) {
-      add(byLastClickFilter, viewContext.filter, viewContext.filter, row);
+      addBreakdown(byLastClickFilter, viewContext.filter, viewContext.filter, row);
     }
     if (viewContext?.sort) {
-      add(byLastClickSort, viewContext.sort, viewContext.sort, row);
+      addBreakdown(byLastClickSort, viewContext.sort, viewContext.sort, row);
     }
     if (viewContext?.cardFilter) {
-      add(byLastClickCardFilter, viewContext.cardFilter, viewContext.cardFilter, row);
+      addBreakdown(byLastClickCardFilter, viewContext.cardFilter, viewContext.cardFilter, row);
     }
   }
 
@@ -109,6 +141,51 @@ function summarizeRows(rows: Array<{
   };
 }
 
+async function readViewContextBreakdown(
+  redis: RedisCounterReader,
+  trackerEntries: AffiliateStatsTrackerEntry[],
+  dateKeys: string[],
+  field: 'filter' | 'sort' | 'cardFilter',
+  getValues: (tracker: AffiliateStatsTrackerEntry) => string[]
+) {
+  const byValue = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
+
+  for (const tracker of trackerEntries) {
+    for (const value of getValues(tracker)) {
+      const keyParts = [tracker.slug, field, value].map(safeKeyPart);
+      const keySuffix = keyParts.join(':');
+      const [totalValue, ...dailyValues] = await Promise.all([
+        redis.get(`affiliate:context:total:${keySuffix}`),
+        ...dateKeys.map((date) => redis.get(`affiliate:context:${date}:${keySuffix}`)),
+      ]);
+      const clicksInWindow = dailyValues.reduce<number>((total, item) => total + readCount(item), 0);
+      const totalClicks = readCount(totalValue);
+
+      if (totalClicks === 0 && clicksInWindow === 0) {
+        continue;
+      }
+
+      addBreakdown(byValue, value, value, { clicksInWindow, totalClicks });
+    }
+  }
+
+  return sortBreakdown(byValue.values());
+}
+
+async function readViewContextBreakdowns(redis: RedisCounterReader, trackerEntries: AffiliateStatsTrackerEntry[], dateKeys: string[]) {
+  const [byViewFilter, byViewSort, byViewCardFilter] = await Promise.all([
+    readViewContextBreakdown(redis, trackerEntries, dateKeys, 'filter', () => VIEW_FILTERS),
+    readViewContextBreakdown(redis, trackerEntries, dateKeys, 'sort', () => VIEW_SORTS),
+    readViewContextBreakdown(redis, trackerEntries, dateKeys, 'cardFilter', (tracker) => tracker.cardFilterValues),
+  ]);
+
+  return {
+    byViewFilter,
+    byViewSort,
+    byViewCardFilter,
+  };
+}
+
 export async function GET(request: NextRequest) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
@@ -121,15 +198,16 @@ export async function GET(request: NextRequest) {
   try {
     const redis = getRedis();
     const trackerEntries = [
-      { slug: 'default', title: 'Default Links', affiliateLinks: defaultAffiliateLinks },
+      { slug: 'default', title: 'Default Links', affiliateLinks: defaultAffiliateLinks, cardFilterValues: ['all'] },
       ...trackers.map((tracker) => ({
         slug: tracker.slug,
         title: tracker.title,
         affiliateLinks: tracker.affiliateLinks && tracker.affiliateLinks.length > 0
           ? tracker.affiliateLinks
           : defaultAffiliateLinks,
+        cardFilterValues: ['all', ...getTrackerCardDefinitions(tracker).map((definition) => definition.slug)],
       })),
-    ];
+    ] satisfies AffiliateStatsTrackerEntry[];
     const dateKeys = Array.from({ length: days }, (_, index) => dateKey(index));
     const rows = [];
 
@@ -176,7 +254,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       days,
       generatedAt: new Date().toISOString(),
-      summary: summarizeRows(rows),
+      summary: {
+        ...summarizeRows(rows),
+        ...await readViewContextBreakdowns(redis, trackerEntries, dateKeys),
+      },
       rows,
     });
   } catch (error) {
