@@ -129,6 +129,7 @@
 - [x] Add tracker source-type filters for marketplace, grading, social, article, private sale, and other discoveries.
 - [x] Add evidence-count sorting on tracker pages.
 - [x] Preserve tracker search, filter, card, and sort state in shareable URLs.
+- [x] Add active filter chips with one-click clearing on tracker pages.
 - [x] Add one-click copy for current tracker view links.
 - [x] Add shareable serial detail links with URL state.
 - [x] Add one-click copy for serial detail links.

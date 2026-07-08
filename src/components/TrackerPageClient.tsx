@@ -23,6 +23,7 @@ import ExternalImage from '@/components/ExternalImage';
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import Head from 'next/head';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface CardSummaryRow {
   slug: string;
@@ -33,6 +34,8 @@ interface CardSummaryRow {
   pendingReportCount: number;
   referenceImage?: string;
 }
+
+type ActiveFilterChipId = 'search' | 'card' | 'status' | 'sort';
 
 const VALID_STATUS_FILTERS = new Set([
   'all',
@@ -491,6 +494,37 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
 
     return parts.length > 0 ? parts.join(' / ') : 'current tracker view';
   }, [cardDefinitions, cardFilter, searchQuery, sortOrder, statusFilter]);
+  const activeFilterChips = useMemo<Array<{ id: ActiveFilterChipId; label: string }>>(() => {
+    const chips: Array<{ id: ActiveFilterChipId; label: string }> = [];
+    const selectedCardDefinition = cardDefinitions.find((definition) => definition.slug === cardFilter);
+
+    if (selectedCardDefinition) {
+      chips.push({ id: 'card', label: `Card: ${selectedCardDefinition.title}` });
+    }
+    if (statusFilter !== 'all') {
+      chips.push({ id: 'status', label: `Status: ${STATUS_FILTER_LABELS[statusFilter] || statusFilter}` });
+    }
+    if (searchQuery.trim()) {
+      chips.push({ id: 'search', label: `Search: ${searchQuery.trim()}` });
+    }
+    if (sortOrder !== 'id-asc') {
+      chips.push({ id: 'sort', label: `Sort: ${SORT_ORDER_LABELS[sortOrder] || sortOrder}` });
+    }
+
+    return chips;
+  }, [cardDefinitions, cardFilter, searchQuery, sortOrder, statusFilter]);
+
+  const clearActiveFilterChip = (id: ActiveFilterChipId) => {
+    if (id === 'search') {
+      setSearchQuery('');
+    } else if (id === 'card') {
+      setCardFilter('all');
+    } else if (id === 'status') {
+      setStatusFilter('all');
+    } else if (id === 'sort') {
+      setSortOrder('id-asc');
+    }
+  };
 
   const lastFoundCard = foundCards.sort((a, b) => {
     if (!a.dateFound || !b.dateFound) return 0;
@@ -609,6 +643,34 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
               sortOrder={sortOrder}
               setSortOrder={setSortOrder}
             />
+
+            {activeFilterChips.length > 0 && (
+              <div className="mt-3 flex w-full max-w-5xl flex-wrap items-center gap-2">
+                {activeFilterChips.map((chip) => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => clearActiveFilterChip(chip.id)}
+                    className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ring-gold/40 bg-ring-dark/80 px-3 py-1 text-xs font-bold text-ring-light transition-colors hover:border-ring-gold hover:text-ring-gold focus:outline-none focus:ring-2 focus:ring-ring-gold focus:ring-offset-2 focus:ring-offset-ring-dark"
+                  >
+                    <span>{chip.label}</span>
+                    <XMarkIcon className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setCardFilter('all');
+                    setStatusFilter('all');
+                    setSortOrder('id-asc');
+                  }}
+                  className="inline-flex min-h-9 items-center rounded-full border border-ring-gold/30 px-3 py-1 text-xs font-bold text-ring-gold transition-colors hover:border-yellow-400 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-ring-gold focus:ring-offset-2 focus:ring-offset-ring-dark"
+                >
+                  Clear All
+                </button>
+              </div>
+            )}
 
             {hasActiveViewFilters && filteredAndSortedCards.length > 0 && (
               <div className="w-full max-w-5xl mt-4">
