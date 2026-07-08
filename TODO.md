@@ -31,6 +31,7 @@
 - [x] Store shareable tracker view context with affiliate click metadata.
 - [x] Surface last-click view-context rollups in affiliate stats.
 - [x] Add per-click affiliate counters for shareable tracker view filters, sorts, and card filters.
+- [x] Link safe internal last-click source paths from the affiliate stats table.
 - [x] Add top-of-page affiliate marketplace CTA placement.
 - [x] Add serial detail marketplace CTA placement.
 - [x] Add affiliate attribution checks for eBay custom IDs, Amazon tags, and TCGplayer redirects.

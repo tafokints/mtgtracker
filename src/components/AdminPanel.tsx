@@ -118,6 +118,14 @@ function AffiliateBreakdown({ title, rows }: { title: string; rows: AffiliateSta
   );
 }
 
+function getInternalSourcePath(sourcePath?: string) {
+  if (!sourcePath || !sourcePath.startsWith('/') || sourcePath.startsWith('//')) {
+    return undefined;
+  }
+
+  return sourcePath;
+}
+
 export default function AdminPanel({ 
   tracker,
   cards, 
@@ -1063,7 +1071,18 @@ export default function AdminPanel({
                                 <>
                                   <span className="block">{new Date(row.lastClick.clickedAt).toLocaleString()}</span>
                                   {row.lastClick.sourcePath && (
-                                    <span className="block max-w-48 truncate text-xs text-ring-light/60">{row.lastClick.sourcePath}</span>
+                                    getInternalSourcePath(row.lastClick.sourcePath) ? (
+                                      <a
+                                        href={getInternalSourcePath(row.lastClick.sourcePath)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block max-w-48 truncate text-xs text-ring-gold/80 hover:underline"
+                                      >
+                                        {row.lastClick.sourcePath}
+                                      </a>
+                                    ) : (
+                                      <span className="block max-w-48 truncate text-xs text-ring-light/60">{row.lastClick.sourcePath}</span>
+                                    )
                                   )}
                                   {row.lastClick.viewContext && (
                                     <span className="block max-w-64 text-xs text-ring-light/60">
