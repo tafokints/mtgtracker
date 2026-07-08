@@ -443,6 +443,11 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   const foundCount = foundCards.length;
   const totalCount = cards.length || tracker.total || 0;
   const pendingReportCount = cards.reduce((total, card) => total + (card.pendingReports || 0), 0);
+  const hasActiveViewFilters =
+    searchQuery.trim() !== '' ||
+    cardFilter !== 'all' ||
+    statusFilter !== 'all' ||
+    sortOrder !== 'id-asc';
 
   const lastFoundCard = foundCards.sort((a, b) => {
     if (!a.dateFound || !b.dateFound) return 0;
@@ -561,6 +566,16 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
               sortOrder={sortOrder}
               setSortOrder={setSortOrder}
             />
+
+            {hasActiveViewFilters && filteredAndSortedCards.length > 0 && (
+              <div className="w-full max-w-5xl mt-4">
+                <PrimaryAffiliateCtas
+                  links={tracker.affiliateLinks}
+                  trackerSlug={tracker.slug}
+                  placement="tracker-filtered-cta"
+                />
+              </div>
+            )}
 
             <section className="w-full max-w-5xl mt-8" aria-label={`${tracker.title} serialized cards`}>
               <h2 className="sr-only">{tracker.title} Card Collection</h2>

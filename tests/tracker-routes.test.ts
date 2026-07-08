@@ -392,6 +392,17 @@ describe('tracker API routes', () => {
     }));
     await trackAffiliateClick(affiliateClickRequest({
       tracker: tracker.slug,
+      merchant: tcgplayerLink.merchant,
+      href: tcgplayerLink.href,
+      label: tcgplayerLink.label,
+      placement: 'tracker-filtered-cta',
+      sourcePath: '/trackers/one-ring?filter=confirmed',
+      viewContext: {
+        filter: 'confirmed',
+      },
+    }));
+    await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
       merchant: ebayLink.merchant,
       href: ebayLink.href,
       label: ebayLink.label,
@@ -412,28 +423,30 @@ describe('tracker API routes', () => {
     expect(body).toMatchObject({
       days: 30,
       summary: {
-        clicksInWindow: 4,
-        totalClicks: 4,
+        clicksInWindow: 5,
+        totalClicks: 5,
         bestTracker: expect.objectContaining({
           key: 'one-ring',
-          clicksInWindow: 4,
+          clicksInWindow: 5,
         }),
         byIntent: expect.arrayContaining([
           expect.objectContaining({ key: 'auction-comps', clicksInWindow: 3 }),
-          expect.objectContaining({ key: 'singles', clicksInWindow: 1 }),
+          expect.objectContaining({ key: 'singles', clicksInWindow: 2 }),
         ]),
         byMerchant: expect.arrayContaining([
           expect.objectContaining({ key: 'ebay', clicksInWindow: 3 }),
-          expect.objectContaining({ key: 'tcgplayer', clicksInWindow: 1 }),
+          expect.objectContaining({ key: 'tcgplayer', clicksInWindow: 2 }),
         ]),
         byPlacement: expect.arrayContaining([
           expect.objectContaining({ key: 'tracker-marketplace', clicksInWindow: 1 }),
           expect.objectContaining({ key: 'tracker-top-cta', clicksInWindow: 1 }),
+          expect.objectContaining({ key: 'tracker-filtered-cta', clicksInWindow: 1 }),
           expect.objectContaining({ key: 'tracker-directory', clicksInWindow: 1 }),
           expect.objectContaining({ key: 'serial-detail', clicksInWindow: 1 }),
         ]),
         byViewFilter: expect.arrayContaining([
           expect.objectContaining({ key: 'has-evidence', clicksInWindow: 1, totalClicks: 1 }),
+          expect.objectContaining({ key: 'confirmed', clicksInWindow: 1, totalClicks: 1 }),
         ]),
         byViewSort: expect.arrayContaining([
           expect.objectContaining({ key: 'evidence-desc', clicksInWindow: 1, totalClicks: 1 }),
@@ -479,6 +492,23 @@ describe('tracker API routes', () => {
           placement: 'tracker-top-cta',
           clicksInWindow: 1,
           totalClicks: 1,
+        }),
+        expect.objectContaining({
+          tracker: 'one-ring',
+          trackerTitle: 'The One Ring',
+          merchant: 'tcgplayer',
+          intent: 'singles',
+          label: tcgplayerLink.label,
+          href: tcgplayerLink.href,
+          placement: 'tracker-filtered-cta',
+          clicksInWindow: 1,
+          totalClicks: 1,
+          lastClick: expect.objectContaining({
+            sourcePath: '/trackers/one-ring?filter=confirmed',
+            viewContext: {
+              filter: 'confirmed',
+            },
+          }),
         }),
         expect.objectContaining({
           tracker: 'one-ring',

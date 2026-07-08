@@ -4,6 +4,7 @@ import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 interface PrimaryAffiliateCtasProps {
   links?: AffiliateLink[];
   trackerSlug: string;
+  placement?: string;
 }
 
 const merchantCopy: Record<AffiliateLink['merchant'], { eyebrow: string; detail: string }> = {
@@ -39,7 +40,7 @@ function orderLinks(links: AffiliateLink[]) {
   return [...uniqueByMerchant.values()];
 }
 
-export default function PrimaryAffiliateCtas({ links, trackerSlug }: PrimaryAffiliateCtasProps) {
+export default function PrimaryAffiliateCtas({ links, trackerSlug, placement = 'tracker-top-cta' }: PrimaryAffiliateCtasProps) {
   const resolvedLinks = orderLinks(links && links.length > 0 ? links : defaultAffiliateLinks);
 
   if (resolvedLinks.length === 0) {
@@ -59,7 +60,7 @@ export default function PrimaryAffiliateCtas({ links, trackerSlug }: PrimaryAffi
               key={`${link.merchant}-${link.href}`}
               link={link}
               trackerSlug={trackerSlug}
-              placement="tracker-top-cta"
+              placement={placement}
               className="block rounded border border-ring-gold/40 bg-black/20 p-3 text-left transition-colors hover:border-ring-gold hover:bg-ring-gold hover:text-ring-dark"
             >
               <span className="block text-xs font-bold uppercase opacity-75">{eyebrow}</span>

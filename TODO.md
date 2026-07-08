@@ -33,6 +33,7 @@
 - [x] Add per-click affiliate counters for shareable tracker view filters, sorts, and card filters.
 - [x] Link safe internal last-click source paths from the affiliate stats table.
 - [x] Add top-of-page affiliate marketplace CTA placement.
+- [x] Add contextual affiliate CTA placement for active filtered tracker views.
 - [x] Add serial detail marketplace CTA placement.
 - [x] Add affiliate attribution checks for eBay custom IDs, Amazon tags, and TCGplayer redirects.
 - [x] Add affiliate intent metadata for singles, auction comps, and sealed product links.
