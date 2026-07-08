@@ -464,6 +464,17 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
       .map(card => card.image || referenceImage)
       .map(src => ({ src }));
   }, [filteredAndSortedCards, referenceImage]);
+  const filteredQualitySummary = useMemo(() => {
+    const locatedCount = filteredAndSortedCards.filter((card) => card.found).length;
+    const confirmedInViewCount = filteredAndSortedCards.filter((card) => card.verificationStatus === 'confirmed').length;
+    const evidenceBackedCount = filteredAndSortedCards.filter((card) => (card.evidenceImages || []).length > 0).length;
+
+    return {
+      locatedCount,
+      confirmedInViewCount,
+      evidenceBackedCount,
+    };
+  }, [filteredAndSortedCards]);
 
   const foundCards = cards.filter((card) => card.found);
   const confirmedCount = cards.filter((card) => card.verificationStatus === 'confirmed').length;
@@ -653,6 +664,11 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
               {pendingReportCount > 0 && (
                 <p className="text-xs text-ring-light/70">
                   {pendingReportCount} pending report{pendingReportCount === 1 ? '' : 's'} awaiting review.
+                </p>
+              )}
+              {filteredAndSortedCards.length > 0 && (
+                <p className="text-xs text-ring-light/70">
+                  {filteredQualitySummary.locatedCount} located - {filteredQualitySummary.confirmedInViewCount} confirmed - {filteredQualitySummary.evidenceBackedCount} with evidence
                 </p>
               )}
             </div>

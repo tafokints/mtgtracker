@@ -131,6 +131,7 @@
 - [x] Preserve tracker search, filter, card, and sort state in shareable URLs.
 - [x] Add active filter chips with one-click clearing on tracker pages.
 - [x] Add tracker result-count summaries for active views.
+- [x] Add located, confirmed, and evidence-backed counts to tracker result summaries.
 - [x] Add one-click copy for current tracker view links.
 - [x] Add shareable serial detail links with URL state.
 - [x] Add one-click copy for serial detail links.
