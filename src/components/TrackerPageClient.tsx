@@ -251,6 +251,8 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
             return new Date(a.dateFound ?? 0).getTime() - new Date(b.dateFound ?? 0).getTime();
           case 'date-desc':
             return new Date(b.dateFound ?? 0).getTime() - new Date(a.dateFound ?? 0).getTime();
+          case 'evidence-desc':
+            return (b.evidenceImages?.length || 0) - (a.evidenceImages?.length || 0) || a.id - b.id;
           case 'id-asc':
           default:
             return a.id - b.id;

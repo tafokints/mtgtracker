@@ -88,6 +88,7 @@ export default function FilterControls({
             <option value="price-asc">Sort by Price (Low-High)</option>
             <option value="date-desc">Sort by Date (Newest)</option>
             <option value="date-asc">Sort by Date (Oldest)</option>
+            <option value="evidence-desc">Sort by Evidence</option>
           </select>
         </div>
       </div>
