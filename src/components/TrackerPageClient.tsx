@@ -82,6 +82,8 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
 
   // State for card details
   const [selectedCardForDetails, setSelectedCardForDetails] = useState<SerializedRingCard | null>(null);
+  const [copyViewMessage, setCopyViewMessage] = useState('');
+  const copyViewMessageTimeoutRef = useRef<number | null>(null);
 
   const syncViewStateFromUrl = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
@@ -105,6 +107,9 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
 
     return () => {
       window.removeEventListener('popstate', syncViewStateFromUrl);
+      if (copyViewMessageTimeoutRef.current) {
+        window.clearTimeout(copyViewMessageTimeoutRef.current);
+      }
     };
   }, [syncViewStateFromUrl]);
 
@@ -146,6 +151,41 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
       window.history.replaceState(null, '', nextUrl);
     }
   }, [cardFilter, searchQuery, sortOrder, statusFilter]);
+
+  const clearCopyViewMessageSoon = () => {
+    if (copyViewMessageTimeoutRef.current) {
+      window.clearTimeout(copyViewMessageTimeoutRef.current);
+    }
+
+    copyViewMessageTimeoutRef.current = window.setTimeout(() => {
+      setCopyViewMessage('');
+      copyViewMessageTimeoutRef.current = null;
+    }, 1800);
+  };
+
+  const copyCurrentViewLink = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(window.location.href);
+      } else {
+        const input = document.createElement('input');
+        input.value = window.location.href;
+        input.setAttribute('readonly', '');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+
+      setCopyViewMessage('Copied');
+      clearCopyViewMessageSoon();
+    } catch {
+      setCopyViewMessage('Copy failed');
+      clearCopyViewMessageSoon();
+    }
+  };
 
   const openCardDetails = useCallback((card: SerializedRingCard) => {
     setSelectedCardForDetails(card);
@@ -446,13 +486,21 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
           <h1 className="text-2xl md:text-4xl font-bold text-ring-gold mb-4 lg:mb-0">
             {tracker.title}
           </h1>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-3">
             <Link href="/" className="text-ring-gold hover:text-yellow-400 transition-colors">
               Home
             </Link>
             <Link href={`${trackerPath}/stats`} className="text-ring-gold hover:text-yellow-400 transition-colors">
               Stats
             </Link>
+            <button
+              type="button"
+              onClick={copyCurrentViewLink}
+              className="inline-flex min-h-10 items-center justify-center rounded border border-ring-gold/70 px-3 py-2 text-sm font-bold text-ring-gold transition-colors hover:border-yellow-400 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-ring-gold focus:ring-offset-2 focus:ring-offset-ring-dark"
+              aria-live="polite"
+            >
+              {copyViewMessage || 'Copy View'}
+            </button>
             <ReportButton href={`${trackerPath}/submit`} />
           </div>
         </div>

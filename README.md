@@ -37,7 +37,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - Stats-page source-type breakdowns for marketplace, grading, social, article, private-sale, and other discovery signals
 - Stats-page pricing coverage that distinguishes priced copies from discoveries without public sale data
 - Shareable serial detail links through `serial`, `card`, or exact `slot` URL parameters, with one-click copy from the detail modal
-- Shareable tracker view links through `q`, `filter`, `sort`, and `cardFilter` URL parameters
+- Shareable tracker view links through `q`, `filter`, `sort`, and `cardFilter` URL parameters, with one-click copy from tracker headers
 - Card-level public filtering for multi-card serialized treatments
 - Card activity summaries for multi-card tracker pages
 - Public report flow with source type, evidence level, price, image uploads, image URLs, and notes
