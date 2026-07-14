@@ -468,11 +468,13 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     const locatedCount = filteredAndSortedCards.filter((card) => card.found).length;
     const confirmedInViewCount = filteredAndSortedCards.filter((card) => card.verificationStatus === 'confirmed').length;
     const evidenceBackedCount = filteredAndSortedCards.filter((card) => (card.evidenceImages || []).length > 0).length;
+    const pendingReportsInViewCount = filteredAndSortedCards.reduce((total, card) => total + (card.pendingReports || 0), 0);
 
     return {
       locatedCount,
       confirmedInViewCount,
       evidenceBackedCount,
+      pendingReportsInViewCount,
     };
   }, [filteredAndSortedCards]);
 
@@ -661,9 +663,9 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                 <span className="font-bold text-ring-gold">{totalCount}</span> serials
                 {hasActiveViewFilters ? ` for ${activeViewSummary}` : ' in this tracker'}.
               </p>
-              {pendingReportCount > 0 && (
+              {filteredQualitySummary.pendingReportsInViewCount > 0 && (
                 <p className="text-xs text-ring-light/70">
-                  {pendingReportCount} pending report{pendingReportCount === 1 ? '' : 's'} awaiting review.
+                  {filteredQualitySummary.pendingReportsInViewCount} pending report{filteredQualitySummary.pendingReportsInViewCount === 1 ? '' : 's'} in this view awaiting review.
                 </p>
               )}
               {filteredAndSortedCards.length > 0 && (

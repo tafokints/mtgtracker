@@ -132,6 +132,7 @@
 - [x] Add active filter chips with one-click clearing on tracker pages.
 - [x] Add tracker result-count summaries for active views.
 - [x] Add located, confirmed, and evidence-backed counts to tracker result summaries.
+- [x] Scope pending report counts in tracker summaries to the active result view.
 - [x] Add one-click copy for current tracker view links.
 - [x] Add shareable serial detail links with URL state.
 - [x] Add one-click copy for serial detail links.
