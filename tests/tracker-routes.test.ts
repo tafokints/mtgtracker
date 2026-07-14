@@ -269,6 +269,10 @@ describe('tracker API routes', () => {
     expect(redisFixture.counters.get('affiliate:context:total:one-ring:sort:evidence-desc')).toBe(1);
     expect(redisFixture.counters.get(`affiliate:context:${date}:one-ring:cardFilter:all`)).toBe(1);
     expect(redisFixture.counters.get('affiliate:context:total:one-ring:cardFilter:all')).toBe(1);
+    expect(redisFixture.counters.get(`affiliate:context:${date}:one-ring:card:the-one-ring`)).toBe(1);
+    expect(redisFixture.counters.get('affiliate:context:total:one-ring:card:the-one-ring')).toBe(1);
+    expect(redisFixture.counters.get(`affiliate:context:${date}:one-ring:serial:007`)).toBe(1);
+    expect(redisFixture.counters.get('affiliate:context:total:one-ring:serial:007')).toBe(1);
     expect(redisFixture.store.get('affiliate:last-click:one-ring:ebay:tracker-marketplace')).toMatchObject({
       tracker: 'one-ring',
       merchant: 'ebay',
@@ -317,6 +321,8 @@ describe('tracker API routes', () => {
     await expect(response.json()).resolves.toEqual({ ok: true });
     expect(redisFixture.counters.get(`affiliate:clicks:${date}:one-ring:ebay:serial-detail`)).toBe(1);
     expect(redisFixture.counters.get('affiliate:clicks:total:one-ring:ebay:serial-detail')).toBe(1);
+    expect(redisFixture.counters.get(`affiliate:context:${date}:one-ring:serial:007`)).toBe(1);
+    expect(redisFixture.counters.get('affiliate:context:total:one-ring:serial:007')).toBe(1);
     expect(redisFixture.store.get('affiliate:last-click:one-ring:ebay:serial-detail')).toMatchObject({
       tracker: 'one-ring',
       merchant: 'ebay',
@@ -458,6 +464,9 @@ describe('tracker API routes', () => {
       label: ebayLink.label,
       placement: 'serial-detail',
       sourcePath: '/trackers/one-ring?serial=007',
+      viewContext: {
+        serial: '007',
+      },
     }));
     const response = await getAffiliateStats(affiliateStatsRequest());
     const body = await json(response);
@@ -497,11 +506,17 @@ describe('tracker API routes', () => {
         byViewCardFilter: expect.arrayContaining([
           expect.objectContaining({ key: 'all', clicksInWindow: 1, totalClicks: 1 }),
         ]),
+        byViewSerial: expect.arrayContaining([
+          expect.objectContaining({ key: '007', clicksInWindow: 2, totalClicks: 2 }),
+        ]),
         byLastClickFilter: expect.arrayContaining([
           expect.objectContaining({ key: 'has-evidence', clicksInWindow: 1 }),
         ]),
         byLastClickSort: expect.arrayContaining([
           expect.objectContaining({ key: 'evidence-desc', clicksInWindow: 1 }),
+        ]),
+        byLastClickSerial: expect.arrayContaining([
+          expect.objectContaining({ key: '007', clicksInWindow: 2 }),
         ]),
       },
       rows: expect.arrayContaining([

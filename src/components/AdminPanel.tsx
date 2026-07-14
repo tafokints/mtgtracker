@@ -68,9 +68,13 @@ interface AffiliateStatsResponse {
     byViewFilter: AffiliateStatsBreakdown[];
     byViewSort: AffiliateStatsBreakdown[];
     byViewCardFilter: AffiliateStatsBreakdown[];
+    byViewCard: AffiliateStatsBreakdown[];
+    byViewSerial: AffiliateStatsBreakdown[];
     byLastClickFilter: AffiliateStatsBreakdown[];
     byLastClickSort: AffiliateStatsBreakdown[];
     byLastClickCardFilter: AffiliateStatsBreakdown[];
+    byLastClickCard: AffiliateStatsBreakdown[];
+    byLastClickSerial: AffiliateStatsBreakdown[];
   };
   rows: AffiliateStatsRow[];
 }
@@ -1029,13 +1033,25 @@ export default function AdminPanel({
                     </div>
                   )}
 
+                  {(affiliateStats.summary.byViewCard.length > 0 ||
+                    affiliateStats.summary.byViewSerial.length > 0) && (
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <AffiliateBreakdown title="Detail Cards" rows={affiliateStats.summary.byViewCard.slice(0, 10)} />
+                      <AffiliateBreakdown title="Detail Serials" rows={affiliateStats.summary.byViewSerial.slice(0, 10)} />
+                    </div>
+                  )}
+
                   {(affiliateStats.summary.byLastClickFilter.length > 0 ||
                     affiliateStats.summary.byLastClickSort.length > 0 ||
-                    affiliateStats.summary.byLastClickCardFilter.length > 0) && (
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    affiliateStats.summary.byLastClickCardFilter.length > 0 ||
+                    affiliateStats.summary.byLastClickCard.length > 0 ||
+                    affiliateStats.summary.byLastClickSerial.length > 0) && (
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
                       <AffiliateBreakdown title="Last-click Filters" rows={affiliateStats.summary.byLastClickFilter} />
                       <AffiliateBreakdown title="Last-click Sorts" rows={affiliateStats.summary.byLastClickSort} />
                       <AffiliateBreakdown title="Last-click Cards" rows={affiliateStats.summary.byLastClickCardFilter} />
+                      <AffiliateBreakdown title="Last-click Detail Cards" rows={affiliateStats.summary.byLastClickCard.slice(0, 10)} />
+                      <AffiliateBreakdown title="Last-click Serials" rows={affiliateStats.summary.byLastClickSerial.slice(0, 10)} />
                     </div>
                   )}
 

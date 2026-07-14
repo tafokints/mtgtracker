@@ -128,7 +128,7 @@ export async function POST(request: Request) {
     const date = new Date().toISOString().slice(0, 10);
     const keyParts = [trackerSlug, merchant, placement].map(safeKeyPart);
     const contextCounterIncrements: Array<Promise<unknown>> = [];
-    const addContextCounter = (field: 'filter' | 'sort' | 'cardFilter', value?: unknown) => {
+    const addContextCounter = (field: 'filter' | 'sort' | 'cardFilter' | 'card' | 'serial', value?: unknown) => {
       if (typeof value !== 'string' || !value) return;
 
       const contextKeyParts = [trackerSlug, field, value].map(safeKeyPart);
@@ -141,6 +141,8 @@ export async function POST(request: Request) {
     addContextCounter('filter', viewContext?.filter);
     addContextCounter('sort', viewContext?.sort);
     addContextCounter('cardFilter', viewContext?.cardFilter);
+    addContextCounter('card', viewContext?.card);
+    addContextCounter('serial', viewContext?.serial);
 
     await Promise.all([
       redis.incr(`affiliate:clicks:${date}:${keyParts.join(':')}`),

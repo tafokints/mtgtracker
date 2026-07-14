@@ -31,6 +31,7 @@
 - [x] Store shareable tracker view context with affiliate click metadata.
 - [x] Surface last-click view-context rollups in affiliate stats.
 - [x] Add per-click affiliate counters for shareable tracker view filters, sorts, and card filters.
+- [x] Add affiliate click rollups for serial-detail card and serial context.
 - [x] Link safe internal last-click source paths from the affiliate stats table.
 - [x] Add top-of-page affiliate marketplace CTA placement.
 - [x] Add contextual affiliate CTA placement for active filtered tracker views.

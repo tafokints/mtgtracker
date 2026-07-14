@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { getRedis } from '@/lib/redis';
 import { defaultAffiliateLinks, trackers } from '@/lib/trackers';
-import { getTrackerCardDefinitions } from '@/lib/tracker-data';
+import { formatTrackerSerial, getTrackerCardDefinitions } from '@/lib/tracker-data';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -31,6 +31,8 @@ interface AffiliateStatsTrackerEntry {
   title: string;
   affiliateLinks: typeof defaultAffiliateLinks;
   cardFilterValues: string[];
+  cardValues: string[];
+  serialValues: string[];
 }
 
 interface RedisCounterReader {
@@ -82,6 +84,8 @@ function readLastClickViewContext(lastClick: unknown) {
     filter?: string;
     sort?: string;
     cardFilter?: string;
+    card?: string;
+    serial?: string;
   };
 }
 
@@ -102,6 +106,8 @@ function summarizeRows(rows: Array<{
   const byLastClickFilter = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
   const byLastClickSort = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
   const byLastClickCardFilter = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
+  const byLastClickCard = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
+  const byLastClickSerial = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
 
   for (const row of rows) {
     addBreakdown(byTracker, row.tracker, row.trackerTitle, row);
@@ -118,6 +124,12 @@ function summarizeRows(rows: Array<{
     }
     if (viewContext?.cardFilter) {
       addBreakdown(byLastClickCardFilter, viewContext.cardFilter, viewContext.cardFilter, row);
+    }
+    if (viewContext?.card) {
+      addBreakdown(byLastClickCard, viewContext.card, viewContext.card, row);
+    }
+    if (viewContext?.serial) {
+      addBreakdown(byLastClickSerial, viewContext.serial, viewContext.serial, row);
     }
   }
 
@@ -138,6 +150,8 @@ function summarizeRows(rows: Array<{
     byLastClickFilter: sortBreakdown(byLastClickFilter.values()),
     byLastClickSort: sortBreakdown(byLastClickSort.values()),
     byLastClickCardFilter: sortBreakdown(byLastClickCardFilter.values()),
+    byLastClickCard: sortBreakdown(byLastClickCard.values()),
+    byLastClickSerial: sortBreakdown(byLastClickSerial.values()),
   };
 }
 
@@ -145,7 +159,7 @@ async function readViewContextBreakdown(
   redis: RedisCounterReader,
   trackerEntries: AffiliateStatsTrackerEntry[],
   dateKeys: string[],
-  field: 'filter' | 'sort' | 'cardFilter',
+  field: 'filter' | 'sort' | 'cardFilter' | 'card' | 'serial',
   getValues: (tracker: AffiliateStatsTrackerEntry) => string[]
 ) {
   const byValue = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
@@ -173,16 +187,20 @@ async function readViewContextBreakdown(
 }
 
 async function readViewContextBreakdowns(redis: RedisCounterReader, trackerEntries: AffiliateStatsTrackerEntry[], dateKeys: string[]) {
-  const [byViewFilter, byViewSort, byViewCardFilter] = await Promise.all([
+  const [byViewFilter, byViewSort, byViewCardFilter, byViewCard, byViewSerial] = await Promise.all([
     readViewContextBreakdown(redis, trackerEntries, dateKeys, 'filter', () => VIEW_FILTERS),
     readViewContextBreakdown(redis, trackerEntries, dateKeys, 'sort', () => VIEW_SORTS),
     readViewContextBreakdown(redis, trackerEntries, dateKeys, 'cardFilter', (tracker) => tracker.cardFilterValues),
+    readViewContextBreakdown(redis, trackerEntries, dateKeys, 'card', (tracker) => tracker.cardValues),
+    readViewContextBreakdown(redis, trackerEntries, dateKeys, 'serial', (tracker) => tracker.serialValues),
   ]);
 
   return {
     byViewFilter,
     byViewSort,
     byViewCardFilter,
+    byViewCard,
+    byViewSerial,
   };
 }
 
@@ -198,15 +216,28 @@ export async function GET(request: NextRequest) {
   try {
     const redis = getRedis();
     const trackerEntries = [
-      { slug: 'default', title: 'Default Links', affiliateLinks: defaultAffiliateLinks, cardFilterValues: ['all'] },
-      ...trackers.map((tracker) => ({
-        slug: tracker.slug,
-        title: tracker.title,
-        affiliateLinks: tracker.affiliateLinks && tracker.affiliateLinks.length > 0
-          ? tracker.affiliateLinks
-          : defaultAffiliateLinks,
-        cardFilterValues: ['all', ...getTrackerCardDefinitions(tracker).map((definition) => definition.slug)],
-      })),
+      {
+        slug: 'default',
+        title: 'Default Links',
+        affiliateLinks: defaultAffiliateLinks,
+        cardFilterValues: ['all'],
+        cardValues: [],
+        serialValues: [],
+      },
+      ...trackers.map((tracker) => {
+        const cardDefinitions = getTrackerCardDefinitions(tracker);
+
+        return {
+          slug: tracker.slug,
+          title: tracker.title,
+          affiliateLinks: tracker.affiliateLinks && tracker.affiliateLinks.length > 0
+            ? tracker.affiliateLinks
+            : defaultAffiliateLinks,
+          cardFilterValues: ['all', ...cardDefinitions.map((definition) => definition.slug)],
+          cardValues: cardDefinitions.length > 1 ? cardDefinitions.map((definition) => definition.slug) : [],
+          serialValues: Array.from({ length: tracker.total }, (_, index) => formatTrackerSerial(tracker, index + 1)),
+        };
+      }),
     ] satisfies AffiliateStatsTrackerEntry[];
     const dateKeys = Array.from({ length: days }, (_, index) => dateKey(index));
     const rows = [];
