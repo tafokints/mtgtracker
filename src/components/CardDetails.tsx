@@ -36,6 +36,55 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
   const marketplaceLinks = tracker.affiliateLinks || [];
   const reportParams = getTrackerCardDeepLinkParams(tracker, card);
   const reportHref = `${tracker.href}/submit?${reportParams.toString()}`;
+  const evidenceCount = card.evidenceImages?.length || 0;
+  const hasSourceLink = Boolean(card.link);
+  const hasMarketData = Boolean(card.price || (card.priceHistory && card.priceHistory.length > 0));
+  const hasGrading = Boolean(card.grading);
+  const pendingReportCount = card.pendingReports || 0;
+  const confidenceLabel = card.found
+    ? card.verificationStatus === 'confirmed'
+      ? 'High confidence'
+      : card.verificationStatus === 'source-linked'
+        ? 'Source-linked'
+        : 'Needs corroboration'
+    : pendingReportCount > 0
+      ? 'Under review'
+      : 'Unreported';
+  const confidenceDetail = card.found
+    ? card.verificationStatus === 'confirmed'
+      ? 'An admin has confirmed this discovery from the available evidence.'
+      : card.verificationStatus === 'source-linked'
+        ? 'This discovery has at least one public source, but may still need stronger proof.'
+        : 'This discovery is public, but still needs stronger evidence before it should be treated as confirmed.'
+    : pendingReportCount > 0
+      ? 'Community reports exist for this serial and are waiting for admin review.'
+      : 'No reviewed discovery is attached to this serial yet.';
+  const trustSignals = [
+    {
+      label: card.verificationStatus === 'confirmed' ? 'Admin confirmed' : `Verification: ${card.verificationStatus.replace('-', ' ')}`,
+      active: card.verificationStatus === 'confirmed',
+    },
+    {
+      label: hasSourceLink ? 'Public source linked' : 'No public source yet',
+      active: hasSourceLink,
+    },
+    {
+      label: evidenceCount > 0 ? `${evidenceCount} evidence image${evidenceCount === 1 ? '' : 's'} saved` : 'No saved evidence images',
+      active: evidenceCount > 0,
+    },
+    {
+      label: hasMarketData ? 'Sale data recorded' : 'No sale data recorded',
+      active: hasMarketData,
+    },
+    {
+      label: hasGrading ? 'Grading data recorded' : 'No grading data recorded',
+      active: hasGrading,
+    },
+    {
+      label: pendingReportCount > 0 ? `${pendingReportCount} pending report${pendingReportCount === 1 ? '' : 's'}` : 'No pending reports',
+      active: pendingReportCount > 0,
+    },
+  ];
   const clearCopyMessageSoon = () => {
     if (copyMessageTimeoutRef.current) {
       window.clearTimeout(copyMessageTimeoutRef.current);
@@ -152,6 +201,43 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
                   <span className="font-bold">Notes:</span> {card.notes}
                 </p>
               )}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-bold text-ring-gold mb-2">Verification Signals</h3>
+            <div className="rounded bg-ring-light bg-opacity-20 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-lg font-bold text-ring-light">{confidenceLabel}</p>
+                  <p className="mt-1 max-w-xl text-sm text-ring-light/75">{confidenceDetail}</p>
+                </div>
+                <span
+                  className={`rounded px-3 py-1 text-xs font-bold ${
+                    card.verificationStatus === 'confirmed'
+                      ? 'bg-green-800/50 text-green-300'
+                      : pendingReportCount > 0
+                        ? 'bg-ring-teal/20 text-ring-teal'
+                        : 'bg-ring-gold/15 text-ring-gold'
+                  }`}
+                >
+                  {card.found ? card.verificationStatus.replace('-', ' ') : pendingReportCount > 0 ? 'pending review' : 'not found'}
+                </span>
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {trustSignals.map((signal) => (
+                  <div
+                    key={signal.label}
+                    className={`rounded border px-3 py-2 text-sm ${
+                      signal.active
+                        ? 'border-ring-gold/40 bg-ring-gold/10 text-ring-light'
+                        : 'border-ring-light/10 bg-black/20 text-ring-light/60'
+                    }`}
+                  >
+                    {signal.label}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
