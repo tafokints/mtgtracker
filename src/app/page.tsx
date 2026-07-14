@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getRedis } from '@/lib/redis';
 import { trackers } from '@/lib/trackers';
 import { getRecentTrackerDiscoveriesSnapshot, getTrackerCardDefinitions, getTrackerTotalSlots, type RecentTrackerDiscovery } from '@/lib/tracker-data';
+import { buildBreadcrumbJsonLd } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -27,6 +28,10 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen px-6 py-8 md:px-10">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildBreadcrumbJsonLd([{ name: 'MTG Trackers', path: '/' }])) }}
+      />
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10">
         <header className="flex flex-col gap-4 border-b border-ring-gold/30 pb-8 md:flex-row md:items-end md:justify-between">
           <div>

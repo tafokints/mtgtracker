@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import TrackerPageClient from '@/components/TrackerPageClient';
 import { getTracker, trackers } from '@/lib/trackers';
-import { buildTrackerWebPageJsonLd, trackerCanonicalUrl, trackerKeywords, trackerSocialImage } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerCanonicalUrl, trackerKeywords, trackerSocialImage } from '@/lib/seo';
 
 type TrackerPageProps = {
   params: Promise<{ slug: string }>;
@@ -64,6 +64,10 @@ export default async function TrackerPage({ params }: TrackerPageProps) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildTrackerWebPageJsonLd(tracker)) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildBreadcrumbJsonLd(trackerBreadcrumbItems(tracker))) }}
       />
       <TrackerPageClient tracker={tracker} />
     </>

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { buildBreadcrumbJsonLd } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'Privacy',
@@ -12,6 +13,13 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen px-6 py-8 md:px-10">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildBreadcrumbJsonLd([
+          { name: 'MTG Trackers', path: '/' },
+          { name: 'Privacy', path: '/privacy' },
+        ])) }}
+      />
       <div className="mx-auto w-full max-w-3xl">
         <Link href="/" className="text-sm text-ring-gold hover:text-yellow-400">
           &larr; MTG Trackers

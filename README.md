@@ -29,6 +29,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - Cross-tracker recent discovery feed on the homepage with exact serial detail links
 - Stats-page recent discovery links that jump to the exact serial detail view
 - Structured data for live tracker pages and the tracker directory
+- Breadcrumb structured data for core public pages, tracker pages, stats pages, and submit pages
 - Multi-card tracker definitions for serialized treatments with many card names
 - Public tracker grid for serials `001/100` through `100/100`
 - Progress, result-count and quality summaries with view-specific pending reports, shareable search/filter/sort views, active filter chips, located/confirmed/source-linked/evidence/source-type filters, evidence-count sorting, and market/date sorting

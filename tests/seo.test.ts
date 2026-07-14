@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getTracker, trackers } from '@/lib/trackers';
-import { buildTrackerDirectoryJsonLd, buildTrackerWebPageJsonLd, trackerKeywords } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildTrackerDirectoryJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
 
 describe('SEO structured data', () => {
   it('builds factual CollectionPage JSON-LD for a tracker', () => {
@@ -54,5 +54,46 @@ describe('SEO structured data', () => {
       'Innistrad Remastered',
       'MTG serialized cards',
     ]));
+  });
+
+  it('builds canonical breadcrumb JSON-LD for tracker subpages', () => {
+    const tracker = getTracker('one-ring');
+    if (!tracker) throw new Error('one-ring tracker fixture is missing');
+
+    const jsonLd = buildBreadcrumbJsonLd(trackerBreadcrumbItems(tracker, {
+      name: 'Stats',
+      path: `${tracker.href}/stats`,
+    }));
+
+    expect(jsonLd).toEqual({
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'MTG Trackers',
+          item: 'https://mtgtrackers.com/',
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Trackers',
+          item: 'https://mtgtrackers.com/trackers',
+        },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: 'The One Ring',
+          item: 'https://mtgtrackers.com/trackers/one-ring',
+        },
+        {
+          '@type': 'ListItem',
+          position: 4,
+          name: 'Stats',
+          item: 'https://mtgtrackers.com/trackers/one-ring/stats',
+        },
+      ],
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import TrackerStatsClient from '@/components/TrackerStatsClient';
 import { getTracker, trackers } from '@/lib/trackers';
+import { buildBreadcrumbJsonLd, trackerBreadcrumbItems } from '@/lib/seo';
 
 type TrackerStatsPageProps = {
   params: Promise<{ slug: string }>;
@@ -37,5 +38,16 @@ export default async function TrackerStatsPage({ params }: TrackerStatsPageProps
     notFound();
   }
 
-  return <TrackerStatsClient tracker={tracker} />;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildBreadcrumbJsonLd(trackerBreadcrumbItems(tracker, {
+          name: 'Stats',
+          path: `${tracker.href}/stats`,
+        }))) }}
+      />
+      <TrackerStatsClient tracker={tracker} />
+    </>
+  );
 }

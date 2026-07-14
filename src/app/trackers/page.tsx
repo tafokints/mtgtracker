@@ -6,7 +6,7 @@ import { serializedCatalog } from '@/lib/serialized-catalog';
 import ReferenceLinks from '@/components/ReferenceLinks';
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
-import { buildTrackerDirectoryJsonLd } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildTrackerDirectoryJsonLd } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -64,6 +64,13 @@ export default async function TrackersPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildTrackerDirectoryJsonLd(liveTrackers)) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildBreadcrumbJsonLd([
+          { name: 'MTG Trackers', path: '/' },
+          { name: 'Trackers', path: '/trackers' },
+        ])) }}
       />
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-8 flex flex-col gap-3 border-b border-ring-gold/30 pb-6 md:flex-row md:items-end md:justify-between">

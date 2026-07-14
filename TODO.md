@@ -44,6 +44,7 @@
 - [x] Return 400 for malformed JSON request bodies.
 - [x] Remove placeholder aggregate rating structured data.
 - [x] Add verified structured data for tracker pages and directory.
+- [x] Add breadcrumb structured data across core public pages and tracker routes.
 - [x] Add production smoke-check script for core pages, health, sitemap, and live trackers.
 - [x] Add robots.txt verification to production smoke checks.
 - [x] Add live tracker submit pages to sitemap and smoke checks.

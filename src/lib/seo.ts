@@ -95,3 +95,31 @@ export function buildTrackerDirectoryJsonLd(liveTrackers: TrackerSummary[]) {
     },
   };
 }
+
+export interface BreadcrumbItem {
+  name: string;
+  path: string;
+}
+
+export function buildBreadcrumbJsonLd(items: BreadcrumbItem[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      item: `${siteUrl}${item.path}`,
+    })),
+  };
+}
+
+export function trackerBreadcrumbItems(tracker: Pick<TrackerSummary, 'title' | 'href'>, current?: BreadcrumbItem) {
+  const items = [
+    { name: 'MTG Trackers', path: '/' },
+    { name: 'Trackers', path: '/trackers' },
+    { name: tracker.title, path: tracker.href },
+  ];
+
+  return current ? [...items, current] : items;
+}
