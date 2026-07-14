@@ -140,6 +140,7 @@ Admin backups are tracker-scoped:
 - Directory marketplace links are tracked as `tracker-directory`.
 - Primary marketplace CTAs: tracker pages include top-of-page marketplace actions tracked as `tracker-top-cta`, plus contextual filtered-view actions tracked as `tracker-filtered-cta` with the active view summarized near the links.
 - Serial detail marketplace links are tracked as `serial-detail`.
+- Serial detail eBay links use exact card-and-serial search queries while preserving the tracker campaign `customid`.
 
 ## Tracker Scaffolding
 

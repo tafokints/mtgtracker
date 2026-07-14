@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, createAdminSession } from '@/lib/admin-auth';
-import { getTracker } from '@/lib/trackers';
+import { getSerialAffiliateLinks, getTracker } from '@/lib/trackers';
 
 const redisFixture = vi.hoisted(() => {
   const store = new Map<string, unknown>();
@@ -282,6 +282,49 @@ describe('tracker API routes', () => {
         sort: 'evidence-desc',
         cardFilter: 'all',
         card: 'the-one-ring',
+        serial: '007',
+        slot: '7',
+      },
+    });
+  });
+
+  it('tracks serial-specific eBay affiliate clicks with the tracker campaign id', async () => {
+    const link = getSerialAffiliateLinks(tracker, {
+      id: 7,
+      serialNumber: '007',
+      name: tracker.title,
+      found: true,
+      verificationStatus: 'confirmed',
+      priceHistory: [],
+    }).find((affiliateLink) => affiliateLink.merchant === 'ebay');
+    if (!link) throw new Error('Expected serial-specific eBay affiliate link');
+
+    const response = await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: link.merchant,
+      href: link.href,
+      label: link.label,
+      placement: 'serial-detail',
+      sourcePath: '/trackers/one-ring?serial=007',
+      viewContext: {
+        serial: '007',
+        slot: '7',
+      },
+    }));
+    const date = new Date().toISOString().slice(0, 10);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(redisFixture.counters.get(`affiliate:clicks:${date}:one-ring:ebay:serial-detail`)).toBe(1);
+    expect(redisFixture.counters.get('affiliate:clicks:total:one-ring:ebay:serial-detail')).toBe(1);
+    expect(redisFixture.store.get('affiliate:last-click:one-ring:ebay:serial-detail')).toMatchObject({
+      tracker: 'one-ring',
+      merchant: 'ebay',
+      label: link.label,
+      intent: 'auction-comps',
+      placement: 'serial-detail',
+      sourcePath: '/trackers/one-ring?serial=007',
+      viewContext: {
         serial: '007',
         slot: '7',
       },

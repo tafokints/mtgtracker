@@ -1,3 +1,5 @@
+import type { SerializedRingCard } from '@/lib/types';
+
 export interface AffiliateLink {
   label: string;
   href: string;
@@ -74,6 +76,10 @@ function buildEbaySearchUrl(query: string, customId: string) {
   });
 
   return `https://www.ebay.com/sch/i.html?${params.toString()}`;
+}
+
+export function buildTrackerEbaySearchUrl(query: string, trackerSlug: string) {
+  return buildEbaySearchUrl(query, trackerSlug);
 }
 
 function buildAmazonSearchUrl(query: string) {
@@ -379,4 +385,27 @@ export const trackers: TrackerSummary[] = [
 
 export function getTracker(slug: string) {
   return trackers.find((tracker) => tracker.slug === slug);
+}
+
+export function getSerialAffiliateLinks(tracker: TrackerSummary, card: SerializedRingCard): AffiliateLink[] {
+  const links = tracker.affiliateLinks && tracker.affiliateLinks.length > 0
+    ? tracker.affiliateLinks
+    : defaultAffiliateLinks;
+  const cardTitle = card.cardTitle || tracker.title;
+  const serialTotal = card.serialTotal || tracker.total;
+  const serialQuery = `${cardTitle} ${card.serialNumber}/${serialTotal} serialized mtg`;
+
+  return links.map((link) => {
+    if (link.merchant !== 'ebay') {
+      return link;
+    }
+
+    return {
+      ...link,
+      label: `${cardTitle} ${card.serialNumber}/${serialTotal} on eBay`,
+      href: buildTrackerEbaySearchUrl(serialQuery, tracker.slug),
+      ctaEyebrow: 'Exact Serial Search',
+      ctaDetail: `Search eBay for ${cardTitle} ${card.serialNumber}/${serialTotal}.`,
+    };
+  });
 }

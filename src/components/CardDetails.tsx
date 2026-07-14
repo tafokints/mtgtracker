@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { SerializedRingCard } from '../lib/types';
-import type { TrackerSummary } from '@/lib/trackers';
+import { getSerialAffiliateLinks, type TrackerSummary } from '@/lib/trackers';
 import { formatTrackerCardLabel, getTrackerCardDeepLinkParams } from '@/lib/tracker-data';
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
@@ -33,7 +33,7 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
   if (!isOpen) return null;
 
   const serialLabel = formatTrackerCardLabel(tracker, card);
-  const marketplaceLinks = tracker.affiliateLinks || [];
+  const marketplaceLinks = getSerialAffiliateLinks(tracker, card);
   const reportParams = getTrackerCardDeepLinkParams(tracker, card);
   const reportHref = `${tracker.href}/submit?${reportParams.toString()}`;
   const evidenceCount = card.evidenceImages?.length || 0;

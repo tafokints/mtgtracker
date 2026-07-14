@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { serializedCatalog } from '@/lib/serialized-catalog';
-import { defaultAffiliateLinks, trackers, type AffiliateLink } from '@/lib/trackers';
+import { defaultAffiliateLinks, getSerialAffiliateLinks, trackers, type AffiliateLink } from '@/lib/trackers';
 
 const requiredLiveMerchants = ['tcgplayer', 'ebay', 'amazon'] as const;
 const tcgplayerPartnerPath = '/DyJ25G';
@@ -112,6 +112,32 @@ describe('tracker config consistency', () => {
         expect(url.searchParams.get('k'), `${trackerSlug} Amazon query`).toBeTruthy();
       }
     }
+  });
+
+  it('builds serial-specific eBay links without losing affiliate attribution', () => {
+    const tracker = trackers.find((candidate) => candidate.slug === 'one-ring');
+    if (!tracker) throw new Error('Expected One Ring tracker');
+
+    const links = getSerialAffiliateLinks(tracker, {
+      id: 7,
+      serialNumber: '007',
+      name: 'The One Ring',
+      found: true,
+      foundBy: 'Collector',
+      verificationStatus: 'confirmed',
+      priceHistory: [],
+    });
+    const ebayLink = links.find((link) => link.merchant === 'ebay');
+    if (!ebayLink) throw new Error('Expected serial-specific eBay link');
+
+    const url = new URL(ebayLink.href);
+
+    expect(ebayLink.label).toBe('The One Ring 007/100 on eBay');
+    expect(url.hostname).toMatch(/(^|\.)ebay\.com$/);
+    expect(url.searchParams.get('campid')).toBe(ebayCampaignId);
+    expect(url.searchParams.get('customid')).toBe('one-ring');
+    expect(url.searchParams.get('mkevt')).toBe('1');
+    expect(url.searchParams.get('_nkw')).toContain('The One Ring 007/100 serialized mtg');
   });
 
   it('keeps tracker slugs, routes, and storage keys unique', () => {
