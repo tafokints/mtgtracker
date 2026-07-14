@@ -124,6 +124,7 @@
 - [x] Improve mobile layout for tracker cards and admin review.
 - [x] Add empty states for no submissions, no prices, and no discoveries.
 - [x] Make `Report a Find` visible on live tracker pages so new discoveries can enter admin review.
+- [x] Add serial-specific report links directly on unlocated tracker cards.
 - [x] Highlight saved evidence image counts on tracker cards.
 - [x] Add tracker filter for discoveries with saved evidence.
 - [x] Add tracker source-type filters for marketplace, grading, social, article, private sale, and other discoveries.

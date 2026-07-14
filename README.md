@@ -43,6 +43,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - Public report flow with source type, evidence level, price, image uploads, image URLs, and notes
 - Report form evidence image count guardrails and removal controls before submission
 - Serial detail report links preselect the matching card and serial in the report form
+- Unlocated tracker cards include serial-specific report links that preselect the matching report form fields
 - Serial detail pages show approved evidence image thumbnails with provenance links when available
 - Admin review queue before crowd-sourced discoveries become public tracker updates
 - Card-level admin review filtering for multi-card serialized treatments

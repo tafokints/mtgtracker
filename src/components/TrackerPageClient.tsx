@@ -739,6 +739,8 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                   {filteredAndSortedCards.map((card, index) => {
               const imageSrc = card.image || referenceImage;
+              const reportParams = getTrackerCardDeepLinkParams(tracker, card);
+              const reportHref = `${trackerPath}/submit?${reportParams.toString()}`;
               const statusLabel = card.found
                 ? card.verificationStatus === 'confirmed'
                   ? 'Confirmed'
@@ -828,13 +830,22 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                       </div>
                     )}
 
-                    {/* Details button */}
-                    <button
-                      onClick={() => openCardDetails(card)}
-                      className="w-full mt-auto bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-4 rounded text-sm"
-                    >
-                      View Details
-                    </button>
+                    <div className="mt-auto grid grid-cols-1 gap-2">
+                      {!card.found && (
+                        <Link
+                          href={reportHref}
+                          className="w-full rounded border border-ring-gold/60 px-4 py-2 text-center text-sm font-bold text-ring-gold transition-colors hover:border-yellow-400 hover:text-yellow-400"
+                        >
+                          Report This Serial
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => openCardDetails(card)}
+                        className="w-full bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-4 rounded text-sm"
+                      >
+                        View Details
+                      </button>
+                    </div>
                   </div>
                 </article>
               );
