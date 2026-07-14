@@ -46,6 +46,21 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
   ), [evidenceImageUrls]);
   const totalEvidenceImageCount = uploadedEvidenceUrls.length + manualEvidenceUrlCount;
   const evidenceLimitExceeded = totalEvidenceImageCount > MAX_EVIDENCE_IMAGES;
+  const selectedSerialSummary = useMemo(() => {
+    if (hasMultipleCardDefinitions) {
+      const definition = cardDefinitions.find((candidate) => candidate.slug === selectedCardSlug);
+      const serialId = Number(selectedSerialId);
+
+      if (!definition || !Number.isInteger(serialId) || serialId < 1) return undefined;
+
+      return `${definition.title} ${formatTrackerSerial(tracker, serialId, definition)}/${definition.total}`;
+    }
+
+    const serialId = Number(cardId);
+    if (!Number.isInteger(serialId) || serialId < 1) return undefined;
+
+    return `${tracker.title} ${formatTrackerSerial(tracker, serialId)}/${tracker.total}`;
+  }, [cardDefinitions, cardId, hasMultipleCardDefinitions, selectedCardSlug, selectedSerialId, tracker]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -204,6 +219,15 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
           </Link>
         </div>
         <form onSubmit={handleSubmit} className="w-full max-w-2xl bg-ring-dark p-8 rounded-lg border border-ring-gold">
+          {selectedSerialSummary && (
+            <div className="mb-6 rounded border border-ring-gold/30 bg-black/20 px-4 py-3 text-sm text-ring-light">
+              <p className="text-xs font-bold uppercase text-ring-gold">Reporting selected serial</p>
+              <p className="mt-1 font-bold">{selectedSerialSummary}</p>
+              <p className="mt-1 text-xs text-ring-light/70">
+                Change the card or serial below if this is not the discovery you meant to report.
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block uppercase tracking-wide text-ring-gold text-xs font-bold mb-2" htmlFor="serial">
