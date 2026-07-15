@@ -5,6 +5,7 @@ import { SerializedRingCard, GradingInfo, PriceHistoryEntry, DiscoverySubmission
 import type { TrackerSummary } from '@/lib/trackers';
 import { formatTrackerCardLabel, formatTrackerSerial } from '@/lib/tracker-data';
 import { affiliateStatsCsvFilename, buildAffiliateStatsCsv } from '@/lib/affiliate-stats-export';
+import { getAffiliateStatsInsights } from '@/lib/affiliate-stats-insights';
 import ExternalImage from '@/components/ExternalImage';
 
 interface AdminPanelProps {
@@ -124,6 +125,24 @@ function AffiliateBreakdown({ title, rows }: { title: string; rows: AffiliateSta
   );
 }
 
+function AffiliateInsightCards({ insights }: { insights: ReturnType<typeof getAffiliateStatsInsights> }) {
+  if (insights.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-2 lg:grid-cols-4">
+      {insights.map((insight) => (
+        <div key={insight.label} className="rounded border border-ring-teal/35 bg-ring-teal/10 p-3">
+          <p className="text-xs uppercase text-ring-teal">{insight.label}</p>
+          <p className="mt-1 text-sm font-bold text-ring-light">{insight.value}</p>
+          <p className="mt-1 text-xs text-ring-light/65">{insight.detail}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function getInternalSourcePath(sourcePath?: string) {
   if (!sourcePath || !sourcePath.startsWith('/') || sourcePath.startsWith('//')) {
     return undefined;
@@ -238,6 +257,10 @@ export default function AdminPanel({
   }, [cards, submissions, tracker.title]);
   const pendingSubmissions = submissions.filter((submission) => submission.status === 'pending');
   const reviewedSubmissions = submissions.filter((submission) => submission.status !== 'pending');
+  const affiliateInsights = useMemo(
+    () => affiliateStats ? getAffiliateStatsInsights(affiliateStats) : [],
+    [affiliateStats],
+  );
   const matchesReviewCardFilter = (submission: DiscoverySubmission) => {
     if (reviewCardFilter === 'all') {
       return true;
@@ -1116,6 +1139,8 @@ export default function AdminPanel({
                     <AffiliateMetric label="Best merchant" value={affiliateStats.summary.bestMerchant?.label || 'None'} detail={affiliateStats.summary.bestMerchant ? `${affiliateStats.summary.bestMerchant.clicksInWindow} clicks` : undefined} />
                     <AffiliateMetric label="Best intent" value={affiliateStats.summary.bestIntent?.label || 'None'} detail={affiliateStats.summary.bestIntent ? `${affiliateStats.summary.bestIntent.clicksInWindow} clicks` : undefined} />
                   </div>
+
+                  <AffiliateInsightCards insights={affiliateInsights} />
 
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                     <AffiliateBreakdown title="Trackers" rows={affiliateStats.summary.byTracker.slice(0, 5)} />
