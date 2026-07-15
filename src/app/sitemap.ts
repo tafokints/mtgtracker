@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next'
+import { serializedCatalog } from '@/lib/serialized-catalog'
 import { trackers } from '@/lib/trackers'
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -40,6 +41,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       },
     ])
 
+  const catalogEntryRoutes = serializedCatalog.map((entry) => ({
+    url: `${baseUrl}/serialized-mtg-catalog/${entry.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: entry.status === 'live' ? 0.65 : 0.5,
+  }))
+
   return [
     ...staticRoutes.map((route) => ({
       url: `${baseUrl}${route}`,
@@ -47,6 +55,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: route === '' || route === '/trackers' || route === '/serialized-mtg-catalog' || route === '/discoveries' ? 'daily' as const : 'monthly' as const,
       priority: route === '' ? 1 : route === '/trackers' ? 0.8 : route === '/serialized-mtg-catalog' ? 0.75 : route === '/discoveries' ? 0.7 : route === '/verification-guide' ? 0.6 : 0.4,
     })),
+    ...catalogEntryRoutes,
     ...liveTrackerRoutes,
   ]
 }

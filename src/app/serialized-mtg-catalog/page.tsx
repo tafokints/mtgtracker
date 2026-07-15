@@ -169,7 +169,12 @@ export default function SerializedMtgCatalogPage() {
                 return (
                   <tr id={entry.slug} key={entry.slug} className="align-top transition-colors hover:bg-ring-gold/5">
                     <td className="px-4 py-3">
-                      <div className="font-semibold text-ring-light">{entry.title}</div>
+                      <Link
+                        href={`/serialized-mtg-catalog/${entry.slug}`}
+                        className="font-semibold text-ring-light underline-offset-4 hover:text-ring-gold hover:underline"
+                      >
+                        {entry.title}
+                      </Link>
                       <div className="mt-1 max-w-md text-xs leading-5 text-ring-light/55">{entry.treatment}</div>
                       {entry.sampleCards.length > 0 && (
                         <div className="mt-2 text-xs leading-5 text-ring-light/60">
@@ -201,6 +206,12 @@ export default function SerializedMtgCatalogPage() {
                             Tracker
                           </Link>
                         )}
+                        <Link
+                          href={`/serialized-mtg-catalog/${entry.slug}`}
+                          className="font-bold text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline"
+                        >
+                          Details
+                        </Link>
                         <Link
                           href={`https://scryfall.com/search?q=${encodeURIComponent(entry.scryfallQuery)}`}
                           className="font-bold text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline"

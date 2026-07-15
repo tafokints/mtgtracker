@@ -5,6 +5,7 @@ import ts from 'typescript';
 
 const rootDir = process.cwd();
 const trackerPath = path.join(rootDir, 'src', 'lib', 'trackers.ts');
+const catalogPath = path.join(rootDir, 'src', 'lib', 'serialized-catalog.ts');
 const baseUrl = normalizeBaseUrl(process.env.SMOKE_BASE_URL || process.argv[2] || 'https://mtgtrackers.com');
 const canonicalBaseUrl = normalizeBaseUrl(process.env.SMOKE_CANONICAL_BASE_URL || baseUrl);
 const skipHealth = process.env.SMOKE_SKIP_HEALTH === '1';
@@ -13,8 +14,8 @@ function normalizeBaseUrl(value) {
   return value.replace(/\/+$/, '');
 }
 
-function loadTrackerModule() {
-  const source = fs.readFileSync(trackerPath, 'utf8');
+function loadTsModule(modulePath) {
+  const source = fs.readFileSync(modulePath, 'utf8');
   const transpiled = ts.transpileModule(source, {
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,
@@ -29,9 +30,17 @@ function loadTrackerModule() {
   };
 
   sandbox.exports = sandbox.module.exports;
-  vm.runInNewContext(transpiled, sandbox, { filename: trackerPath });
+  vm.runInNewContext(transpiled, sandbox, { filename: modulePath });
 
   return sandbox.module.exports;
+}
+
+function loadTrackerModule() {
+  return loadTsModule(trackerPath);
+}
+
+function loadSerializedCatalogModule() {
+  return loadTsModule(catalogPath);
 }
 
 async function fetchText(pathname, expectedStatus = 200) {
@@ -111,7 +120,7 @@ async function checkHealth() {
   return { path: '/api/health', ok: true };
 }
 
-async function checkSitemap(liveTrackers) {
+async function checkSitemap(liveTrackers, catalogEntries) {
   const { text } = await fetchText('/sitemap.xml');
   const requiredUrls = [
     `${canonicalBaseUrl}/`,
@@ -130,6 +139,7 @@ async function checkSitemap(liveTrackers) {
       `${canonicalBaseUrl}/trackers/${tracker.slug}/stats`,
       `${canonicalBaseUrl}/trackers/${tracker.slug}/submit`,
     ]),
+    ...catalogEntries.map((entry) => `${canonicalBaseUrl}/serialized-mtg-catalog/${entry.slug}`),
   ];
 
   for (const url of requiredUrls) {
@@ -185,11 +195,14 @@ async function checkDiscoveryRssFeed() {
 
 async function main() {
   const { trackers } = loadTrackerModule();
+  const { serializedCatalog } = loadSerializedCatalogModule();
   const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');
+  const sampleCatalogEntry = serializedCatalog.find((entry) => entry.slug === 'aetherdrift-aetherspark') || serializedCatalog[0];
   const checks = [
     checkPage('/', ['MTG Trackers', 'Live Trackers', 'BreadcrumbList']),
     checkPage('/trackers', ['Trackers', 'Serialized Scaffold Queue', 'Marketplace links are affiliate links', 'BreadcrumbList']),
     checkPage('/serialized-mtg-catalog', ['Serialized MTG Catalog', 'Marketplace Research', 'Live tracker', 'CollectionPage', 'BreadcrumbList']),
+    checkPage(`/serialized-mtg-catalog/${sampleCatalogEntry.slug}`, [sampleCatalogEntry.title, 'Marketplace Research', 'Tracker Notes', 'Dataset', 'BreadcrumbList']),
     checkPage('/verification-guide', ['Serialized MTG Verification Guide', 'Verification Status', 'Best Evidence', 'Fastest Approval Path', 'WebPage', 'BreadcrumbList']),
     checkPage('/discoveries', ['Recent Discoveries', 'Discovery Feeds', 'JSON Feed', 'RSS Feed', 'CollectionPage', 'BreadcrumbList']),
     checkPage('/trackers/one-ring?serial=001', [
@@ -204,11 +217,12 @@ async function main() {
     checkPage('/affiliate-disclosure', ['Affiliate Disclosure', 'eBay Partner Network', 'Amazon Associate', 'BreadcrumbList']),
     ...(skipHealth ? [] : [checkHealth()]),
     checkRobots(),
-    checkSitemap(liveTrackers),
+    checkSitemap(liveTrackers, serializedCatalog),
     checkDiscoveryJsonFeed(),
     checkDiscoveryRssFeed(),
     checkBreadcrumbJsonLd('/affiliate-disclosure', ['MTG Trackers', 'Affiliate Disclosure']),
     checkBreadcrumbJsonLd('/serialized-mtg-catalog', ['MTG Trackers', 'Serialized MTG Catalog']),
+    checkBreadcrumbJsonLd(`/serialized-mtg-catalog/${sampleCatalogEntry.slug}`, ['MTG Trackers', 'Serialized MTG Catalog', sampleCatalogEntry.title]),
     checkBreadcrumbJsonLd('/verification-guide', ['MTG Trackers', 'Verification Guide']),
     checkBreadcrumbJsonLd('/discoveries', ['MTG Trackers', 'Recent Discoveries']),
     checkSourceFile('src/components/TrackerPageClient.tsx', [

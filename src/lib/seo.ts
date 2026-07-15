@@ -362,8 +362,47 @@ export function buildSerializedCatalogJsonLd(entries: SerializedCatalogEntry[]) 
         position: index + 1,
         name: entry.title,
         description: `${entry.treatment} from ${entry.setName}. Numbered ${entry.numbered || entry.defaultSerialTotal || 'unknown'}.`,
-        url: `${siteUrl}/serialized-mtg-catalog#${entry.slug}`,
+        url: `${siteUrl}/serialized-mtg-catalog/${entry.slug}`,
       })),
+    },
+  };
+}
+
+export function buildSerializedCatalogEntryJsonLd(entry: SerializedCatalogEntry) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: `${entry.title} Serialized MTG`,
+    description: `Research entry for ${entry.title} serialized Magic: The Gathering cards from ${entry.setName}.`,
+    url: `${siteUrl}/serialized-mtg-catalog/${entry.slug}`,
+    isPartOf: {
+      '@type': 'CollectionPage',
+      name: 'Serialized MTG Catalog',
+      url: `${siteUrl}/serialized-mtg-catalog`,
+    },
+    about: {
+      '@type': 'Thing',
+      name: entry.title,
+      description: entry.treatment,
+      identifier: entry.numbered || entry.defaultSerialTotal || entry.setCode,
+    },
+    mainEntity: {
+      '@type': 'Dataset',
+      name: `${entry.title} serialized MTG catalog data`,
+      description: `${entry.cardCount} card${entry.cardCount === 1 ? '' : 's'} from ${entry.setName}; numbered ${entry.numbered || entry.defaultSerialTotal || 'verify'}.`,
+      variableMeasured: [
+        'Serialized card treatment',
+        'Print range',
+        'Release set',
+        'Tracker launch status',
+      ],
+      keywords: [
+        entry.title,
+        entry.setName,
+        entry.setCode,
+        entry.treatment,
+        'MTG serialized cards',
+      ],
     },
   };
 }

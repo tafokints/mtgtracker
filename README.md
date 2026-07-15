@@ -9,6 +9,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - `/` - platform homepage
 - `/trackers` - tracker directory
 - `/serialized-mtg-catalog` - researched serialized MTG catalog and tracker backlog
+- `/serialized-mtg-catalog/[slug]` - individual serialized treatment research pages
 - `/verification-guide` - public evidence and admin-review guide for serialized discovery reports
 - `/trackers/one-ring` - The One Ring tracker
 - `/trackers/one-ring/stats` - The One Ring stats
@@ -64,6 +65,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - Hidden admin panel with price, image, grading, and price-history updates
 - Curated serialized MTG catalog for future tracker scaffolding
 - Crawlable serialized MTG catalog page for treatment-level research, live tracker links, source links, and broad marketplace research CTAs
+- Individual serialized catalog entry pages with source links, schema, sitemap coverage, and tracked marketplace research CTAs
 - Upstash Redis storage for Vercel deployment
 
 ## Local Setup
@@ -227,6 +229,7 @@ Also verify:
 - Amazon affiliate links use Associate tag `meleeitonme0a-20`.
 - `/about`, `/contact`, `/privacy`, and `/affiliate-disclosure` load in production.
 - `/serialized-mtg-catalog` loads in production and is included in the sitemap.
+- Individual `/serialized-mtg-catalog/[slug]` pages load in production and are included in the sitemap.
 - `/verification-guide` loads in production and is included in the sitemap.
 - `/discoveries`, `/discoveries.json`, and `/discoveries.xml` load in production.
 - Google Search Console ownership is verified and `https://mtgtrackers.com/sitemap.xml` is submitted.

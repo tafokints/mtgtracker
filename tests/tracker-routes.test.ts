@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, createAdminSession } from '@/lib/admin-auth';
-import { getSerialAffiliateLinks, getTracker } from '@/lib/trackers';
+import { buildTrackerEbaySearchUrl, getSerialAffiliateLinks, getTracker } from '@/lib/trackers';
 
 const redisFixture = vi.hoisted(() => {
   const store = new Map<string, unknown>();
@@ -323,6 +323,40 @@ describe('tracker API routes', () => {
         card: 'the-one-ring',
         serial: '007',
         slot: '7',
+      },
+    });
+  });
+
+  it('tracks catalog-specific default eBay searches with affiliate attribution', async () => {
+    const href = buildTrackerEbaySearchUrl('serialized The Aetherspark mtg', 'serialized-mtg');
+    const response = await trackAffiliateClick(affiliateClickRequest({
+      tracker: 'default',
+      merchant: 'ebay',
+      href,
+      label: 'The Aetherspark serials on eBay',
+      placement: 'marketplace-links',
+      sourcePath: '/serialized-mtg-catalog/aetherdrift-aetherspark',
+      viewContext: {
+        card: 'aetherdrift-aetherspark',
+      },
+    }));
+    const date = new Date().toISOString().slice(0, 10);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(redisFixture.counters.get(`affiliate:clicks:${date}:default:ebay:marketplace-links`)).toBe(1);
+    expect(redisFixture.counters.get('affiliate:clicks:total:default:ebay:marketplace-links')).toBe(1);
+    expect(redisFixture.counters.get(`affiliate:context:${date}:default:card:aetherdrift-aetherspark`)).toBe(1);
+    expect(redisFixture.store.get('affiliate:last-click:default:ebay:marketplace-links')).toMatchObject({
+      tracker: 'default',
+      merchant: 'ebay',
+      label: 'The Aetherspark serials on eBay',
+      href,
+      intent: 'auction-comps',
+      placement: 'marketplace-links',
+      sourcePath: '/serialized-mtg-catalog/aetherdrift-aetherspark',
+      viewContext: {
+        card: 'aetherdrift-aetherspark',
       },
     });
   });

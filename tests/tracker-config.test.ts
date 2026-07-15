@@ -84,6 +84,16 @@ describe('tracker config consistency', () => {
     }
   });
 
+  it('keeps serialized catalog slugs route-safe and unique', () => {
+    const slugs = new Set<string>();
+
+    for (const entry of serializedCatalog) {
+      expect(entry.slug, `${entry.title} slug`).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+      expect(slugs.has(entry.slug), `${entry.slug} duplicate catalog slug`).toBe(false);
+      slugs.add(entry.slug);
+    }
+  });
+
   it('keeps live trackers wired to all primary affiliate merchants', () => {
     for (const tracker of trackers.filter((entry) => entry.status === 'live')) {
       const merchants = new Set((tracker.affiliateLinks || []).map((link) => link.merchant));

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { serializedCatalog } from '@/lib/serialized-catalog';
 import { getTracker, trackers } from '@/lib/trackers';
-import { buildBreadcrumbJsonLd, buildDiscoveriesPageJsonLd, buildTrackerDirectoryJsonLd, buildTrackerFaqJsonLd, buildTrackerPageMetadata, buildTrackerSerialItemPageJsonLd, buildTrackerStatsJsonLd, buildTrackerSubmitJsonLd, buildTrackerWebPageJsonLd, buildVerificationGuideJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildDiscoveriesPageJsonLd, buildSerializedCatalogEntryJsonLd, buildTrackerDirectoryJsonLd, buildTrackerFaqJsonLd, buildTrackerPageMetadata, buildTrackerSerialItemPageJsonLd, buildTrackerStatsJsonLd, buildTrackerSubmitJsonLd, buildTrackerWebPageJsonLd, buildVerificationGuideJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
 
 describe('SEO structured data', () => {
   it('builds factual CollectionPage JSON-LD for a tracker', () => {
@@ -76,6 +77,29 @@ describe('SEO structured data', () => {
         ],
       },
     });
+  });
+
+  it('builds WebPage and Dataset JSON-LD for serialized catalog entries', () => {
+    const entry = serializedCatalog.find((candidate) => candidate.slug === 'aetherdrift-aetherspark');
+    if (!entry) throw new Error('aetherdrift-aetherspark catalog entry is missing');
+
+    const jsonLd = buildSerializedCatalogEntryJsonLd(entry);
+
+    expect(jsonLd).toMatchObject({
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: 'The Aetherspark Serialized MTG',
+      url: 'https://mtgtrackers.com/serialized-mtg-catalog/aetherdrift-aetherspark',
+      mainEntity: {
+        '@type': 'Dataset',
+        name: 'The Aetherspark serialized MTG catalog data',
+      },
+    });
+    expect(jsonLd.mainEntity.keywords).toEqual(expect.arrayContaining([
+      'The Aetherspark',
+      'Aetherdrift',
+      'MTG serialized cards',
+    ]));
   });
 
   it('builds Dataset JSON-LD for tracker statistics pages', () => {
