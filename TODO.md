@@ -139,6 +139,7 @@
 - [x] Add discovered count and pending report count to tracker directory cards.
 - [x] Keep directory stats read-only so multi-card trackers are not initialized from directory visits.
 - [x] Add tracked marketplace links to tracker directory cards.
+- [x] Add tracker directory latest-discovery links and report-a-find CTAs.
 - [x] Add richer tracker metadata:
   - [x] set name
   - [x] release name

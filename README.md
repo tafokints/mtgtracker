@@ -28,6 +28,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 ## Features
 
 - Directory model for multiple serialized-card trackers
+- Tracker directory cards include open-tracker, report-a-find, latest-discovery, and marketplace paths to move visitors into useful tracker actions quickly
 - Cross-tracker recent discovery feed on the homepage with exact serial detail links
 - Public JSON and RSS discovery feeds for community bots, readers, and sharing workflows
 - Stats-page recent discovery links that jump to the exact serial detail view

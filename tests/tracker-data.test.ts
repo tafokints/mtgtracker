@@ -72,8 +72,8 @@ describe('tracker data helpers', () => {
 
   it('summarizes directory stats for located, confirmed, and pending records', () => {
     const cards = createInitialTrackerCards(tracker).slice(0, 4);
-    cards[0] = { ...cards[0], found: true, verificationStatus: 'confirmed' };
-    cards[1] = { ...cards[1], found: true, verificationStatus: 'source-linked' };
+    cards[0] = { ...cards[0], found: true, verificationStatus: 'confirmed', dateFound: '2026-06-01' };
+    cards[1] = { ...cards[1], found: true, verificationStatus: 'source-linked', dateFound: '2026-07-01' };
 
     const stats = getTrackerDirectoryStats(cards, [
       submission({ id: 'a', cardId: 3, status: 'pending' }),
@@ -85,6 +85,15 @@ describe('tracker data helpers', () => {
       foundCount: 2,
       confirmedCount: 1,
       pendingReportCount: 2,
+      latestDiscovery: {
+        cardId: 2,
+        label: 'The One Ring 002/100',
+        serialNumber: '002',
+        cardSlug: 'one-ring',
+        cardTitle: 'The One Ring',
+        dateFound: '2026-07-01',
+        verificationStatus: 'source-linked',
+      },
     });
   });
 
@@ -108,6 +117,15 @@ describe('tracker data helpers', () => {
       foundCount: 1,
       confirmedCount: 1,
       pendingReportCount: 1,
+      latestDiscovery: {
+        cardId: 1,
+        label: 'The One Ring 001/100',
+        serialNumber: '001',
+        cardSlug: 'one-ring',
+        cardTitle: 'The One Ring',
+        dateFound: undefined,
+        verificationStatus: 'confirmed',
+      },
     });
   });
 
@@ -124,6 +142,7 @@ describe('tracker data helpers', () => {
       foundCount: 0,
       confirmedCount: 0,
       pendingReportCount: 0,
+      latestDiscovery: null,
     });
     expect(readKeys).toEqual([
       tracker.storage.cardsKey,

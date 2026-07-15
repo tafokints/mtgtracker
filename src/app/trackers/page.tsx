@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { getRedis } from '@/lib/redis';
-import { getTrackerCardDefinitions, getTrackerDirectoryStats, getTrackerDirectoryStatsSnapshot, getTrackerTotalSlots } from '@/lib/tracker-data';
+import { getTrackerCardDeepLinkParams, getTrackerCardDefinitions, getTrackerDirectoryStats, getTrackerDirectoryStatsSnapshot, getTrackerTotalSlots } from '@/lib/tracker-data';
 import { trackers } from '@/lib/trackers';
 import { serializedCatalog } from '@/lib/serialized-catalog';
 import ReferenceLinks from '@/components/ReferenceLinks';
@@ -94,6 +94,13 @@ export default async function TrackersPage() {
             const cardDefinitionCount = getTrackerCardDefinitions(tracker).length;
             const totalSlots = getTrackerTotalSlots(tracker);
             const foundPercentage = totalSlots > 0 ? (foundCount / totalSlots) * 100 : 0;
+            const latestDiscovery = stats?.latestDiscovery;
+            const latestDiscoveryHref = latestDiscovery
+              ? `${tracker.href}?${getTrackerCardDeepLinkParams(tracker, {
+                serialNumber: latestDiscovery.serialNumber,
+                cardSlug: latestDiscovery.cardSlug,
+              }).toString()}`
+              : undefined;
             const quantityLabel = cardDefinitionCount > 1
               ? `${totalSlots.toLocaleString()} slots (${tracker.total.toLocaleString()} each)`
               : tracker.total.toLocaleString();
@@ -161,6 +168,18 @@ export default async function TrackersPage() {
                     <p className="mt-2 text-xs text-ring-light/55">
                       {foundPercentage.toFixed(1)}% located - {stats?.confirmedCount || 0} confirmed
                     </p>
+                    {latestDiscovery && latestDiscoveryHref && (
+                      <Link
+                        href={latestDiscoveryHref}
+                        className="mt-3 block rounded border border-ring-teal/35 bg-ring-teal/10 p-3 text-xs text-ring-light transition-colors hover:border-ring-teal hover:bg-ring-teal/15"
+                      >
+                        <span className="block font-bold text-ring-teal">Latest discovery</span>
+                        <span className="mt-1 block">{latestDiscovery.label}</span>
+                        {latestDiscovery.dateFound && (
+                          <span className="mt-1 block text-ring-light/55">{latestDiscovery.dateFound}</span>
+                        )}
+                      </Link>
+                    )}
                   </div>
                 )}
                 <ReferenceLinks links={tracker.referenceLinks} compact />
@@ -192,12 +211,20 @@ export default async function TrackersPage() {
                     Coming later
                   </span>
                 ) : (
-                  <Link
-                    href={tracker.href}
-                    className="mt-5 inline-flex h-10 items-center rounded bg-ring-gold px-4 text-sm font-bold text-ring-dark transition-colors hover:bg-yellow-400"
-                  >
-                    Open
-                  </Link>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <Link
+                      href={tracker.href}
+                      className="inline-flex h-10 items-center rounded bg-ring-gold px-4 text-sm font-bold text-ring-dark transition-colors hover:bg-yellow-400"
+                    >
+                      Open Tracker
+                    </Link>
+                    <Link
+                      href={`${tracker.href}/submit`}
+                      className="inline-flex h-10 items-center rounded border border-ring-teal/60 px-4 text-sm font-bold text-ring-teal transition-colors hover:bg-ring-teal hover:text-ring-dark"
+                    >
+                      Report a Find
+                    </Link>
+                  </div>
                 )}
               </article>
             );

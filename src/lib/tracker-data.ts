@@ -208,11 +208,25 @@ export function withPendingReportCounts(cards: SerializedRingCard[], submissions
 
 export function getTrackerDirectoryStats(cards: SerializedRingCard[], submissions: DiscoverySubmission[]) {
   const foundCards = cards.filter((card) => card.found);
+  const latestDiscovery = [...foundCards].sort((a, b) => {
+    const dateDifference = new Date(b.dateFound || 0).getTime() - new Date(a.dateFound || 0).getTime();
+    if (dateDifference !== 0) return dateDifference;
+    return b.id - a.id;
+  })[0];
 
   return {
     foundCount: foundCards.length,
     confirmedCount: foundCards.filter((card) => card.verificationStatus === 'confirmed').length,
     pendingReportCount: submissions.filter((submission) => submission.status === 'pending').length,
+    latestDiscovery: latestDiscovery ? {
+      cardId: latestDiscovery.id,
+      label: latestDiscovery.name,
+      serialNumber: latestDiscovery.serialNumber,
+      cardSlug: latestDiscovery.cardSlug,
+      cardTitle: latestDiscovery.cardTitle,
+      dateFound: latestDiscovery.dateFound,
+      verificationStatus: latestDiscovery.verificationStatus,
+    } : null,
   };
 }
 
