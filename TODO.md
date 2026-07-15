@@ -53,6 +53,7 @@
 - [x] Add robots.txt verification to production smoke checks.
 - [x] Add static trust page, sitemap, and breadcrumb structured data checks to production smoke.
 - [x] Add live tracker submit pages to sitemap and smoke checks.
+- [x] Add public JSON and RSS feeds for recent verified discoveries.
 - [ ] Validate Google Search Console setup.
 - [x] Replace placeholder Google verification metadata.
 - [x] Add privacy/contact/about pages before broad promotion.

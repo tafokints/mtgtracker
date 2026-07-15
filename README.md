@@ -22,11 +22,14 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - `/contact` - correction, tracker request, and issue-reporting paths
 - `/privacy` - submission, analytics, and admin review privacy notes
 - `/affiliate-disclosure` - marketplace affiliate relationship disclosure
+- `/discoveries.json` - JSON Feed 1.1 feed for recent verified discoveries
+- `/discoveries.xml` - RSS feed for recent verified discoveries
 
 ## Features
 
 - Directory model for multiple serialized-card trackers
 - Cross-tracker recent discovery feed on the homepage with exact serial detail links
+- Public JSON and RSS discovery feeds for community bots, readers, and sharing workflows
 - Stats-page recent discovery links that jump to the exact serial detail view
 - Structured data for live tracker pages and the tracker directory
 - Breadcrumb structured data for core public pages, tracker pages, stats pages, and submit pages

@@ -89,6 +89,8 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <link rel="alternate" type="application/feed+json" title="MTG Trackers Recent Discoveries JSON Feed" href="/discoveries.json" />
+        <link rel="alternate" type="application/rss+xml" title="MTG Trackers Recent Discoveries RSS Feed" href="/discoveries.xml" />
         <meta name="theme-color" content="#D6A73D" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

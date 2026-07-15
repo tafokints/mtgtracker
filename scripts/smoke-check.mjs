@@ -98,6 +98,8 @@ async function checkSitemap(liveTrackers) {
     `${canonicalBaseUrl}/contact`,
     `${canonicalBaseUrl}/privacy`,
     `${canonicalBaseUrl}/affiliate-disclosure`,
+    `${canonicalBaseUrl}/discoveries.json`,
+    `${canonicalBaseUrl}/discoveries.xml`,
     ...liveTrackers.flatMap((tracker) => [
       `${canonicalBaseUrl}/trackers/${tracker.slug}`,
       `${canonicalBaseUrl}/trackers/${tracker.slug}/stats`,
@@ -123,6 +125,39 @@ async function checkRobots() {
   return { path: '/robots.txt', ok: true };
 }
 
+async function checkDiscoveryJsonFeed() {
+  const { response, text } = await fetchText('/discoveries.json');
+  const feed = JSON.parse(text);
+
+  if (feed.version !== 'https://jsonfeed.org/version/1.1') {
+    throw new Error('/discoveries.json is not a JSON Feed 1.1 document');
+  }
+
+  if (feed.feed_url !== `${canonicalBaseUrl}/discoveries.json`) {
+    throw new Error('/discoveries.json has an unexpected feed_url');
+  }
+
+  if (!response.headers.get('content-type')?.includes('application/json')) {
+    throw new Error('/discoveries.json did not return JSON content type');
+  }
+
+  return { path: '/discoveries.json', ok: true };
+}
+
+async function checkDiscoveryRssFeed() {
+  const { response, text } = await fetchText('/discoveries.xml');
+
+  assertIncludes(text, '<rss version="2.0">', '/discoveries.xml');
+  assertIncludes(text, '<title>MTG Trackers Recent Discoveries</title>', '/discoveries.xml');
+  assertIncludes(text, `${canonicalBaseUrl}/discoveries.xml`, '/discoveries.xml');
+
+  if (!response.headers.get('content-type')?.includes('application/rss+xml')) {
+    throw new Error('/discoveries.xml did not return RSS content type');
+  }
+
+  return { path: '/discoveries.xml', ok: true };
+}
+
 async function main() {
   const { trackers } = loadTrackerModule();
   const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');
@@ -136,6 +171,8 @@ async function main() {
     ...(skipHealth ? [] : [checkHealth()]),
     checkRobots(),
     checkSitemap(liveTrackers),
+    checkDiscoveryJsonFeed(),
+    checkDiscoveryRssFeed(),
     checkBreadcrumbJsonLd('/affiliate-disclosure', ['MTG Trackers', 'Affiliate Disclosure']),
     ...liveTrackers.flatMap((tracker) => [
       checkPage(`/trackers/${tracker.slug}`, [tracker.title, `${tracker.title} Tracker`, 'CollectionPage', 'BreadcrumbList', 'application/ld+json']),

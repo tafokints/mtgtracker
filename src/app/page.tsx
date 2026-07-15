@@ -1,20 +1,15 @@
 import Link from 'next/link';
-import { getRedis } from '@/lib/redis';
 import { trackers } from '@/lib/trackers';
-import { getRecentTrackerDiscoveriesSnapshot, getTrackerCardDefinitions, getTrackerTotalSlots, type RecentTrackerDiscovery } from '@/lib/tracker-data';
+import { getTrackerCardDefinitions, getTrackerTotalSlots, type RecentTrackerDiscovery } from '@/lib/tracker-data';
 import { buildBreadcrumbJsonLd } from '@/lib/seo';
+import { getPublicRecentDiscoveries } from '@/lib/recent-discoveries';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 async function getRecentDiscoveries() {
   try {
-    const redis = getRedis();
-    return await getRecentTrackerDiscoveriesSnapshot(
-      redis,
-      trackers.filter((tracker) => tracker.status === 'live'),
-      5
-    );
+    return await getPublicRecentDiscoveries(5);
   } catch (error) {
     console.error('Error loading homepage discoveries:', error);
     return [];

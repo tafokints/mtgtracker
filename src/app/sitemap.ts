@@ -10,6 +10,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/contact',
     '/privacy',
     '/affiliate-disclosure',
+    '/discoveries.json',
+    '/discoveries.xml',
   ]
 
   const liveTrackerRoutes = trackers
