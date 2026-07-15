@@ -14,6 +14,7 @@ import AffiliateLinks from "@/components/AffiliateLinks";
 import AffiliateDisclosureNotice from "@/components/AffiliateDisclosureNotice";
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 import PrimaryAffiliateCtas from '@/components/PrimaryAffiliateCtas';
+import TrackerMarketTrustStrip from '@/components/TrackerMarketTrustStrip';
 import ReferenceLinks from '@/components/ReferenceLinks';
 import ReportButton from '@/components/ReportButton';
 import AdminPanel from '@/components/AdminPanel';
@@ -25,6 +26,7 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import Head from 'next/head';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { getTrackerMarketSummary } from '@/lib/tracker-market-summary';
 
 interface CardSummaryRow {
   slug: string;
@@ -588,6 +590,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
 
     return chips;
   }, [cardDefinitions, cardFilter, searchQuery, sortOrder, statusFilter]);
+  const marketSummary = useMemo(() => getTrackerMarketSummary(tracker, cards), [cards, tracker]);
 
   const clearActiveFilterChip = (id: ActiveFilterChipId) => {
     if (id === 'search') {
@@ -667,6 +670,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
             <AffiliateDisclosureNotice links={tracker.affiliateLinks} compact />
           </div>
           <PrimaryAffiliateCtas links={tracker.affiliateLinks} trackerSlug={tracker.slug} />
+          <TrackerMarketTrustStrip summary={marketSummary} />
           <ProgressBar current={foundCount} total={totalCount} />
           <p className="text-ring-light mt-3 text-sm">
             Tracking {totalCount} {tracker.cardType || 'serialized cards'}{cardDefinitions.length > 1 ? ` across ${cardDefinitions.length} cards` : ''} from {tracker.setName || 'Magic: The Gathering'}. {confirmedCount} confirmed, {foundCount - confirmedCount} source-linked or unverified.

@@ -161,6 +161,7 @@ Admin backups are tracker-scoped:
 - Affiliate stats: use the admin panel `Affiliate` tab to compare tracker, merchant, and placement click totals, review quick-read performance insights, then export CSV for outside analysis.
 - Affiliate coverage: use the admin panel `Affiliate` tab to confirm every tracker is promotion-ready before you send traffic.
 - Marketplace CTAs: use the admin panel `Affiliate` tab to choose which merchant and placement to emphasize next for each tracker.
+- Tracker market strip: live tracker pages show reviewed discoveries, evidence coverage, market signals, pending report count, and the currently preferred marketplace path near the primary CTAs.
 - Promotion stats: use the admin panel `Affiliate` tab to compare copy, X, and Reddit promotion actions after approved discoveries are prepared for posting.
 - Promotion links: use the admin panel `Review` tab's promotion candidates so copied posts and X/Reddit shares include campaign-tagged tracker URLs.
 - Promotion efficiency: use the admin panel `Affiliate` tab to compare promotion actions, promoted page visits, and downstream affiliate clicks by tracker and source.
