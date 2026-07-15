@@ -11,6 +11,26 @@ describe('affiliate stats insights', () => {
           totalClicks: 20,
         },
       },
+      promotion: {
+        efficiency: [
+          {
+            label: 'The One Ring',
+            promotionActionsInWindow: 3,
+            promotionVisitsInWindow: 4,
+            affiliateClicksInWindow: 2,
+            affiliateClicksPerActionInWindow: 0.67,
+            affiliateClicksPerVisitInWindow: 0.5,
+          },
+          {
+            label: 'Edgar Markov',
+            promotionActionsInWindow: 2,
+            promotionVisitsInWindow: 5,
+            affiliateClicksInWindow: 0,
+            affiliateClicksPerActionInWindow: 0,
+            affiliateClicksPerVisitInWindow: 0,
+          },
+        ],
+      },
       rows: [
         {
           trackerTitle: 'The One Ring',
@@ -37,6 +57,16 @@ describe('affiliate stats insights', () => {
     });
 
     expect(insights).toEqual([
+      {
+        label: 'Best Funnel',
+        value: 'The One Ring',
+        detail: '4 promoted visits created 2 affiliate clicks (0.50 clicks/visit).',
+      },
+      {
+        label: 'Funnel Gap',
+        value: 'Edgar Markov',
+        detail: '5 promoted visits but no affiliate clicks yet. Check CTA relevance, above-the-fold links, and source match.',
+      },
       {
         label: 'Top CTA',
         value: 'The One Ring / Ebay',
@@ -77,5 +107,34 @@ describe('affiliate stats insights', () => {
     });
 
     expect(insights.map((insight) => insight.label)).toEqual(['Top CTA']);
+  });
+
+  it('flags promotion actions that are not producing promoted visits', () => {
+    const insights = getAffiliateStatsInsights({
+      summary: {
+        bestPlacement: null,
+      },
+      promotion: {
+        efficiency: [
+          {
+            label: 'LOTR Poster Cards',
+            promotionActionsInWindow: 3,
+            promotionVisitsInWindow: 0,
+            affiliateClicksInWindow: 0,
+            affiliateClicksPerActionInWindow: 0,
+            affiliateClicksPerVisitInWindow: null,
+          },
+        ],
+      },
+      rows: [],
+    });
+
+    expect(insights).toEqual([
+      {
+        label: 'Distribution Gap',
+        value: 'LOTR Poster Cards',
+        detail: '3 promotion actions but no promoted visits yet. Recheck posted links and audience fit.',
+      },
+    ]);
   });
 });

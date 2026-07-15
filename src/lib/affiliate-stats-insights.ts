@@ -16,9 +16,21 @@ interface AffiliateStatsInsightRow {
   } | null;
 }
 
+interface PromotionEfficiencyInsightRow {
+  label: string;
+  promotionActionsInWindow: number;
+  promotionVisitsInWindow: number;
+  affiliateClicksInWindow: number;
+  affiliateClicksPerActionInWindow: number | null;
+  affiliateClicksPerVisitInWindow: number | null;
+}
+
 export interface AffiliateStatsInsightInput {
   summary: {
     bestPlacement: AffiliateStatsBreakdown | null;
+  };
+  promotion?: {
+    efficiency: PromotionEfficiencyInsightRow[];
   };
   rows: AffiliateStatsInsightRow[];
 }
@@ -35,6 +47,66 @@ function formatPlacement(placement: string) {
 
 function formatMerchant(merchant: string) {
   return merchant.charAt(0).toUpperCase() + merchant.slice(1);
+}
+
+function formatRatio(value: number | null) {
+  return value === null ? 'n/a' : value.toFixed(2);
+}
+
+function getPromotionFunnelInsights(efficiencyRows: PromotionEfficiencyInsightRow[]): AffiliateStatsInsight[] {
+  const activeRows = efficiencyRows.filter((row) => (
+    row.promotionActionsInWindow > 0 ||
+    row.promotionVisitsInWindow > 0 ||
+    row.affiliateClicksInWindow > 0
+  ));
+
+  if (activeRows.length === 0) {
+    return [];
+  }
+
+  const insights: AffiliateStatsInsight[] = [];
+  const bestVisitConverter = [...activeRows]
+    .filter((row) => row.promotionVisitsInWindow > 0)
+    .sort((a, b) => (
+      (b.affiliateClicksPerVisitInWindow || 0) - (a.affiliateClicksPerVisitInWindow || 0) ||
+      b.affiliateClicksInWindow - a.affiliateClicksInWindow ||
+      b.promotionVisitsInWindow - a.promotionVisitsInWindow ||
+      a.label.localeCompare(b.label)
+    ))[0];
+
+  if (bestVisitConverter) {
+    insights.push({
+      label: 'Best Funnel',
+      value: bestVisitConverter.label,
+      detail: `${bestVisitConverter.promotionVisitsInWindow} promoted visits created ${bestVisitConverter.affiliateClicksInWindow} affiliate clicks (${formatRatio(bestVisitConverter.affiliateClicksPerVisitInWindow)} clicks/visit).`,
+    });
+  }
+
+  const needsWork = [...activeRows]
+    .filter((row) => row.promotionVisitsInWindow > 0 && row.affiliateClicksInWindow === 0)
+    .sort((a, b) => b.promotionVisitsInWindow - a.promotionVisitsInWindow || a.label.localeCompare(b.label))[0];
+
+  if (needsWork) {
+    insights.push({
+      label: 'Funnel Gap',
+      value: needsWork.label,
+      detail: `${needsWork.promotionVisitsInWindow} promoted visits but no affiliate clicks yet. Check CTA relevance, above-the-fold links, and source match.`,
+    });
+  }
+
+  const actionGap = [...activeRows]
+    .filter((row) => row.promotionActionsInWindow > 0 && row.promotionVisitsInWindow === 0)
+    .sort((a, b) => b.promotionActionsInWindow - a.promotionActionsInWindow || a.label.localeCompare(b.label))[0];
+
+  if (actionGap && insights.length < 2) {
+    insights.push({
+      label: 'Distribution Gap',
+      value: actionGap.label,
+      detail: `${actionGap.promotionActionsInWindow} promotion actions but no promoted visits yet. Recheck posted links and audience fit.`,
+    });
+  }
+
+  return insights.slice(0, 2);
 }
 
 export function getAffiliateStatsInsights(stats: AffiliateStatsInsightInput): AffiliateStatsInsight[] {
@@ -86,5 +158,8 @@ export function getAffiliateStatsInsights(stats: AffiliateStatsInsightInput): Af
     });
   }
 
-  return insights.slice(0, 4);
+  return [
+    ...getPromotionFunnelInsights(stats.promotion?.efficiency || []),
+    ...insights,
+  ].slice(0, 6);
 }
