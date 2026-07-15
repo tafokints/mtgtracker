@@ -66,6 +66,18 @@ async function checkPage(pathname, needles) {
   return { path: pathname, ok: true };
 }
 
+async function checkBreadcrumbJsonLd(pathname, expectedNames) {
+  const { text } = await fetchText(pathname);
+
+  assertIncludes(text, 'BreadcrumbList', `${pathname} breadcrumb JSON-LD`);
+
+  for (const name of expectedNames) {
+    assertIncludes(text, `"name":"${name}"`, `${pathname} breadcrumb JSON-LD`);
+  }
+
+  return { path: `${pathname} breadcrumbs`, ok: true };
+}
+
 async function checkHealth() {
   const { text } = await fetchText('/api/health');
   const health = JSON.parse(text);
@@ -82,6 +94,9 @@ async function checkSitemap(liveTrackers) {
   const requiredUrls = [
     `${canonicalBaseUrl}/`,
     `${canonicalBaseUrl}/trackers`,
+    `${canonicalBaseUrl}/about`,
+    `${canonicalBaseUrl}/contact`,
+    `${canonicalBaseUrl}/privacy`,
     `${canonicalBaseUrl}/affiliate-disclosure`,
     ...liveTrackers.flatMap((tracker) => [
       `${canonicalBaseUrl}/trackers/${tracker.slug}`,
@@ -112,16 +127,23 @@ async function main() {
   const { trackers } = loadTrackerModule();
   const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');
   const checks = [
-    checkPage('/', ['MTG Trackers', 'Live Trackers']),
-    checkPage('/trackers', ['Trackers', 'Serialized Scaffold Queue', 'Marketplace links are affiliate links']),
-    checkPage('/affiliate-disclosure', ['Affiliate Disclosure', 'eBay Partner Network', 'Amazon Associate']),
+    checkPage('/', ['MTG Trackers', 'Live Trackers', 'BreadcrumbList']),
+    checkPage('/trackers', ['Trackers', 'Serialized Scaffold Queue', 'Marketplace links are affiliate links', 'BreadcrumbList']),
+    checkPage('/about', ['About MTG Trackers', 'BreadcrumbList']),
+    checkPage('/contact', ['Contact', 'Open GitHub Issue', 'BreadcrumbList']),
+    checkPage('/privacy', ['Privacy', 'rate limiting', 'BreadcrumbList']),
+    checkPage('/affiliate-disclosure', ['Affiliate Disclosure', 'eBay Partner Network', 'Amazon Associate', 'BreadcrumbList']),
     ...(skipHealth ? [] : [checkHealth()]),
     checkRobots(),
     checkSitemap(liveTrackers),
+    checkBreadcrumbJsonLd('/affiliate-disclosure', ['MTG Trackers', 'Affiliate Disclosure']),
     ...liveTrackers.flatMap((tracker) => [
-      checkPage(`/trackers/${tracker.slug}`, [tracker.title, `${tracker.title} Tracker`, 'CollectionPage', 'application/ld+json']),
-      checkPage(`/trackers/${tracker.slug}/stats`, [`${tracker.title} Statistics`]),
-      checkPage(`/trackers/${tracker.slug}/submit`, ['Report a Find', 'Reports are queued for admin review', 'Source Link', 'Upload Evidence Images']),
+      checkPage(`/trackers/${tracker.slug}`, [tracker.title, `${tracker.title} Tracker`, 'CollectionPage', 'BreadcrumbList', 'application/ld+json']),
+      checkPage(`/trackers/${tracker.slug}/stats`, [`${tracker.title} Statistics`, 'BreadcrumbList']),
+      checkPage(`/trackers/${tracker.slug}/submit`, ['Report a Find', 'Reports are queued for admin review', 'Source Link', 'Upload Evidence Images', 'BreadcrumbList']),
+      checkBreadcrumbJsonLd(`/trackers/${tracker.slug}`, ['MTG Trackers', 'Trackers', tracker.title]),
+      checkBreadcrumbJsonLd(`/trackers/${tracker.slug}/stats`, ['MTG Trackers', 'Trackers', tracker.title, 'Stats']),
+      checkBreadcrumbJsonLd(`/trackers/${tracker.slug}/submit`, ['MTG Trackers', 'Trackers', tracker.title, 'Report a Find']),
     ]),
   ];
 

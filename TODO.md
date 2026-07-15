@@ -47,6 +47,7 @@
 - [x] Add breadcrumb structured data across core public pages and tracker routes.
 - [x] Add production smoke-check script for core pages, health, sitemap, and live trackers.
 - [x] Add robots.txt verification to production smoke checks.
+- [x] Add static trust page, sitemap, and breadcrumb structured data checks to production smoke.
 - [x] Add live tracker submit pages to sitemap and smoke checks.
 - [ ] Validate Google Search Console setup.
 - [x] Replace placeholder Google verification metadata.
