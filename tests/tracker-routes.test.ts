@@ -794,6 +794,52 @@ describe('tracker API routes', () => {
     });
   });
 
+  it('tracks public copied discovery visits as a promotion source', async () => {
+    const response = await trackPromotionVisit(promotionVisitRequest({
+      tracker: tracker.slug,
+      source: 'public_copy',
+      campaign: 'discovery_promotion',
+      content: 'one-ring-the-one-ring-007',
+      card: 'the-one-ring',
+      serial: '007',
+      path: '/trackers/one-ring?serial=007&utm_source=public_copy&utm_medium=social&utm_campaign=discovery_promotion&utm_content=one-ring-the-one-ring-007',
+    }));
+    const date = new Date().toISOString().slice(0, 10);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(redisFixture.counters.get(`promotion:visits:${date}:one-ring:public_copy`)).toBe(1);
+    expect(redisFixture.counters.get('promotion:visits:total:one-ring:public_copy')).toBe(1);
+    expect(redisFixture.store.get('promotion:last-visit:one-ring:public_copy')).toMatchObject({
+      tracker: 'one-ring',
+      source: 'public_copy',
+      campaign: 'discovery_promotion',
+      serial: '007',
+    });
+
+    const statsResponse = await getAffiliateStats(affiliateStatsRequest());
+    const statsBody = await json(statsResponse);
+
+    expect(statsResponse.status).toBe(200);
+    expect(statsBody).toMatchObject({
+      promotion: {
+        visits: {
+          summary: {
+            bySource: [expect.objectContaining({ key: 'public_copy', label: 'Public Copy', clicksInWindow: 1, totalClicks: 1 })],
+          },
+          rows: [
+            expect.objectContaining({
+              source: 'public_copy',
+              label: 'Public Copy',
+              clicksInWindow: 1,
+              totalClicks: 1,
+            }),
+          ],
+        },
+      },
+    });
+  });
+
   it('summarizes promotion efficiency against affiliate clicks by tracker', async () => {
     const ebayLink = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'ebay');
     if (!ebayLink) throw new Error('Expected One Ring eBay affiliate link');
@@ -832,10 +878,23 @@ describe('tracker API routes', () => {
         serial: '007',
       },
     }));
+    await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: ebayLink.merchant,
+      href: ebayLink.href,
+      label: ebayLink.label,
+      placement: 'discoveries-page',
+      sourcePath: '/trackers/one-ring?serial=007&utm_source=public_copy&utm_medium=social&utm_campaign=discovery_promotion&utm_content=one-ring-the-one-ring-007',
+      viewContext: {
+        serial: '007',
+      },
+    }));
     const date = new Date().toISOString().slice(0, 10);
 
     expect(redisFixture.counters.get(`affiliate:promotion-source:${date}:x`)).toBe(1);
     expect(redisFixture.counters.get('affiliate:promotion-source:total:x')).toBe(1);
+    expect(redisFixture.counters.get(`affiliate:promotion-source:${date}:public_copy`)).toBe(1);
+    expect(redisFixture.counters.get('affiliate:promotion-source:total:public_copy')).toBe(1);
 
     const response = await getAffiliateStats(affiliateStatsRequest());
     const body = await json(response);
@@ -843,23 +902,29 @@ describe('tracker API routes', () => {
     expect(response.status).toBe(200);
     expect(body).toMatchObject({
       summary: {
-        clicksInWindow: 1,
-        totalClicks: 1,
+        clicksInWindow: 2,
+        totalClicks: 2,
       },
       promotion: {
         summary: {
           clicksInWindow: 2,
           totalClicks: 2,
         },
-        affiliateSources: [
+        affiliateSources: expect.arrayContaining([
+          expect.objectContaining({
+            key: 'public_copy',
+            label: 'Public Copy',
+            clicksInWindow: 1,
+            totalClicks: 1,
+          }),
           expect.objectContaining({
             key: 'x',
             label: 'X',
             clicksInWindow: 1,
             totalClicks: 1,
           }),
-        ],
-        efficiency: [
+        ]),
+        efficiency: expect.arrayContaining([
           expect.objectContaining({
             key: 'one-ring',
             label: 'The One Ring',
@@ -867,15 +932,22 @@ describe('tracker API routes', () => {
             promotionActionsTotal: 2,
             promotionVisitsInWindow: 1,
             promotionVisitsTotal: 1,
-            affiliateClicksInWindow: 1,
-            affiliateClicksTotal: 1,
-            affiliateClicksPerActionInWindow: 0.5,
-            affiliateClicksPerActionTotal: 0.5,
-            affiliateClicksPerVisitInWindow: 1,
-            affiliateClicksPerVisitTotal: 1,
+            affiliateClicksInWindow: 2,
+            affiliateClicksTotal: 2,
+            affiliateClicksPerActionInWindow: 1,
+            affiliateClicksPerActionTotal: 1,
+            affiliateClicksPerVisitInWindow: 2,
+            affiliateClicksPerVisitTotal: 2,
           }),
-        ],
-        sourceEfficiency: [
+        ]),
+        sourceEfficiency: expect.arrayContaining([
+          expect.objectContaining({
+            key: 'public_copy',
+            label: 'Public Copy',
+            promotionActionsInWindow: 0,
+            promotionVisitsInWindow: 0,
+            affiliateClicksInWindow: 1,
+          }),
           expect.objectContaining({
             key: 'x',
             label: 'X',
@@ -897,7 +969,7 @@ describe('tracker API routes', () => {
             promotionVisitsInWindow: 0,
             affiliateClicksInWindow: 0,
           }),
-        ],
+        ]),
       },
     });
   });

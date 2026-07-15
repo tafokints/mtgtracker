@@ -218,7 +218,7 @@ async function main() {
       'tracker-stats-cta',
     ]),
     checkSourceFileExcludes('src/components/TrackerSubmitClient.tsx', ['next/head', "'@type': 'Form'"]),
-    checkSourceFile('src/app/discoveries/page.tsx', ['AffiliateOutboundLink', 'AffiliateDisclosureNotice', 'discoveries-page']),
+    checkSourceFile('src/app/discoveries/page.tsx', ['AffiliateOutboundLink', 'AffiliateDisclosureNotice', 'PublicDiscoveryShareActions', 'public_copy', 'discoveries-page']),
     checkSourceFile('src/lib/affiliate-placements.ts', ['tracker-stats-cta', 'serial-detail', 'discoveries-page']),
     ...liveTrackers.flatMap((tracker) => [
       checkPage(`/trackers/${tracker.slug}`, [

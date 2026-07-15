@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const PROMOTION_CAMPAIGN = 'discovery_promotion';
-const PROMOTION_SOURCES = ['admin_copy', 'x', 'reddit'] as const;
+const PROMOTION_SOURCES = ['admin_copy', 'public_copy', 'x', 'reddit'] as const;
 
 function safeKeyPart(value: string) {
   return value.replace(/[^a-z0-9._-]/gi, '-');

@@ -13,7 +13,7 @@ const DEFAULT_DAYS = 30;
 const MAX_DAYS = 90;
 const PLACEMENTS = AFFILIATE_PLACEMENTS;
 const PROMOTION_ACTIONS = ['copy', 'native-share', 'x', 'reddit'];
-const PROMOTION_SOURCES = ['admin_copy', 'x', 'reddit'];
+const PROMOTION_SOURCES = ['admin_copy', 'public_copy', 'x', 'reddit'];
 const DIRECTORY_ACTIONS = ['open-tracker', 'report-find', 'latest-discovery'];
 const VIEW_FILTERS = [
   'found',

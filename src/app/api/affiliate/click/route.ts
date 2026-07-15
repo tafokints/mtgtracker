@@ -10,7 +10,7 @@ export const revalidate = 0;
 
 const MERCHANTS: AffiliateLink['merchant'][] = ['tcgplayer', 'ebay', 'amazon', 'other'];
 const PROMOTION_CAMPAIGN = 'discovery_promotion';
-const PROMOTION_SOURCES = ['admin_copy', 'x', 'reddit'] as const;
+const PROMOTION_SOURCES = ['admin_copy', 'public_copy', 'x', 'reddit'] as const;
 
 function getAllowedLinks(trackerSlug: string) {
   if (trackerSlug === 'default') {

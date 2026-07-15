@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
+import PublicDiscoveryShareActions from '@/components/PublicDiscoveryShareActions';
+import { buildDiscoveryShareLinks, buildDiscoveryShareText, buildPromotionUrl } from '@/lib/discovery-share';
 import { buildBreadcrumbJsonLd, buildDiscoveriesPageJsonLd } from '@/lib/seo';
 import { getPublicRecentDiscoveries } from '@/lib/recent-discoveries';
 import type { RecentTrackerDiscovery } from '@/lib/tracker-data';
@@ -57,11 +59,16 @@ function discoveryCardSlug(discovery: RecentTrackerDiscovery) {
   }
 }
 
-function DiscoveryMarketplaceLinks({ discovery }: { discovery: RecentTrackerDiscovery }) {
-  const tracker = getTracker(discovery.trackerSlug);
-  if (!tracker) return null;
+function discoveryPromotionContent(discovery: RecentTrackerDiscovery, card: SerializedRingCard) {
+  return [
+    discovery.trackerSlug,
+    card.cardSlug || discovery.trackerSlug,
+    discovery.serialNumber,
+  ].join('-');
+}
 
-  const card: SerializedRingCard = {
+function buildDiscoveryCard(discovery: RecentTrackerDiscovery): SerializedRingCard {
+  return {
     id: discovery.cardId,
     cardSlug: discoveryCardSlug(discovery),
     cardTitle: discovery.cardTitle,
@@ -76,6 +83,12 @@ function DiscoveryMarketplaceLinks({ discovery }: { discovery: RecentTrackerDisc
     price: discovery.price,
     priceHistory: [],
   };
+}
+
+function DiscoveryMarketplaceLinks({ discovery, card }: { discovery: RecentTrackerDiscovery; card: SerializedRingCard }) {
+  const tracker = getTracker(discovery.trackerSlug);
+  if (!tracker) return null;
+
   const links = getSerialAffiliateLinks(tracker, card);
 
   return (
@@ -106,10 +119,37 @@ function DiscoveryMarketplaceLinks({ discovery }: { discovery: RecentTrackerDisc
   );
 }
 
+function DiscoveryShareBlock({ discovery, card }: { discovery: RecentTrackerDiscovery; card: SerializedRingCard }) {
+  const tracker = getTracker(discovery.trackerSlug);
+  if (!tracker) return null;
+
+  const detailUrl = `https://mtgtrackers.com${discovery.detailHref}`;
+  const content = discoveryPromotionContent(discovery, card);
+  const publicCopyUrl = buildPromotionUrl(detailUrl, { source: 'public_copy', content });
+  const xUrl = buildPromotionUrl(detailUrl, { source: 'x', content });
+  const redditUrl = buildPromotionUrl(detailUrl, { source: 'reddit', content });
+  const shareLinks = buildDiscoveryShareLinks(tracker, card, xUrl);
+
+  return (
+    <section className="mt-5 rounded border border-ring-teal/25 bg-ring-dark/50 p-4" aria-label={`${discovery.label} sharing actions`}>
+      <h3 className="text-sm font-bold uppercase tracking-wide text-ring-teal">Share This Discovery</h3>
+      <p className="mt-1 text-xs text-ring-light/60">
+        Share links include campaign tags so traffic and downstream marketplace clicks can be measured.
+      </p>
+      <PublicDiscoveryShareActions
+        copyText={buildDiscoveryShareText(tracker, card, publicCopyUrl)}
+        xUrl={shareLinks.x}
+        redditUrl={buildDiscoveryShareLinks(tracker, card, redditUrl).reddit}
+      />
+    </section>
+  );
+}
+
 function DiscoveryCard({ discovery }: { discovery: RecentTrackerDiscovery }) {
   const dateLabel = formatDate(discovery.dateFound);
   const statusLabel = formatStatus(discovery.verificationStatus);
   const sourceLabel = discovery.sourceType ? formatStatus(discovery.sourceType) : undefined;
+  const card = buildDiscoveryCard(discovery);
 
   return (
     <article className="rounded-lg border border-ring-gold/25 bg-ring-dark/75 p-5 transition-colors hover:border-ring-gold/70 hover:bg-ring-gold/10">
@@ -149,7 +189,8 @@ function DiscoveryCard({ discovery }: { discovery: RecentTrackerDiscovery }) {
         </Link>
       </div>
 
-      <DiscoveryMarketplaceLinks discovery={discovery} />
+      <DiscoveryShareBlock discovery={discovery} card={card} />
+      <DiscoveryMarketplaceLinks discovery={discovery} card={card} />
     </article>
   );
 }
