@@ -9,6 +9,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - `/` - platform homepage
 - `/trackers` - tracker directory
 - `/serialized-mtg-catalog` - researched serialized MTG catalog and tracker backlog
+- `/verification-guide` - public evidence and admin-review guide for serialized discovery reports
 - `/trackers/one-ring` - The One Ring tracker
 - `/trackers/one-ring/stats` - The One Ring stats
 - `/trackers/one-ring/submit` - public discovery report flow
@@ -51,6 +52,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - Card-level public filtering for multi-card serialized treatments
 - Card activity summaries for multi-card tracker pages
 - Public report flow with source type, evidence level, price, image uploads, image URLs, and notes
+- Public verification guide linked from report forms so crowd-sourced submissions include stronger evidence
 - Report form evidence image count guardrails and removal controls before submission
 - Serial detail report links preselect the matching card and serial in the report form
 - Unlocated tracker cards include serial-specific report links that preselect the matching report form fields
@@ -225,6 +227,7 @@ Also verify:
 - Amazon affiliate links use Associate tag `meleeitonme0a-20`.
 - `/about`, `/contact`, `/privacy`, and `/affiliate-disclosure` load in production.
 - `/serialized-mtg-catalog` loads in production and is included in the sitemap.
+- `/verification-guide` loads in production and is included in the sitemap.
 - `/discoveries`, `/discoveries.json`, and `/discoveries.xml` load in production.
 - Google Search Console ownership is verified and `https://mtgtrackers.com/sitemap.xml` is submitted.
 

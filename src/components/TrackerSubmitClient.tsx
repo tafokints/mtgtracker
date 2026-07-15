@@ -256,6 +256,12 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
                 <p className="mt-1 text-xs text-ring-light/70">
                   Better evidence helps admins approve new discoveries faster and keeps public counts trustworthy.
                 </p>
+                <Link
+                  href="/verification-guide"
+                  className="mt-2 inline-flex text-xs font-bold text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline"
+                >
+                  Read the verification guide
+                </Link>
               </div>
               <div className="rounded border border-ring-gold/30 px-3 py-1 text-xs font-bold text-ring-gold">
                 {evidenceChecklistPassed}/{evidenceChecklist.length} {evidenceChecklistSummary}

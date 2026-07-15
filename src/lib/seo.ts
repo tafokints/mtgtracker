@@ -368,6 +368,46 @@ export function buildSerializedCatalogJsonLd(entries: SerializedCatalogEntry[]) 
   };
 }
 
+export function buildVerificationGuideJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: 'Serialized MTG Verification Guide',
+    description: 'How MTG Trackers reviews serialized Magic: The Gathering discovery reports, evidence images, source links, and verification status.',
+    url: `${siteUrl}/verification-guide`,
+    isPartOf: {
+      '@type': 'WebSite',
+      name: 'MTG Trackers',
+      url: siteUrl,
+    },
+    about: {
+      '@type': 'Thing',
+      name: 'Serialized Magic: The Gathering discovery verification',
+    },
+    mainEntity: {
+      '@type': 'FAQPage',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: 'What makes a serialized MTG discovery confirmed?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'A confirmed report includes enough source or image evidence for an admin to identify the exact card and stamped serial number.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: 'Can marketplace screenshots be submitted?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Marketplace screenshots can help, but the original listing or sold-comp URL is stronger because admins can review provenance and sale context.',
+          },
+        },
+      ],
+    },
+  };
+}
+
 export interface BreadcrumbItem {
   name: string;
   path: string;

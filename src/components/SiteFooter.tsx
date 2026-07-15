@@ -3,6 +3,7 @@ import Link from 'next/link';
 const footerLinks = [
   { href: '/trackers', label: 'Trackers' },
   { href: '/serialized-mtg-catalog', label: 'Catalog' },
+  { href: '/verification-guide', label: 'Verification Guide' },
   { href: '/discoveries', label: 'Discoveries' },
   { href: '/about', label: 'About' },
   { href: '/contact', label: 'Contact' },

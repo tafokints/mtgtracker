@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getTracker, trackers } from '@/lib/trackers';
-import { buildBreadcrumbJsonLd, buildDiscoveriesPageJsonLd, buildTrackerDirectoryJsonLd, buildTrackerFaqJsonLd, buildTrackerPageMetadata, buildTrackerSerialItemPageJsonLd, buildTrackerStatsJsonLd, buildTrackerSubmitJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildDiscoveriesPageJsonLd, buildTrackerDirectoryJsonLd, buildTrackerFaqJsonLd, buildTrackerPageMetadata, buildTrackerSerialItemPageJsonLd, buildTrackerStatsJsonLd, buildTrackerSubmitJsonLd, buildTrackerWebPageJsonLd, buildVerificationGuideJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
 
 describe('SEO structured data', () => {
   it('builds factual CollectionPage JSON-LD for a tracker', () => {
@@ -146,6 +146,26 @@ describe('SEO structured data', () => {
         name: 'Edgar Markov',
       },
     });
+  });
+
+  it('builds WebPage JSON-LD for the public verification guide', () => {
+    const jsonLd = buildVerificationGuideJsonLd();
+
+    expect(jsonLd).toMatchObject({
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: 'Serialized MTG Verification Guide',
+      url: 'https://mtgtrackers.com/verification-guide',
+      mainEntity: {
+        '@type': 'FAQPage',
+      },
+    });
+    expect(jsonLd.mainEntity.mainEntity).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        '@type': 'Question',
+        name: 'What makes a serialized MTG discovery confirmed?',
+      }),
+    ]));
   });
 
   it('builds tracker keywords from the tracker subject and set metadata', () => {

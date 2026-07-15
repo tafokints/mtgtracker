@@ -117,6 +117,7 @@ async function checkSitemap(liveTrackers) {
     `${canonicalBaseUrl}/`,
     `${canonicalBaseUrl}/trackers`,
     `${canonicalBaseUrl}/serialized-mtg-catalog`,
+    `${canonicalBaseUrl}/verification-guide`,
     `${canonicalBaseUrl}/discoveries`,
     `${canonicalBaseUrl}/about`,
     `${canonicalBaseUrl}/contact`,
@@ -189,6 +190,7 @@ async function main() {
     checkPage('/', ['MTG Trackers', 'Live Trackers', 'BreadcrumbList']),
     checkPage('/trackers', ['Trackers', 'Serialized Scaffold Queue', 'Marketplace links are affiliate links', 'BreadcrumbList']),
     checkPage('/serialized-mtg-catalog', ['Serialized MTG Catalog', 'Marketplace Research', 'Live tracker', 'CollectionPage', 'BreadcrumbList']),
+    checkPage('/verification-guide', ['Serialized MTG Verification Guide', 'Verification Status', 'Best Evidence', 'Fastest Approval Path', 'WebPage', 'BreadcrumbList']),
     checkPage('/discoveries', ['Recent Discoveries', 'Discovery Feeds', 'JSON Feed', 'RSS Feed', 'CollectionPage', 'BreadcrumbList']),
     checkPage('/trackers/one-ring?serial=001', [
       'The One Ring 001/100 | MTG Trackers',
@@ -207,6 +209,7 @@ async function main() {
     checkDiscoveryRssFeed(),
     checkBreadcrumbJsonLd('/affiliate-disclosure', ['MTG Trackers', 'Affiliate Disclosure']),
     checkBreadcrumbJsonLd('/serialized-mtg-catalog', ['MTG Trackers', 'Serialized MTG Catalog']),
+    checkBreadcrumbJsonLd('/verification-guide', ['MTG Trackers', 'Verification Guide']),
     checkBreadcrumbJsonLd('/discoveries', ['MTG Trackers', 'Recent Discoveries']),
     checkSourceFile('src/components/TrackerPageClient.tsx', [
       'TrackerMarketTrustStrip',
@@ -221,6 +224,7 @@ async function main() {
       'tracker-stats-cta',
     ]),
     checkSourceFileExcludes('src/components/TrackerSubmitClient.tsx', ['next/head', "'@type': 'Form'"]),
+    checkSourceFile('src/components/TrackerSubmitClient.tsx', ['Read the verification guide', '/verification-guide']),
     checkSourceFile('src/app/discoveries/page.tsx', ['AffiliateOutboundLink', 'AffiliateDisclosureNotice', 'PublicDiscoveryShareActions', 'public_copy', 'discoveries-page']),
     checkSourceFile('src/lib/affiliate-placements.ts', ['tracker-stats-cta', 'serial-detail', 'discoveries-page']),
     ...liveTrackers.flatMap((tracker) => [
