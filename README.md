@@ -54,6 +54,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - Report forms confirm the currently selected card and serial when a report link preselects or changes them
 - Serial detail pages show public verification signals, approved evidence image thumbnails, and provenance links when available
 - Admin review queue before crowd-sourced discoveries become public tracker updates
+- Admin promotion candidates for approved high-signal discoveries with copy-ready posts and share links
 - Card-level admin review filtering for multi-card serialized treatments
 - Hidden admin panel with price, image, grading, and price-history updates
 - Curated serialized MTG catalog for future tracker scaffolding

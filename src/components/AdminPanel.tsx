@@ -6,6 +6,7 @@ import type { TrackerSummary } from '@/lib/trackers';
 import { formatTrackerCardLabel, formatTrackerSerial } from '@/lib/tracker-data';
 import { affiliateStatsCsvFilename, buildAffiliateStatsCsv } from '@/lib/affiliate-stats-export';
 import { getAffiliateStatsInsights } from '@/lib/affiliate-stats-insights';
+import { buildDiscoveryShareLinks, getPromotionCandidates } from '@/lib/discovery-share';
 import ExternalImage from '@/components/ExternalImage';
 
 interface AdminPanelProps {
@@ -162,6 +163,23 @@ function downloadTextFile(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
+async function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const input = document.createElement('textarea');
+  input.value = text;
+  input.setAttribute('readonly', '');
+  input.style.position = 'fixed';
+  input.style.opacity = '0';
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand('copy');
+  document.body.removeChild(input);
+}
+
 export default function AdminPanel({ 
   tracker,
   cards, 
@@ -276,6 +294,10 @@ export default function AdminPanel({
       new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
     ));
   const filteredReviewedSubmissions = reviewedSubmissions.filter(matchesReviewCardFilter);
+  const promotionCandidates = useMemo(
+    () => getPromotionCandidates(tracker, cards, filteredReviewedSubmissions, 3),
+    [cards, filteredReviewedSubmissions, tracker],
+  );
   
   // Grading fields
   const [gradingService, setGradingService] = useState('');
@@ -329,6 +351,15 @@ export default function AdminPanel({
       affiliateStatsCsvFilename(affiliateStats.generatedAt),
       buildAffiliateStatsCsv(affiliateStats),
     );
+  };
+
+  const copyPromotionShareText = async (text: string) => {
+    try {
+      await copyTextToClipboard(text);
+      setMessage('Promotion share text copied');
+    } catch {
+      setMessage('Promotion copy failed');
+    }
   };
 
   useEffect(() => {
@@ -1033,6 +1064,71 @@ export default function AdminPanel({
                 </div>
                 );
               })}
+
+              {promotionCandidates.length > 0 && (
+                <div className="space-y-3 rounded border border-ring-teal/35 bg-ring-teal/10 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-ring-teal font-bold text-sm">Promotion candidates</h4>
+                      <p className="mt-1 text-xs text-ring-light/65">
+                        Recently approved discoveries with strong share signals.
+                      </p>
+                    </div>
+                    <span className="rounded border border-ring-teal/40 px-2 py-1 text-xs text-ring-light">
+                      {promotionCandidates.length} ready
+                    </span>
+                  </div>
+                  {promotionCandidates.map((candidate) => {
+                    const shareLinks = buildDiscoveryShareLinks(tracker, candidate.card, candidate.detailUrl);
+
+                    return (
+                      <div key={candidate.submission.id} className="rounded border border-ring-teal/25 bg-black/20 p-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-bold text-ring-light">{formatTrackerCardLabel(tracker, candidate.card)}</p>
+                            <p className="mt-1 text-xs text-ring-light/65">
+                              Score {candidate.score} - {candidate.reasons.join(', ')}
+                            </p>
+                          </div>
+                          <a
+                            href={candidate.detailUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-bold text-ring-teal hover:underline"
+                          >
+                            Open public card
+                          </a>
+                        </div>
+                        <pre className="mt-3 whitespace-pre-wrap rounded bg-ring-dark/70 p-3 text-xs leading-5 text-ring-light">{candidate.shareText}</pre>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            onClick={() => copyPromotionShareText(candidate.shareText)}
+                            className="rounded bg-ring-teal px-3 py-2 text-xs font-bold text-ring-dark transition-colors hover:bg-cyan-300"
+                          >
+                            Copy Post
+                          </button>
+                          <a
+                            href={shareLinks.x}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded border border-ring-teal/50 px-3 py-2 text-xs font-bold text-ring-teal transition-colors hover:bg-ring-teal hover:text-ring-dark"
+                          >
+                            X
+                          </a>
+                          <a
+                            href={shareLinks.reddit}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded border border-ring-teal/50 px-3 py-2 text-xs font-bold text-ring-teal transition-colors hover:bg-ring-teal hover:text-ring-dark"
+                          >
+                            Reddit
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {filteredReviewedSubmissions.length > 0 && (
                 <div className="space-y-2 pt-2">

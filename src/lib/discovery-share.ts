@@ -1,6 +1,16 @@
-import type { SerializedRingCard } from '@/lib/types';
+import type { DiscoverySubmission, SerializedRingCard } from '@/lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
-import { formatTrackerCardLabel } from '@/lib/tracker-data';
+import { formatTrackerCardLabel, getTrackerCardDeepLinkParams } from '@/lib/tracker-data';
+import { siteUrl } from '@/lib/seo';
+
+export interface PromotionCandidate {
+  card: SerializedRingCard;
+  submission: DiscoverySubmission;
+  detailUrl: string;
+  shareText: string;
+  score: number;
+  reasons: string[];
+}
 
 function formatStatus(value: string) {
   return value.replace(/-/g, ' ');
@@ -42,4 +52,87 @@ export function buildDiscoveryShareLinks(tracker: TrackerSummary, card: Serializ
       title,
     }).toString()}`,
   };
+}
+
+export function buildDiscoveryDetailUrl(tracker: TrackerSummary, card: SerializedRingCard, baseUrl = siteUrl) {
+  return `${baseUrl.replace(/\/+$/, '')}${tracker.href}?${getTrackerCardDeepLinkParams(tracker, card).toString()}`;
+}
+
+function promotionScore(submission: DiscoverySubmission, card: SerializedRingCard) {
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (submission.requestedVerificationStatus === 'confirmed' || card.verificationStatus === 'confirmed') {
+    score += 4;
+    reasons.push('confirmed');
+  } else if (submission.requestedVerificationStatus === 'source-linked' || card.verificationStatus === 'source-linked') {
+    score += 3;
+    reasons.push('source linked');
+  }
+
+  if (submission.link || card.link) {
+    score += 2;
+    reasons.push('source');
+  }
+
+  const evidenceImageCount = (submission.evidenceImages || []).length + (submission.imageUrl ? 1 : 0) + (card.evidenceImages || []).length;
+  if (evidenceImageCount > 0) {
+    score += 2;
+    reasons.push(`${evidenceImageCount} image${evidenceImageCount === 1 ? '' : 's'}`);
+  }
+
+  if (submission.price !== undefined || card.price !== undefined) {
+    score += 1;
+    reasons.push('price');
+  }
+
+  if (submission.foundBy || card.foundBy) {
+    score += 1;
+    reasons.push('finder');
+  }
+
+  if (submission.dateFound || card.dateFound) {
+    score += 1;
+    reasons.push('date');
+  }
+
+  return { reasons, score };
+}
+
+export function getPromotionCandidates(
+  tracker: TrackerSummary,
+  cards: SerializedRingCard[],
+  submissions: DiscoverySubmission[],
+  limit = 3,
+): PromotionCandidate[] {
+  return submissions
+    .filter((submission) => submission.status === 'approved')
+    .map((submission) => {
+      const card = cards.find((candidate) => candidate.id === submission.cardId);
+      if (!card || !card.found) {
+        return undefined;
+      }
+
+      const { reasons, score } = promotionScore(submission, card);
+      const detailUrl = buildDiscoveryDetailUrl(tracker, card);
+
+      return {
+        card,
+        detailUrl,
+        reasons,
+        score,
+        shareText: buildDiscoveryShareText(tracker, card, detailUrl),
+        submission,
+      };
+    })
+    .filter((candidate): candidate is PromotionCandidate => Boolean(candidate))
+    .sort((a, b) => {
+      const scoreDifference = b.score - a.score;
+      if (scoreDifference !== 0) return scoreDifference;
+
+      const bDate = new Date(b.submission.reviewedAt || b.submission.submittedAt).getTime();
+      const aDate = new Date(a.submission.reviewedAt || a.submission.submittedAt).getTime();
+      return bDate - aDate;
+    })
+    .slice(0, limit);
 }
