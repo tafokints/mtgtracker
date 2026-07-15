@@ -192,6 +192,29 @@ export function buildTrackerStatsJsonLd(tracker: TrackerSummary) {
   };
 }
 
+export function buildTrackerFaqJsonLd(tracker: TrackerSummary) {
+  const faqs = tracker.faqs || [];
+
+  if (faqs.length === 0) {
+    return null;
+  }
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    name: `${tracker.title} Frequently Asked Questions`,
+    url: trackerCanonicalUrl(tracker),
+    mainEntity: faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  };
+}
+
 export function buildTrackerDirectoryJsonLd(liveTrackers: TrackerSummary[]) {
   return {
     '@context': 'https://schema.org',

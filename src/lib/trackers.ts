@@ -28,6 +28,11 @@ export interface TrackerMarketInsight {
   bullets: string[];
 }
 
+export interface TrackerFaq {
+  question: string;
+  answer: string;
+}
+
 export interface TrackerStorage {
   cardsKey: string;
   submissionsKey: string;
@@ -63,6 +68,7 @@ export interface TrackerSummary {
   cardDefinitions?: TrackerCardDefinition[];
   referenceImage?: string;
   marketInsights?: TrackerMarketInsight[];
+  faqs?: TrackerFaq[];
 }
 
 const tcgplayerPartnerLink = 'https://partner.tcgplayer.com/DyJ25G';
@@ -213,6 +219,20 @@ export const trackers: TrackerSummary[] = [
         ],
       },
     ],
+    faqs: [
+      {
+        question: 'How many serialized The One Ring poster cards exist?',
+        answer: 'There are 100 serialized The One Ring borderless poster cards in the Lord of the Rings Holiday Release, numbered 001/100 through 100/100.',
+      },
+      {
+        question: 'What counts as a strong The One Ring discovery report?',
+        answer: 'The strongest reports include a public source link or clear evidence image showing the card face and stamped serial number so an admin can verify the discovery before it affects the public tracker.',
+      },
+      {
+        question: 'Which marketplace searches are most useful for The One Ring serials?',
+        answer: 'Exact eBay serial searches are useful for auction comps, while TCGplayer and sealed-product links give broader context for LOTR singles and collector booster demand.',
+      },
+    ],
     referenceImage: 'https://cards.scryfall.io/large/front/4/e/4e6fee52-33a8-4085-b632-bf95dfd2b16d.jpg?1782694957',
   },
   {
@@ -289,6 +309,20 @@ export const trackers: TrackerSummary[] = [
           'Report untracked serials even when price is unknown so the discovery queue can preserve evidence.',
           'Use source-linked status for credible public sightings that still need stronger primary proof.',
         ],
+      },
+    ],
+    faqs: [
+      {
+        question: 'How many serialized Edgar Markov cards exist?',
+        answer: 'There are 500 serialized Edgar Markov headliner cards from Innistrad Remastered collector boosters, numbered 001/500 through 500/500.',
+      },
+      {
+        question: 'Why track Edgar Markov discoveries separately?',
+        answer: 'Edgar Markov has demand from Commander players, vampire collectors, and serialized-card collectors, so a dedicated tracker makes confirmed discoveries, sale data, and source quality easier to compare.',
+      },
+      {
+        question: 'What evidence helps verify an Edgar Markov serial?',
+        answer: 'A clear serial image plus a marketplace, grading, social, or article source gives admins enough context to mark the card confirmed or source-linked instead of unverified.',
       },
     ],
     referenceImage: 'https://cards.scryfall.io/large/front/e/7/e70bfc25-3c0c-4574-b504-1d1f73e9e790.jpg?1782726466',
@@ -396,6 +430,20 @@ export const trackers: TrackerSummary[] = [
         ],
       },
     ],
+    faqs: [
+      {
+        question: 'How many serialized LOTR poster card slots are tracked here?',
+        answer: 'This tracker follows 20 Lord of the Rings borderless poster cards with 100 serialized copies each, for 2,000 card-and-serial slots.',
+      },
+      {
+        question: 'Why do reports need both card name and serial number?',
+        answer: 'Each poster card has its own 001/100 through 100/100 run, so the card name and stamped serial number are both required to place a discovery in the correct tracker slot.',
+      },
+      {
+        question: 'How should collectors compare LOTR poster card discoveries?',
+        answer: 'Use card filters, source quality, evidence images, and marketplace searches together because demand can vary by character, playability, artwork, and public sale history.',
+      },
+    ],
     referenceImage: 'https://cards.scryfall.io/large/front/4/e/4e6fee52-33a8-4085-b632-bf95dfd2b16d.jpg?1782694957',
   },
   {
@@ -456,6 +504,16 @@ export const trackers: TrackerSummary[] = [
           'Validate Final Fantasy affiliate links before launch so collector traffic lands on relevant products.',
           'Use the same admin review workflow once migrated so public discoveries stay evidence-backed.',
         ],
+      },
+    ],
+    faqs: [
+      {
+        question: 'When will Golden Chocobo move into MTG Trackers?',
+        answer: 'Golden Chocobo is planned for migration after the generic tracker platform can preserve the existing data, affiliate coverage, and admin review workflow cleanly.',
+      },
+      {
+        question: 'Will Golden Chocobo use the same verification queue?',
+        answer: 'Yes. Once migrated, new Golden Chocobo reports should use the same evidence-backed submission queue and admin review states as the live MTG Trackers pages.',
       },
     ],
   },

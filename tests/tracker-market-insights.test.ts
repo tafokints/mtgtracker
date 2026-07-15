@@ -16,4 +16,18 @@ describe('tracker market insights', () => {
       }
     }
   });
+
+  it('keeps every live tracker stocked with search-ready FAQs', () => {
+    const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');
+
+    expect(liveTrackers.length).toBeGreaterThan(0);
+    for (const tracker of liveTrackers) {
+      expect(tracker.faqs?.length, `${tracker.slug} FAQs`).toBeGreaterThanOrEqual(3);
+
+      for (const faq of tracker.faqs || []) {
+        expect(faq.question.trim(), `${tracker.slug} FAQ question`).toMatch(/\?$/);
+        expect(faq.answer.trim().length, `${tracker.slug} FAQ answer`).toBeGreaterThanOrEqual(80);
+      }
+    }
+  });
 });

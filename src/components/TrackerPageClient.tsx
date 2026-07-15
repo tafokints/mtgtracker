@@ -14,6 +14,7 @@ import AffiliateLinks from "@/components/AffiliateLinks";
 import AffiliateDisclosureNotice from "@/components/AffiliateDisclosureNotice";
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 import PrimaryAffiliateCtas from '@/components/PrimaryAffiliateCtas';
+import TrackerFaq from '@/components/TrackerFaq';
 import TrackerMarketInsights from '@/components/TrackerMarketInsights';
 import TrackerMarketTrustStrip from '@/components/TrackerMarketTrustStrip';
 import ReferenceLinks from '@/components/ReferenceLinks';
@@ -706,6 +707,10 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
 
         <div className="mt-6 w-full max-w-5xl">
           <TrackerMarketInsights tracker={tracker} />
+        </div>
+
+        <div className="mt-6 w-full max-w-5xl">
+          <TrackerFaq tracker={tracker} />
         </div>
 
         {!dataError && (

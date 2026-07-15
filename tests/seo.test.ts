@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getTracker, trackers } from '@/lib/trackers';
-import { buildBreadcrumbJsonLd, buildTrackerDirectoryJsonLd, buildTrackerPageMetadata, buildTrackerStatsJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildTrackerDirectoryJsonLd, buildTrackerFaqJsonLd, buildTrackerPageMetadata, buildTrackerStatsJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
 
 describe('SEO structured data', () => {
   it('builds factual CollectionPage JSON-LD for a tracker', () => {
@@ -65,6 +65,29 @@ describe('SEO structured data', () => {
       'Confirmed discoveries',
       'Public sale price coverage',
       'Source type distribution',
+    ]));
+  });
+
+  it('builds FAQPage JSON-LD for tracker collector questions', () => {
+    const tracker = getTracker('one-ring');
+    if (!tracker) throw new Error('one-ring tracker fixture is missing');
+
+    const jsonLd = buildTrackerFaqJsonLd(tracker);
+
+    expect(jsonLd).toMatchObject({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      name: 'The One Ring Frequently Asked Questions',
+      url: 'https://mtgtrackers.com/trackers/one-ring',
+    });
+    expect(jsonLd?.mainEntity).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        '@type': 'Question',
+        name: 'How many serialized The One Ring poster cards exist?',
+        acceptedAnswer: expect.objectContaining({
+          '@type': 'Answer',
+        }),
+      }),
     ]));
   });
 
