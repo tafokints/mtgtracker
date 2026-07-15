@@ -174,6 +174,7 @@ Admin backups are tracker-scoped:
 - Growth recommendations: use the admin panel `Affiliate` tab to turn directory CTA, promotion, and affiliate-click signals into prioritized tracker actions.
 - Directory CTAs: use the admin panel `Affiliate` tab to compare which tracker directory actions are pushing visitors into tracker pages, report forms, and latest-discovery detail views.
 - Directory marketplace links are tracked as `tracker-directory`.
+- Discovery-page marketplace links are tracked as `discoveries-page`.
 - Primary marketplace CTAs: tracker pages include top-of-page marketplace actions tracked as `tracker-top-cta`, plus contextual filtered-view actions tracked as `tracker-filtered-cta` with the active view summarized near the links.
 - Serial card grid eBay searches are tracked as `tracker-card-serial`.
 - Serial detail marketplace links are tracked as `serial-detail`.

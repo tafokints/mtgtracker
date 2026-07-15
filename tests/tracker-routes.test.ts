@@ -373,6 +373,48 @@ describe('tracker API routes', () => {
     });
   });
 
+  it('tracks recent discovery affiliate clicks as their own placement', async () => {
+    const link = getSerialAffiliateLinks(tracker, {
+      id: 7,
+      serialNumber: '007',
+      name: tracker.title,
+      found: true,
+      verificationStatus: 'confirmed',
+      priceHistory: [],
+    }).find((affiliateLink) => affiliateLink.merchant === 'ebay');
+    if (!link) throw new Error('Expected serial-specific eBay affiliate link');
+
+    const response = await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: link.merchant,
+      href: link.href,
+      label: link.label,
+      placement: 'discoveries-page',
+      sourcePath: '/discoveries',
+      viewContext: {
+        serial: '007',
+        slot: '7',
+      },
+    }));
+    const date = new Date().toISOString().slice(0, 10);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(redisFixture.counters.get(`affiliate:clicks:${date}:one-ring:ebay:discoveries-page`)).toBe(1);
+    expect(redisFixture.counters.get('affiliate:clicks:total:one-ring:ebay:discoveries-page')).toBe(1);
+    expect(redisFixture.counters.get(`affiliate:context:${date}:one-ring:serial:007`)).toBe(1);
+    expect(redisFixture.store.get('affiliate:last-click:one-ring:ebay:discoveries-page')).toMatchObject({
+      tracker: 'one-ring',
+      merchant: 'ebay',
+      placement: 'discoveries-page',
+      sourcePath: '/discoveries',
+      viewContext: {
+        serial: '007',
+        slot: '7',
+      },
+    });
+  });
+
   it('sanitizes affiliate click view context before storing last-click metadata', async () => {
     const link = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'amazon');
     if (!link) throw new Error('Expected One Ring Amazon affiliate link');

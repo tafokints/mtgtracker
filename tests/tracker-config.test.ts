@@ -33,6 +33,7 @@ describe('tracker config consistency', () => {
       'tracker-marketplace',
       'tracker-card-serial',
       'serial-detail',
+      'discoveries-page',
       'marketplace-links',
     ]));
 

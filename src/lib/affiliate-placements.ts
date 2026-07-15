@@ -6,6 +6,7 @@ export const AFFILIATE_PLACEMENTS = [
   'tracker-marketplace',
   'tracker-card-serial',
   'serial-detail',
+  'discoveries-page',
   'marketplace-links',
 ] as const;
 

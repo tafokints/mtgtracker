@@ -1,8 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
+import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 import { buildBreadcrumbJsonLd, buildDiscoveriesPageJsonLd } from '@/lib/seo';
 import { getPublicRecentDiscoveries } from '@/lib/recent-discoveries';
 import type { RecentTrackerDiscovery } from '@/lib/tracker-data';
+import { getSerialAffiliateLinks, getTracker } from '@/lib/trackers';
+import type { SerializedRingCard } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -43,6 +47,63 @@ function formatDate(value?: string) {
     day: 'numeric',
     year: 'numeric',
   }).format(date);
+}
+
+function discoveryCardSlug(discovery: RecentTrackerDiscovery) {
+  try {
+    return new URL(discovery.detailHref, 'https://mtgtrackers.com').searchParams.get('card') || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function DiscoveryMarketplaceLinks({ discovery }: { discovery: RecentTrackerDiscovery }) {
+  const tracker = getTracker(discovery.trackerSlug);
+  if (!tracker) return null;
+
+  const card: SerializedRingCard = {
+    id: discovery.cardId,
+    cardSlug: discoveryCardSlug(discovery),
+    cardTitle: discovery.cardTitle,
+    serialTotal: discovery.serialTotal,
+    serialNumber: discovery.serialNumber,
+    name: discovery.label,
+    found: true,
+    foundBy: discovery.foundBy,
+    dateFound: discovery.dateFound,
+    sourceType: discovery.sourceType as SerializedRingCard['sourceType'],
+    verificationStatus: discovery.verificationStatus,
+    price: discovery.price,
+    priceHistory: [],
+  };
+  const links = getSerialAffiliateLinks(tracker, card);
+
+  return (
+    <div className="mt-5 rounded border border-ring-gold/20 bg-black/20 p-4">
+      <div className="mb-3">
+        <AffiliateDisclosureNotice links={links} compact />
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        {links.map((link) => (
+          <AffiliateOutboundLink
+            key={`${discovery.trackerSlug}-${discovery.cardId}-${link.merchant}-${link.href}`}
+            link={link}
+            trackerSlug={tracker.slug}
+            placement="discoveries-page"
+            viewContext={{
+              card: card.cardSlug,
+              serial: discovery.serialNumber,
+              slot: String(discovery.cardId),
+            }}
+            className="rounded border border-ring-gold px-3 py-2 text-center text-xs font-bold text-ring-gold transition-colors hover:bg-ring-gold hover:text-ring-dark"
+          >
+            <span className="block">{link.label}</span>
+            <span className="mt-1 block font-normal uppercase opacity-70">{link.intent.replace('-', ' ')}</span>
+          </AffiliateOutboundLink>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function DiscoveryCard({ discovery }: { discovery: RecentTrackerDiscovery }) {
@@ -87,6 +148,8 @@ function DiscoveryCard({ discovery }: { discovery: RecentTrackerDiscovery }) {
           View Tracker
         </Link>
       </div>
+
+      <DiscoveryMarketplaceLinks discovery={discovery} />
     </article>
   );
 }

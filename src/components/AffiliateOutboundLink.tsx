@@ -8,6 +8,7 @@ interface AffiliateOutboundLinkProps {
   link: AffiliateLink;
   trackerSlug: string;
   placement: AffiliatePlacement;
+  viewContext?: Record<string, string | undefined>;
   className?: string;
   children?: React.ReactNode;
 }
@@ -27,7 +28,7 @@ function getViewContext() {
   return Object.fromEntries(Object.entries(context).filter(([, value]) => Boolean(value)));
 }
 
-export default function AffiliateOutboundLink({ link, trackerSlug, placement, className, children }: AffiliateOutboundLinkProps) {
+export default function AffiliateOutboundLink({ link, trackerSlug, placement, viewContext, className, children }: AffiliateOutboundLinkProps) {
   const trackClick = () => {
     const payload = JSON.stringify({
       tracker: trackerSlug,
@@ -37,7 +38,10 @@ export default function AffiliateOutboundLink({ link, trackerSlug, placement, cl
       intent: link.intent,
       placement,
       sourcePath: `${window.location.pathname}${window.location.search}`,
-      viewContext: getViewContext(),
+      viewContext: {
+        ...getViewContext(),
+        ...Object.fromEntries(Object.entries(viewContext || {}).filter(([, value]) => Boolean(value))),
+      },
     });
 
     if (navigator.sendBeacon) {
