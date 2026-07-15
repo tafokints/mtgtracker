@@ -15,6 +15,15 @@ import { SourceType, VerificationStatus } from '@/lib/types';
 
 const MAX_EVIDENCE_IMAGES = 8;
 
+const sourceTypeLabels: Record<SourceType, string> = {
+  marketplace: 'marketplace listing or sale',
+  'grading-pop': 'grading population source',
+  social: 'social post',
+  article: 'article or guide',
+  'private-sale': 'private sale note',
+  other: 'other source',
+};
+
 export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSummary }) {
   const cardDefinitions = useMemo(() => getTrackerCardDefinitions(tracker), [tracker]);
   const hasMultipleCardDefinitions = cardDefinitions.length > 1;
@@ -45,6 +54,10 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
   ), [evidenceImageUrls]);
   const totalEvidenceImageCount = uploadedEvidenceUrls.length + manualEvidenceUrlCount;
   const evidenceLimitExceeded = totalEvidenceImageCount > MAX_EVIDENCE_IMAGES;
+  const hasSourceLink = link.trim().length > 0;
+  const hasPrimaryImage = imageUrl.trim().length > 0;
+  const hasEvidenceImage = totalEvidenceImageCount > 0 || hasPrimaryImage;
+  const hasReviewNotes = notes.trim().length > 0;
   const selectedSerialSummary = useMemo(() => {
     if (hasMultipleCardDefinitions) {
       const definition = cardDefinitions.find((candidate) => candidate.slug === selectedCardSlug);
@@ -60,6 +73,36 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
 
     return `${tracker.title} ${formatTrackerSerial(tracker, serialId)}/${tracker.total}`;
   }, [cardDefinitions, cardId, hasMultipleCardDefinitions, selectedCardSlug, selectedSerialId, tracker]);
+  const evidenceChecklist = [
+    {
+      label: hasMultipleCardDefinitions ? 'Card and serial selected' : 'Serial selected',
+      done: Boolean(selectedSerialSummary),
+      detail: hasMultipleCardDefinitions
+        ? 'Choose the exact card name and stamped number.'
+        : 'Choose the stamped serial number.',
+    },
+    {
+      label: 'Source or evidence image added',
+      done: hasSourceLink || hasEvidenceImage,
+      detail: 'Use a public listing, grading page, social post, article, or clear image.',
+    },
+    {
+      label: 'Serial stamp is visible',
+      done: hasEvidenceImage,
+      detail: 'Images should show the card face and stamped serial when possible.',
+    },
+    {
+      label: 'Review context included',
+      done: hasReviewNotes || hasSourceLink,
+      detail: `Mention why the ${sourceTypeLabels[sourceType]} looks credible.`,
+    },
+  ];
+  const evidenceChecklistPassed = evidenceChecklist.filter((item) => item.done).length;
+  const evidenceChecklistSummary = evidenceChecklistPassed >= evidenceChecklist.length
+    ? 'Strong report'
+    : evidenceChecklistPassed >= 2
+      ? 'Reviewable report'
+      : 'Needs more evidence';
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -206,6 +249,34 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
               </p>
             </div>
           )}
+          <section className="mb-6 rounded border border-ring-gold/30 bg-black/20 p-4" aria-label="Evidence quality checklist">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wide text-ring-gold">Evidence Quality Checklist</h2>
+                <p className="mt-1 text-xs text-ring-light/70">
+                  Better evidence helps admins approve new discoveries faster and keeps public counts trustworthy.
+                </p>
+              </div>
+              <div className="rounded border border-ring-gold/30 px-3 py-1 text-xs font-bold text-ring-gold">
+                {evidenceChecklistPassed}/{evidenceChecklist.length} {evidenceChecklistSummary}
+              </div>
+            </div>
+            <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {evidenceChecklist.map((item) => (
+                <li key={item.label} className="rounded border border-ring-gold/20 bg-ring-dark/70 p-3">
+                  <div className="flex items-start gap-2">
+                    <span className={`mt-0.5 rounded px-2 py-0.5 text-[10px] font-bold uppercase ${item.done ? 'bg-green-500/20 text-green-200' : 'bg-ring-light/10 text-ring-light/70'}`}>
+                      {item.done ? 'Done' : 'Needed'}
+                    </span>
+                    <div>
+                      <p className="text-sm font-bold text-ring-light">{item.label}</p>
+                      <p className="mt-1 text-xs text-ring-light/60">{item.detail}</p>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block uppercase tracking-wide text-ring-gold text-xs font-bold mb-2" htmlFor="serial">

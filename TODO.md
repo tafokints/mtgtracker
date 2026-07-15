@@ -97,6 +97,7 @@
 - [x] Add public report evidence image count guardrails and removal controls.
 - [x] Show selected card and serial confirmation on the public report form.
 - [x] Require source or image evidence when public reports request confirmed status.
+- [x] Add a live evidence quality checklist to public report forms.
 
 ## Image Storage
 
