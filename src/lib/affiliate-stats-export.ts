@@ -26,10 +26,27 @@ export interface AffiliateStatsCsvRow {
 
 export interface AffiliateStatsCsvInput {
   generatedAt: string;
+  directory?: {
+    rows?: DirectoryCtaCsvRow[];
+  };
   promotion?: {
     sourceEfficiency?: PromotionSourceEfficiencyCsvRow[];
   };
   rows: AffiliateStatsCsvRow[];
+}
+
+export interface DirectoryCtaCsvRow {
+  tracker: string;
+  trackerTitle: string;
+  action: string;
+  label: string;
+  clicksInWindow: number;
+  totalClicks: number;
+  lastClick?: {
+    clickedAt?: string;
+    href?: string;
+    sourcePath?: string;
+  } | null;
 }
 
 export interface PromotionSourceEfficiencyCsvRow {
@@ -80,6 +97,9 @@ const AFFILIATE_STATS_CSV_HEADERS = [
   'promotionAffiliateClicksPerActionTotal',
   'promotionAffiliateClicksPerVisitInWindow',
   'promotionAffiliateClicksPerVisitTotal',
+  'directoryAction',
+  'directoryLabel',
+  'directoryHref',
 ];
 
 function csvCell(value: unknown) {
@@ -126,8 +146,48 @@ export function buildAffiliateStatsCsv(stats: AffiliateStatsCsvInput) {
         undefined,
         undefined,
         undefined,
+        undefined,
+        undefined,
+        undefined,
       ].map(csvCell).join(',');
     }),
+    ...(stats.directory?.rows || []).map((row) => [
+      row.tracker,
+      row.trackerTitle,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      row.lastClick?.href,
+      row.lastClick?.sourcePath,
+      row.clicksInWindow,
+      row.totalClicks,
+      row.lastClick?.clickedAt,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'directory-cta',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      row.action,
+      row.label,
+      row.lastClick?.href,
+    ].map(csvCell).join(',')),
     ...(stats.promotion?.sourceEfficiency || []).map((row) => [
       undefined,
       undefined,
@@ -161,6 +221,9 @@ export function buildAffiliateStatsCsv(stats: AffiliateStatsCsvInput) {
       row.affiliateClicksPerActionTotal,
       row.affiliateClicksPerVisitInWindow,
       row.affiliateClicksPerVisitTotal,
+      undefined,
+      undefined,
+      undefined,
     ].map(csvCell).join(',')),
   ];
 

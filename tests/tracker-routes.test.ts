@@ -61,6 +61,7 @@ import { POST as trackAffiliateClick } from '@/app/api/affiliate/click/route';
 import { GET as getAffiliateStats } from '@/app/api/admin/affiliate-stats/route';
 import { POST as trackPromotionAction } from '@/app/api/admin/promotion-action/route';
 import { POST as trackPromotionVisit } from '@/app/api/promotion/visit/route';
+import { POST as trackDirectoryClick } from '@/app/api/directory/click/route';
 
 const tracker = getTracker('one-ring');
 
@@ -100,6 +101,16 @@ function uploadRequest(file: File, ip = '203.0.113.7') {
 
 function affiliateClickRequest(body: unknown) {
   return new Request('https://mtgtrackers.com/api/affiliate/click', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+function directoryClickRequest(body: unknown) {
+  return new Request('https://mtgtrackers.com/api/directory/click', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -435,6 +446,73 @@ describe('tracker API routes', () => {
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({ message: 'Unauthorized' });
+  });
+
+  it('tracks public tracker directory CTA clicks for admin stats', async () => {
+    const unknownTrackerResponse = await trackDirectoryClick(directoryClickRequest({
+      tracker: 'not-real',
+      action: 'open-tracker',
+      href: '/trackers/not-real',
+    }));
+    const unknownActionResponse = await trackDirectoryClick(directoryClickRequest({
+      tracker: tracker.slug,
+      action: 'print-money',
+      href: '/trackers/one-ring',
+    }));
+
+    expect(unknownTrackerResponse.status).toBe(400);
+    await expect(unknownTrackerResponse.json()).resolves.toEqual({ message: 'Unknown tracker' });
+    expect(unknownActionResponse.status).toBe(400);
+    await expect(unknownActionResponse.json()).resolves.toEqual({ message: 'Unknown directory action' });
+
+    const response = await trackDirectoryClick(directoryClickRequest({
+      tracker: tracker.slug,
+      action: 'report-find',
+      href: '/trackers/one-ring/submit',
+      sourcePath: '/trackers',
+    }));
+    const date = new Date().toISOString().slice(0, 10);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(redisFixture.counters.get(`directory:clicks:${date}:one-ring:report-find`)).toBe(1);
+    expect(redisFixture.counters.get('directory:clicks:total:one-ring:report-find')).toBe(1);
+    expect(redisFixture.store.get('directory:last-click:one-ring:report-find')).toMatchObject({
+      tracker: 'one-ring',
+      trackerTitle: 'The One Ring',
+      action: 'report-find',
+      href: '/trackers/one-ring/submit',
+      sourcePath: '/trackers',
+    });
+
+    const statsResponse = await getAffiliateStats(affiliateStatsRequest());
+    const statsBody = await json(statsResponse);
+
+    expect(statsResponse.status).toBe(200);
+    expect(statsBody).toMatchObject({
+      directory: {
+        summary: {
+          clicksInWindow: 1,
+          totalClicks: 1,
+          byAction: [expect.objectContaining({ key: 'report-find', label: 'Report Find', clicksInWindow: 1, totalClicks: 1 })],
+          byTracker: [expect.objectContaining({ key: 'one-ring', label: 'The One Ring', clicksInWindow: 1, totalClicks: 1 })],
+        },
+        rows: [
+          expect.objectContaining({
+            tracker: 'one-ring',
+            trackerTitle: 'The One Ring',
+            action: 'report-find',
+            label: 'Report Find',
+            clicksInWindow: 1,
+            totalClicks: 1,
+            lastClick: expect.objectContaining({
+              href: '/trackers/one-ring/submit',
+              sourcePath: '/trackers',
+            }),
+          }),
+        ],
+      },
+    });
   });
 
   it('tracks admin promotion actions separately from affiliate clicks', async () => {

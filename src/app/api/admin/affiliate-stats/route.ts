@@ -12,6 +12,7 @@ const MAX_DAYS = 90;
 const PLACEMENTS = ['tracker-top-cta', 'tracker-filtered-cta', 'tracker-directory', 'tracker-marketplace', 'tracker-card-serial', 'serial-detail', 'marketplace-links'];
 const PROMOTION_ACTIONS = ['copy', 'native-share', 'x', 'reddit'];
 const PROMOTION_SOURCES = ['admin_copy', 'x', 'reddit'];
+const DIRECTORY_ACTIONS = ['open-tracker', 'report-find', 'latest-discovery'];
 const VIEW_FILTERS = [
   'found',
   'pending',
@@ -463,6 +464,56 @@ async function readAffiliatePromotionSourceStats(redis: RedisCounterReader, date
   return sortBreakdown(rows);
 }
 
+async function readDirectoryCtaStats(redis: RedisCounterReader, trackerEntries: AffiliateStatsTrackerEntry[], dateKeys: string[]) {
+  const rows = [];
+
+  for (const tracker of trackerEntries.filter((entry) => entry.slug !== 'default')) {
+    for (const action of DIRECTORY_ACTIONS) {
+      const keyParts = [tracker.slug, action].map(safeKeyPart);
+      const keySuffix = keyParts.join(':');
+      const [totalValue, lastClickValue, ...dailyValues] = await Promise.all([
+        redis.get(`directory:clicks:total:${keySuffix}`),
+        redis.get(`directory:last-click:${keySuffix}`),
+        ...dateKeys.map((date) => redis.get(`directory:clicks:${date}:${keySuffix}`)),
+      ]);
+      const clicksInWindow = dailyValues.reduce<number>((total, item) => total + readCount(item), 0);
+      const totalClicks = readCount(totalValue);
+
+      if (clicksInWindow === 0 && totalClicks === 0) {
+        continue;
+      }
+
+      rows.push({
+        tracker: tracker.slug,
+        trackerTitle: tracker.title,
+        action,
+        label: actionLabel(action),
+        clicksInWindow,
+        totalClicks,
+        lastClick: lastClickValue || null,
+      });
+    }
+  }
+
+  const byTracker = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
+  const byAction = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
+
+  for (const row of rows) {
+    addBreakdown(byTracker, row.tracker, row.trackerTitle, row);
+    addBreakdown(byAction, row.action, row.label, row);
+  }
+
+  return {
+    rows: rows.sort((a, b) => b.clicksInWindow - a.clicksInWindow || b.totalClicks - a.totalClicks),
+    summary: {
+      clicksInWindow: rows.reduce((total, row) => total + row.clicksInWindow, 0),
+      totalClicks: rows.reduce((total, row) => total + row.totalClicks, 0),
+      byTracker: sortBreakdown(byTracker.values()),
+      byAction: sortBreakdown(byAction.values()),
+    },
+  };
+}
+
 export async function GET(request: NextRequest) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
@@ -548,11 +599,13 @@ export async function GET(request: NextRequest) {
     const promotion = await readPromotionStats(redis, trackerEntries, dateKeys);
     const promotionVisits = await readPromotionVisitStats(redis, trackerEntries, dateKeys);
     const affiliatePromotionSources = await readAffiliatePromotionSourceStats(redis, dateKeys);
+    const directory = await readDirectoryCtaStats(redis, trackerEntries, dateKeys);
 
     return NextResponse.json({
       days,
       generatedAt: new Date().toISOString(),
       summary,
+      directory,
       promotion: {
         ...promotion,
         visits: promotionVisits,

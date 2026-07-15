@@ -140,6 +140,7 @@
 - [x] Keep directory stats read-only so multi-card trackers are not initialized from directory visits.
 - [x] Add tracked marketplace links to tracker directory cards.
 - [x] Add tracker directory latest-discovery links and report-a-find CTAs.
+- [x] Track tracker directory open/report/latest-discovery CTA clicks in admin stats and CSV exports.
 - [x] Add richer tracker metadata:
   - [x] set name
   - [x] release name

@@ -91,6 +91,34 @@ describe('affiliate stats export', () => {
     expect(csv).toContain('"promotion-source-efficiency","x","X","2","5","3","8","1","4","0.5","0.8","0.33","0.5"');
   });
 
+  it('exports directory CTA rows for acquisition analysis', () => {
+    const csv = buildAffiliateStatsCsv({
+      generatedAt: '2026-07-14T12:34:56.000Z',
+      rows: [],
+      directory: {
+        rows: [
+          {
+            tracker: 'one-ring',
+            trackerTitle: 'The One Ring',
+            action: 'latest-discovery',
+            label: 'Latest Discovery',
+            clicksInWindow: 3,
+            totalClicks: 7,
+            lastClick: {
+              clickedAt: '2026-07-14T11:00:00.000Z',
+              href: '/trackers/one-ring?serial=007',
+              sourcePath: '/trackers',
+            },
+          },
+        ],
+      },
+    });
+
+    expect(csv).toContain('"one-ring","The One Ring"');
+    expect(csv).toContain('"directory-cta"');
+    expect(csv).toContain('"latest-discovery","Latest Discovery","/trackers/one-ring?serial=007"');
+  });
+
   it('uses the stats generated date in the filename', () => {
     expect(affiliateStatsCsvFilename('2026-07-14T12:34:56.000Z')).toBe(
       'mtgtrackers-affiliate-stats-2026-07-14.csv',

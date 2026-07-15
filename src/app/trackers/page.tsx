@@ -6,6 +6,7 @@ import { serializedCatalog } from '@/lib/serialized-catalog';
 import ReferenceLinks from '@/components/ReferenceLinks';
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
+import DirectoryCtaLink from '@/components/DirectoryCtaLink';
 import { buildBreadcrumbJsonLd, buildTrackerDirectoryJsonLd } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
@@ -169,8 +170,10 @@ export default async function TrackersPage() {
                       {foundPercentage.toFixed(1)}% located - {stats?.confirmedCount || 0} confirmed
                     </p>
                     {latestDiscovery && latestDiscoveryHref && (
-                      <Link
+                      <DirectoryCtaLink
                         href={latestDiscoveryHref}
+                        trackerSlug={tracker.slug}
+                        action="latest-discovery"
                         className="mt-3 block rounded border border-ring-teal/35 bg-ring-teal/10 p-3 text-xs text-ring-light transition-colors hover:border-ring-teal hover:bg-ring-teal/15"
                       >
                         <span className="block font-bold text-ring-teal">Latest discovery</span>
@@ -178,7 +181,7 @@ export default async function TrackersPage() {
                         {latestDiscovery.dateFound && (
                           <span className="mt-1 block text-ring-light/55">{latestDiscovery.dateFound}</span>
                         )}
-                      </Link>
+                      </DirectoryCtaLink>
                     )}
                   </div>
                 )}
@@ -212,18 +215,22 @@ export default async function TrackersPage() {
                   </span>
                 ) : (
                   <div className="mt-5 flex flex-wrap gap-2">
-                    <Link
+                    <DirectoryCtaLink
                       href={tracker.href}
+                      trackerSlug={tracker.slug}
+                      action="open-tracker"
                       className="inline-flex h-10 items-center rounded bg-ring-gold px-4 text-sm font-bold text-ring-dark transition-colors hover:bg-yellow-400"
                     >
                       Open Tracker
-                    </Link>
-                    <Link
+                    </DirectoryCtaLink>
+                    <DirectoryCtaLink
                       href={`${tracker.href}/submit`}
+                      trackerSlug={tracker.slug}
+                      action="report-find"
                       className="inline-flex h-10 items-center rounded border border-ring-teal/60 px-4 text-sm font-bold text-ring-teal transition-colors hover:bg-ring-teal hover:text-ring-dark"
                     >
                       Report a Find
-                    </Link>
+                    </DirectoryCtaLink>
                   </div>
                 )}
               </article>

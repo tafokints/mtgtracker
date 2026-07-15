@@ -104,9 +104,32 @@ interface PromotionVisitRow {
   } | null;
 }
 
+interface DirectoryCtaStatsRow {
+  tracker: string;
+  trackerTitle: string;
+  action: string;
+  label: string;
+  clicksInWindow: number;
+  totalClicks: number;
+  lastClick?: {
+    clickedAt?: string;
+    href?: string;
+    sourcePath?: string;
+  } | null;
+}
+
 interface AffiliateStatsResponse {
   days: number;
   generatedAt: string;
+  directory: {
+    summary: {
+      clicksInWindow: number;
+      totalClicks: number;
+      byTracker: AffiliateStatsBreakdown[];
+      byAction: AffiliateStatsBreakdown[];
+    };
+    rows: DirectoryCtaStatsRow[];
+  };
   summary: {
     clicksInWindow: number;
     totalClicks: number;
@@ -456,7 +479,11 @@ export default function AdminPanel({
   }, []);
 
   const exportAffiliateStatsCsv = () => {
-    if (!affiliateStats || (affiliateStats.rows.length === 0 && affiliateStats.promotion.sourceEfficiency.length === 0)) {
+    if (!affiliateStats || (
+      affiliateStats.rows.length === 0 &&
+      affiliateStats.directory.rows.length === 0 &&
+      affiliateStats.promotion.sourceEfficiency.length === 0
+    )) {
       return;
     }
 
@@ -1384,7 +1411,11 @@ export default function AdminPanel({
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={exportAffiliateStatsCsv}
-                    disabled={!affiliateStats || (affiliateStats.rows.length === 0 && affiliateStats.promotion.sourceEfficiency.length === 0)}
+                    disabled={!affiliateStats || (
+                      affiliateStats.rows.length === 0 &&
+                      affiliateStats.directory.rows.length === 0 &&
+                      affiliateStats.promotion.sourceEfficiency.length === 0
+                    )}
                     className="rounded border border-ring-gold/50 px-3 py-2 text-xs font-bold text-ring-gold hover:bg-ring-gold hover:text-ring-dark disabled:cursor-not-allowed disabled:border-ring-gold/20 disabled:text-ring-light/35 disabled:hover:bg-transparent"
                   >
                     Export CSV
@@ -1404,6 +1435,7 @@ export default function AdminPanel({
 
               {!affiliateStatsLoading && (!affiliateStats || (
                 affiliateStats.rows.length === 0 &&
+                affiliateStats.directory.rows.length === 0 &&
                 affiliateStats.promotion.rows.length === 0 &&
                 affiliateStats.promotion.visits.rows.length === 0
               )) && (
@@ -1417,6 +1449,7 @@ export default function AdminPanel({
 
               {!affiliateStatsLoading && affiliateStats && (
                 affiliateStats.rows.length > 0 ||
+                affiliateStats.directory.rows.length > 0 ||
                 affiliateStats.promotion.rows.length > 0 ||
                 affiliateStats.promotion.visits.rows.length > 0
               ) && (
@@ -1429,6 +1462,64 @@ export default function AdminPanel({
                   </div>
 
                   <AffiliateInsightCards insights={affiliateInsights} />
+
+                  {affiliateStats.directory.rows.length > 0 && (
+                    <div className="space-y-3 rounded border border-ring-gold/30 bg-ring-gold/10 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <h4 className="text-sm font-bold text-ring-gold">Directory CTA Clicks</h4>
+                          <p className="mt-1 text-xs text-ring-light/65">
+                            Public tracker-directory actions before visitors reach a tracker or report form.
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <AffiliateMetric label={`${affiliateStats.days}d actions`} value={affiliateStats.directory.summary.clicksInWindow} />
+                          <AffiliateMetric label="All-time actions" value={affiliateStats.directory.summary.totalClicks} />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <AffiliateBreakdown title="Directory Actions" rows={affiliateStats.directory.summary.byAction} />
+                        <AffiliateBreakdown title="Directory Trackers" rows={affiliateStats.directory.summary.byTracker} />
+                      </div>
+
+                      <div className="overflow-x-auto rounded border border-ring-gold/25">
+                        <table className="min-w-full text-left text-xs">
+                          <thead className="bg-black/20 text-ring-gold">
+                            <tr>
+                              <th className="px-3 py-2">Tracker</th>
+                              <th className="px-3 py-2">Action</th>
+                              <th className="px-3 py-2 text-right">30d</th>
+                              <th className="px-3 py-2 text-right">Total</th>
+                              <th className="px-3 py-2">Last Click</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-ring-gold/15 text-ring-light">
+                            {affiliateStats.directory.rows.map((row) => (
+                              <tr key={`${row.tracker}-${row.action}`}>
+                                <td className="px-3 py-2">{row.trackerTitle}</td>
+                                <td className="px-3 py-2">{row.label}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{row.clicksInWindow}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{row.totalClicks}</td>
+                                <td className="px-3 py-2">
+                                  {row.lastClick?.clickedAt ? (
+                                    <>
+                                      <span className="block">{new Date(row.lastClick.clickedAt).toLocaleString()}</span>
+                                      {row.lastClick.href && (
+                                        <a href={row.lastClick.href} target="_blank" rel="noopener noreferrer" className="block max-w-48 truncate text-ring-gold/80 hover:underline">
+                                          {row.lastClick.href}
+                                        </a>
+                                      )}
+                                    </>
+                                  ) : 'None'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
 
                   {(affiliateStats.promotion.rows.length > 0 || affiliateStats.promotion.visits.rows.length > 0) && (
                     <div className="space-y-3 rounded border border-ring-teal/35 bg-ring-teal/10 p-3">

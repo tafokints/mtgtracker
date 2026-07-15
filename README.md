@@ -139,6 +139,7 @@ Affiliate click telemetry is stored separately from tracker backups:
 - Admin promotion share URLs append `utm_source`, `utm_medium=social`, `utm_campaign=discovery_promotion`, and `utm_content` so promoted discoveries can be separated by copy, X, Reddit, tracker, card, and serial in analytics.
 - Promoted discovery page visits are tracked separately as `promotion:visits:{yyyy-mm-dd}:{trackerSlug}:{source}`, `promotion:visits:total:{trackerSlug}:{source}`, and `promotion:last-visit:{trackerSlug}:{source}` when the URL includes `utm_campaign=discovery_promotion`.
 - Affiliate clicks from promoted URLs increment `affiliate:promotion-source:{yyyy-mm-dd}:{source}` and `affiliate:promotion-source:total:{source}` so X, Reddit, and copied posts can be compared as monetization channels.
+- Tracker directory CTA clicks are tracked separately as `directory:clicks:{yyyy-mm-dd}:{trackerSlug}:{action}`, `directory:clicks:total:{trackerSlug}:{action}`, and `directory:last-click:{trackerSlug}:{action}` for `open-tracker`, `report-find`, and `latest-discovery` actions.
 - Admin promotion efficiency compares promotion actions and promoted visits with affiliate clicks by tracker and source so promoted discoveries can be judged against monetizable traffic.
 
 Admin backups are tracker-scoped:
@@ -163,6 +164,7 @@ Admin backups are tracker-scoped:
 - Promotion CSV: use the admin panel `Affiliate` tab export to analyze X, Reddit, and copied-post efficiency outside the admin panel.
 - Promotion funnel insights: use the admin panel `Affiliate` tab to quickly spot which promoted trackers are turning visits into affiliate clicks and which need better CTAs or posting links; weak-source cards include a recommended next action.
 - Promote next: use the admin panel `Review` tab's promotion candidates to see the strongest approved discovery and the currently recommended source/channel.
+- Directory CTAs: use the admin panel `Affiliate` tab to compare which tracker directory actions are pushing visitors into tracker pages, report forms, and latest-discovery detail views.
 - Directory marketplace links are tracked as `tracker-directory`.
 - Primary marketplace CTAs: tracker pages include top-of-page marketplace actions tracked as `tracker-top-cta`, plus contextual filtered-view actions tracked as `tracker-filtered-cta` with the active view summarized near the links.
 - Serial card grid eBay searches are tracked as `tracker-card-serial`.
