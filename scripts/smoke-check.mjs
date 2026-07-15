@@ -201,7 +201,7 @@ async function main() {
   const checks = [
     checkPage('/', ['MTG Trackers', 'Live Trackers', 'BreadcrumbList']),
     checkPage('/trackers', ['Trackers', 'Serialized Scaffold Queue', 'Marketplace links are affiliate links', 'BreadcrumbList']),
-    checkPage('/serialized-mtg-catalog', ['Serialized MTG Catalog', 'Marketplace Research', 'Live tracker', 'CollectionPage', 'BreadcrumbList']),
+    checkPage('/serialized-mtg-catalog', ['Serialized MTG Catalog', 'Marketplace Research', 'Live tracker', 'Request tracker', 'CollectionPage', 'BreadcrumbList']),
     checkPage(`/serialized-mtg-catalog/${sampleCatalogEntry.slug}`, [sampleCatalogEntry.title, 'Marketplace Research', 'Tracker Notes', 'Request Tracker', 'Dataset', 'BreadcrumbList']),
     checkPage('/verification-guide', ['Serialized MTG Verification Guide', 'Verification Status', 'Best Evidence', 'Fastest Approval Path', 'WebPage', 'BreadcrumbList']),
     checkPage('/discoveries', ['Recent Discoveries', 'Discovery Feeds', 'JSON Feed', 'RSS Feed', 'CollectionPage', 'BreadcrumbList']),

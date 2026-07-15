@@ -32,6 +32,44 @@ export interface SerializedCatalogEntry {
   sourceUrls: string[];
 }
 
+export function getSerializedCatalogNumberedLabel(entry: SerializedCatalogEntry) {
+  if (entry.serialVariants?.length) {
+    return entry.serialVariants.map((variant) => `${variant.label}: ${variant.total}`).join(', ');
+  }
+
+  if (entry.numbered) {
+    return entry.numbered;
+  }
+
+  if (entry.defaultSerialTotal) {
+    return `${entry.defaultSerialTotal}${entry.cardCount > 1 ? ' each' : ''}`;
+  }
+
+  return 'Verify';
+}
+
+export function getSerializedCatalogDateLabel(entry: SerializedCatalogEntry) {
+  return entry.releaseMonth || entry.releaseYear || 'TBD';
+}
+
+export function getTrackerRequestIssueUrl(entry: SerializedCatalogEntry) {
+  const body = [
+    `Catalog entry: https://mtgtrackers.com/serialized-mtg-catalog/${entry.slug}`,
+    `Set: ${entry.setName}`,
+    `Numbered: ${getSerializedCatalogNumberedLabel(entry)}`,
+    '',
+    'Why should this tracker be prioritized?',
+    '',
+    'Known discoveries, source links, sale comps, or collector demand:',
+  ].join('\n');
+  const params = new URLSearchParams({
+    title: `Tracker request: ${entry.title}`,
+    body,
+  });
+
+  return `https://github.com/tafokints/mtgtracker/issues/new?${params.toString()}`;
+}
+
 export const serializedCatalog: SerializedCatalogEntry[] = [
   {
     slug: 'secret-lair-mirrored-viscera-seer',

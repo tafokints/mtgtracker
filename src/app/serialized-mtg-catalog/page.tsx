@@ -2,7 +2,13 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
-import { serializedCatalog, type SerializedCatalogEntry } from '@/lib/serialized-catalog';
+import {
+  getSerializedCatalogDateLabel,
+  getSerializedCatalogNumberedLabel,
+  getTrackerRequestIssueUrl,
+  serializedCatalog,
+  type SerializedCatalogEntry,
+} from '@/lib/serialized-catalog';
 import { buildBreadcrumbJsonLd, buildSerializedCatalogJsonLd } from '@/lib/seo';
 import { defaultAffiliateLinks, trackers } from '@/lib/trackers';
 
@@ -33,26 +39,6 @@ const statusLabels: Record<SerializedCatalogEntry['status'], string> = {
   announced: 'Announced',
   'needs-verification': 'Needs verification',
 };
-
-function getNumberedLabel(entry: SerializedCatalogEntry) {
-  if (entry.serialVariants?.length) {
-    return entry.serialVariants.map((variant) => `${variant.label}: ${variant.total}`).join(', ');
-  }
-
-  if (entry.numbered) {
-    return entry.numbered;
-  }
-
-  if (entry.defaultSerialTotal) {
-    return `${entry.defaultSerialTotal}${entry.cardCount > 1 ? ' each' : ''}`;
-  }
-
-  return 'Verify';
-}
-
-function getDateLabel(entry: SerializedCatalogEntry) {
-  return entry.releaseMonth || entry.releaseYear || 'TBD';
-}
 
 function getTrackerHref(entry: SerializedCatalogEntry) {
   return trackers.find((tracker) => tracker.catalogSlug === entry.slug && tracker.status === 'live')?.href;
@@ -165,6 +151,7 @@ export default function SerializedMtgCatalogPage() {
             <tbody className="divide-y divide-ring-gold/15 text-ring-light/80">
               {serializedCatalog.map((entry) => {
                 const trackerHref = getTrackerHref(entry);
+                const requestIssueUrl = getTrackerRequestIssueUrl(entry);
 
                 return (
                   <tr id={entry.slug} key={entry.slug} className="align-top transition-colors hover:bg-ring-gold/5">
@@ -185,13 +172,13 @@ export default function SerializedMtgCatalogPage() {
                         <div className="mt-2 max-w-md text-xs leading-5 text-ring-teal">{entry.notes}</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-xs">{getDateLabel(entry)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs">{getSerializedCatalogDateLabel(entry)}</td>
                     <td className="px-4 py-3">
                       <div className="font-semibold text-ring-gold">{entry.setCode}</div>
                       <div className="mt-1 max-w-[12rem] text-xs leading-5 text-ring-light/55">{entry.setName}</div>
                     </td>
                     <td className="px-4 py-3">{entry.cardCount}</td>
-                    <td className="px-4 py-3 text-xs leading-5">{getNumberedLabel(entry)}</td>
+                    <td className="px-4 py-3 text-xs leading-5">{getSerializedCatalogNumberedLabel(entry)}</td>
                     <td className="px-4 py-3 max-w-xs text-xs leading-5">{entry.foundIn || 'Verify source'}</td>
                     <td className="px-4 py-3">{trackingModeLabels[entry.trackingMode]}</td>
                     <td className="px-4 py-3">
@@ -204,6 +191,14 @@ export default function SerializedMtgCatalogPage() {
                         {trackerHref && (
                           <Link href={trackerHref} className="font-bold text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline">
                             Tracker
+                          </Link>
+                        )}
+                        {!trackerHref && (
+                          <Link
+                            href={requestIssueUrl}
+                            className="font-bold text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline"
+                          >
+                            Request tracker
                           </Link>
                         )}
                         <Link

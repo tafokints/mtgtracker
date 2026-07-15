@@ -3,7 +3,13 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
-import { serializedCatalog, type SerializedCatalogEntry } from '@/lib/serialized-catalog';
+import {
+  getSerializedCatalogDateLabel,
+  getSerializedCatalogNumberedLabel,
+  getTrackerRequestIssueUrl,
+  serializedCatalog,
+  type SerializedCatalogEntry,
+} from '@/lib/serialized-catalog';
 import { buildBreadcrumbJsonLd, buildSerializedCatalogEntryJsonLd } from '@/lib/seo';
 import { buildAmazonSearchUrl, buildTrackerEbaySearchUrl, defaultAffiliateLinks, trackers, type AffiliateLink } from '@/lib/trackers';
 
@@ -45,7 +51,7 @@ export async function generateMetadata({ params }: CatalogEntryPageProps): Promi
     },
     openGraph: {
       title: `${entry.title} Serialized MTG`,
-      description: `Serialized MTG catalog entry for ${entry.title}: ${entry.treatment}, ${getNumberedLabel(entry)}, ${entry.setName}.`,
+      description: `Serialized MTG catalog entry for ${entry.title}: ${entry.treatment}, ${getSerializedCatalogNumberedLabel(entry)}, ${entry.setName}.`,
       url: `/serialized-mtg-catalog/${entry.slug}`,
       type: 'website',
     },
@@ -58,44 +64,6 @@ function getCatalogEntry(slug: string) {
 
 function getTracker(entry: SerializedCatalogEntry) {
   return trackers.find((tracker) => tracker.catalogSlug === entry.slug);
-}
-
-function getNumberedLabel(entry: SerializedCatalogEntry) {
-  if (entry.serialVariants?.length) {
-    return entry.serialVariants.map((variant) => `${variant.label}: ${variant.total}`).join(', ');
-  }
-
-  if (entry.numbered) {
-    return entry.numbered;
-  }
-
-  if (entry.defaultSerialTotal) {
-    return `${entry.defaultSerialTotal}${entry.cardCount > 1 ? ' each' : ''}`;
-  }
-
-  return 'Verify';
-}
-
-function getDateLabel(entry: SerializedCatalogEntry) {
-  return entry.releaseMonth || entry.releaseYear || 'TBD';
-}
-
-function getTrackerRequestIssueUrl(entry: SerializedCatalogEntry) {
-  const body = [
-    `Catalog entry: https://mtgtrackers.com/serialized-mtg-catalog/${entry.slug}`,
-    `Set: ${entry.setName}`,
-    `Numbered: ${getNumberedLabel(entry)}`,
-    '',
-    'Why should this tracker be prioritized?',
-    '',
-    'Known discoveries, source links, sale comps, or collector demand:',
-  ].join('\n');
-  const params = new URLSearchParams({
-    title: `Tracker request: ${entry.title}`,
-    body,
-  });
-
-  return `https://github.com/tafokints/mtgtracker/issues/new?${params.toString()}`;
 }
 
 function getCatalogAffiliateLinks(entry: SerializedCatalogEntry): AffiliateLink[] {
@@ -203,8 +171,8 @@ export default async function SerializedCatalogEntryPage({ params }: CatalogEntr
         <section className="mt-8 grid grid-cols-1 gap-3 md:grid-cols-4">
           <CatalogMetric label="Status" value={statusLabels[entry.status]} />
           <CatalogMetric label="Cards" value={entry.cardCount.toLocaleString()} />
-          <CatalogMetric label="Numbered" value={getNumberedLabel(entry)} />
-          <CatalogMetric label="Release" value={String(getDateLabel(entry))} />
+          <CatalogMetric label="Numbered" value={getSerializedCatalogNumberedLabel(entry)} />
+          <CatalogMetric label="Release" value={String(getSerializedCatalogDateLabel(entry))} />
         </section>
 
         <section className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-[1.3fr_0.7fr]">

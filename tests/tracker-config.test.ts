@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AFFILIATE_PLACEMENTS } from '@/lib/affiliate-placements';
-import { serializedCatalog } from '@/lib/serialized-catalog';
+import { getTrackerRequestIssueUrl, serializedCatalog } from '@/lib/serialized-catalog';
 import { defaultAffiliateLinks, getSerialAffiliateLinks, trackers, type AffiliateLink } from '@/lib/trackers';
 
 const requiredLiveMerchants = ['tcgplayer', 'ebay', 'amazon'] as const;
@@ -104,6 +104,20 @@ describe('tracker config consistency', () => {
       expect(entry.setName, `${entry.slug} setName`).toBeTruthy();
       expect(entry.sourceUrls.length, `${entry.slug} source URLs`).toBeGreaterThan(0);
     }
+  });
+
+  it('builds useful prefilled tracker request issue URLs for planned catalog entries', () => {
+    const plannedEntry = serializedCatalog.find((entry) => entry.slug === 'aetherdrift-aetherspark');
+    if (!plannedEntry) throw new Error('Expected Aetherspark catalog entry');
+
+    const requestUrl = new URL(getTrackerRequestIssueUrl(plannedEntry));
+
+    expect(requestUrl.hostname).toBe('github.com');
+    expect(requestUrl.pathname).toBe('/tafokints/mtgtracker/issues/new');
+    expect(requestUrl.searchParams.get('title')).toBe('Tracker request: The Aetherspark');
+    expect(requestUrl.searchParams.get('body')).toContain('Catalog entry: https://mtgtrackers.com/serialized-mtg-catalog/aetherdrift-aetherspark');
+    expect(requestUrl.searchParams.get('body')).toContain('Set: Aetherdrift');
+    expect(requestUrl.searchParams.get('body')).toContain('Numbered: 1-500');
   });
 
   it('keeps live trackers wired to all primary affiliate merchants', () => {
