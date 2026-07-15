@@ -209,6 +209,7 @@ Also verify:
 - `/api/health` returns `ok: true` in production.
 - `https://mtgtrackers.com/robots.txt` advertises `https://mtgtrackers.com/sitemap.xml`.
 - `npm run smoke` verifies public trust pages, sitemap coverage, and breadcrumb structured data.
+- GitHub Actions runs tests, lint, build, dependency audit, and whitespace checks on pushes and PRs; scheduled/manual production monitoring validates affiliate redirects and smoke checks `https://mtgtrackers.com`.
 - Live tracker pages load on `https://mtgtrackers.com`.
 - Live tracker submit pages load and show the public discovery report form.
 - Marketplace links are relevant to the tracker subject.

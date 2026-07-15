@@ -56,6 +56,7 @@
 - [x] Add robots.txt verification to production smoke checks.
 - [x] Add static trust page, sitemap, and breadcrumb structured data checks to production smoke.
 - [x] Add live tracker submit pages to sitemap and smoke checks.
+- [x] Add GitHub Actions verification for tests, lint, build, audit, affiliate link validation, and production smoke monitoring.
 - [x] Add public JSON and RSS feeds for recent verified discoveries.
 - [x] Add copy-ready share text for located serial discoveries.
 - [x] Add serial-aware social metadata for exact tracker links.
