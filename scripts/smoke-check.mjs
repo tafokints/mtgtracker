@@ -78,6 +78,16 @@ async function checkBreadcrumbJsonLd(pathname, expectedNames) {
   return { path: `${pathname} breadcrumbs`, ok: true };
 }
 
+function checkSourceFile(relativePath, needles) {
+  const text = fs.readFileSync(path.join(rootDir, relativePath), 'utf8');
+
+  for (const needle of needles) {
+    assertIncludes(text, needle, relativePath);
+  }
+
+  return { path: relativePath, ok: true };
+}
+
 async function checkHealth() {
   const { text } = await fetchText('/api/health');
   const health = JSON.parse(text);
@@ -175,9 +185,30 @@ async function main() {
     checkDiscoveryJsonFeed(),
     checkDiscoveryRssFeed(),
     checkBreadcrumbJsonLd('/affiliate-disclosure', ['MTG Trackers', 'Affiliate Disclosure']),
+    checkSourceFile('src/components/TrackerPageClient.tsx', [
+      'TrackerMarketTrustStrip',
+      'PrimaryAffiliateCtas',
+      'tracker-filtered-cta',
+      'tracker-marketplace',
+    ]),
+    checkSourceFile('src/components/TrackerStatsClient.tsx', [
+      'AffiliateDisclosureNotice',
+      'TrackerMarketTrustStrip',
+      'tracker-stats-cta',
+    ]),
+    checkSourceFile('src/app/api/admin/affiliate-stats/route.ts', ['tracker-stats-cta']),
     ...liveTrackers.flatMap((tracker) => [
-      checkPage(`/trackers/${tracker.slug}`, [tracker.title, `${tracker.title} Tracker`, 'CollectionPage', 'BreadcrumbList', 'application/ld+json']),
-      checkPage(`/trackers/${tracker.slug}/stats`, [`${tracker.title} Statistics`, 'BreadcrumbList']),
+      checkPage(`/trackers/${tracker.slug}`, [
+        tracker.title,
+        `${tracker.title} Tracker`,
+        'CollectionPage',
+        'BreadcrumbList',
+        'application/ld+json',
+      ]),
+      checkPage(`/trackers/${tracker.slug}/stats`, [
+        `${tracker.title} Statistics`,
+        'BreadcrumbList',
+      ]),
       checkPage(`/trackers/${tracker.slug}/submit`, ['Report a Find', 'Reports are queued for admin review', 'Source Link', 'Upload Evidence Images', 'BreadcrumbList']),
       checkBreadcrumbJsonLd(`/trackers/${tracker.slug}`, ['MTG Trackers', 'Trackers', tracker.title]),
       checkBreadcrumbJsonLd(`/trackers/${tracker.slug}/stats`, ['MTG Trackers', 'Trackers', tracker.title, 'Stats']),
