@@ -132,7 +132,7 @@ Affiliate click telemetry is stored separately from tracker backups:
 - Admin affiliate stats show the actual last-click destination, including dynamic exact-serial marketplace searches.
 - Admin affiliate stats include quick-read insights for the top CTA, best placement, stale high-lifetime placements, and latest click source.
 - Admin affiliate stats include promotion funnel insights for best-performing promoted trackers, promoted-visit gaps, and distribution gaps.
-- Admin affiliate stats can be exported as CSV for placement, destination, and last-click context analysis.
+- Admin affiliate stats can be exported as CSV for placement, destination, last-click context, and promotion-source efficiency analysis.
 - Affiliate links include an intent label: `singles`, `auction-comps`, `sealed-product`, or `marketplace`.
 - Admin promotion share actions are tracked separately as `promotion:actions:{yyyy-mm-dd}:{trackerSlug}:{action}`, `promotion:actions:total:{trackerSlug}:{action}`, and `promotion:last-action:{trackerSlug}:{action}` so review-to-promotion activity can be compared with affiliate clicks.
 - Admin promotion share URLs append `utm_source`, `utm_medium=social`, `utm_campaign=discovery_promotion`, and `utm_content` so promoted discoveries can be separated by copy, X, Reddit, tracker, card, and serial in analytics.
@@ -159,6 +159,7 @@ Admin backups are tracker-scoped:
 - Promotion stats: use the admin panel `Affiliate` tab to compare copy, X, and Reddit promotion actions after approved discoveries are prepared for posting.
 - Promotion links: use the admin panel `Review` tab's promotion candidates so copied posts and X/Reddit shares include campaign-tagged tracker URLs.
 - Promotion efficiency: use the admin panel `Affiliate` tab to compare promotion actions, promoted page visits, and downstream affiliate clicks by tracker and source.
+- Promotion CSV: use the admin panel `Affiliate` tab export to analyze X, Reddit, and copied-post efficiency outside the admin panel.
 - Promotion funnel insights: use the admin panel `Affiliate` tab to quickly spot which promoted trackers are turning visits into affiliate clicks and which need better CTAs or posting links.
 - Directory marketplace links are tracked as `tracker-directory`.
 - Primary marketplace CTAs: tracker pages include top-of-page marketplace actions tracked as `tracker-top-cta`, plus contextual filtered-view actions tracked as `tracker-filtered-cta` with the active view summarized near the links.

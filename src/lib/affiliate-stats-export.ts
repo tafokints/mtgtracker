@@ -26,7 +26,25 @@ export interface AffiliateStatsCsvRow {
 
 export interface AffiliateStatsCsvInput {
   generatedAt: string;
+  promotion?: {
+    sourceEfficiency?: PromotionSourceEfficiencyCsvRow[];
+  };
   rows: AffiliateStatsCsvRow[];
+}
+
+export interface PromotionSourceEfficiencyCsvRow {
+  key: string;
+  label: string;
+  promotionActionsInWindow: number;
+  promotionActionsTotal: number;
+  promotionVisitsInWindow: number;
+  promotionVisitsTotal: number;
+  affiliateClicksInWindow: number;
+  affiliateClicksTotal: number;
+  affiliateClicksPerActionInWindow: number | null;
+  affiliateClicksPerActionTotal: number | null;
+  affiliateClicksPerVisitInWindow: number | null;
+  affiliateClicksPerVisitTotal: number | null;
 }
 
 const AFFILIATE_STATS_CSV_HEADERS = [
@@ -49,6 +67,19 @@ const AFFILIATE_STATS_CSV_HEADERS = [
   'lastCard',
   'lastSerial',
   'lastSlot',
+  'rowType',
+  'promotionKey',
+  'promotionLabel',
+  'promotionActionsInWindow',
+  'promotionActionsTotal',
+  'promotionVisitsInWindow',
+  'promotionVisitsTotal',
+  'promotionAffiliateClicksInWindow',
+  'promotionAffiliateClicksTotal',
+  'promotionAffiliateClicksPerActionInWindow',
+  'promotionAffiliateClicksPerActionTotal',
+  'promotionAffiliateClicksPerVisitInWindow',
+  'promotionAffiliateClicksPerVisitTotal',
 ];
 
 function csvCell(value: unknown) {
@@ -82,8 +113,55 @@ export function buildAffiliateStatsCsv(stats: AffiliateStatsCsvInput) {
         viewContext?.card,
         viewContext?.serial,
         viewContext?.slot,
+        'affiliate-click',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
       ].map(csvCell).join(',');
     }),
+    ...(stats.promotion?.sourceEfficiency || []).map((row) => [
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'promotion-source-efficiency',
+      row.key,
+      row.label,
+      row.promotionActionsInWindow,
+      row.promotionActionsTotal,
+      row.promotionVisitsInWindow,
+      row.promotionVisitsTotal,
+      row.affiliateClicksInWindow,
+      row.affiliateClicksTotal,
+      row.affiliateClicksPerActionInWindow,
+      row.affiliateClicksPerActionTotal,
+      row.affiliateClicksPerVisitInWindow,
+      row.affiliateClicksPerVisitTotal,
+    ].map(csvCell).join(',')),
   ];
 
   return `${lines.join('\n')}\n`;

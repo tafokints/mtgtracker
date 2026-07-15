@@ -35,10 +35,12 @@ describe('affiliate stats export', () => {
     });
 
     expect(csv).toContain('"tracker","trackerTitle","merchant","intent","placement"');
+    expect(csv).toContain('"rowType","promotionKey","promotionLabel"');
     expect(csv).toContain('"one-ring","The One Ring","ebay","auction-comps","tracker-card-serial"');
     expect(csv).toContain('"https://www.ebay.com/sch/i.html?_nkw=the+one+ring+007&customid=one-ring"');
     expect(csv).toContain('"/trackers/one-ring?filter=missing"');
     expect(csv).toContain('"missing","serial","all","007","the-one-ring","007","the-one-ring-007"');
+    expect(csv).toContain('"affiliate-click"');
   });
 
   it('quotes commas, quotes, and line breaks safely', () => {
@@ -60,6 +62,33 @@ describe('affiliate stats export', () => {
     });
 
     expect(csv).toContain('"Buy ""Rock, Poster"" Singles"');
+  });
+
+  it('exports promotion source efficiency rows for channel analysis', () => {
+    const csv = buildAffiliateStatsCsv({
+      generatedAt: '2026-07-14T12:34:56.000Z',
+      rows: [],
+      promotion: {
+        sourceEfficiency: [
+          {
+            key: 'x',
+            label: 'X',
+            promotionActionsInWindow: 2,
+            promotionActionsTotal: 5,
+            promotionVisitsInWindow: 3,
+            promotionVisitsTotal: 8,
+            affiliateClicksInWindow: 1,
+            affiliateClicksTotal: 4,
+            affiliateClicksPerActionInWindow: 0.5,
+            affiliateClicksPerActionTotal: 0.8,
+            affiliateClicksPerVisitInWindow: 0.33,
+            affiliateClicksPerVisitTotal: 0.5,
+          },
+        ],
+      },
+    });
+
+    expect(csv).toContain('"promotion-source-efficiency","x","X","2","5","3","8","1","4","0.5","0.8","0.33","0.5"');
   });
 
   it('uses the stats generated date in the filename', () => {
