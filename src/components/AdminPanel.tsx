@@ -8,6 +8,7 @@ import { affiliateStatsCsvFilename, buildAffiliateStatsCsv } from '@/lib/affilia
 import { getAffiliateStatsInsights } from '@/lib/affiliate-stats-insights';
 import { buildDiscoveryShareLinks, getPromotionCandidates } from '@/lib/discovery-share';
 import { getPromoteNextRecommendation } from '@/lib/promotion-recommendations';
+import { getTrackerGrowthRecommendations } from '@/lib/tracker-growth-recommendations';
 import ExternalImage from '@/components/ExternalImage';
 
 interface AdminPanelProps {
@@ -276,6 +277,39 @@ function AffiliateInsightCards({ insights }: { insights: ReturnType<typeof getAf
   );
 }
 
+function TrackerGrowthRecommendationCards({ recommendations }: { recommendations: ReturnType<typeof getTrackerGrowthRecommendations> }) {
+  if (recommendations.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-2 rounded border border-ring-gold/30 bg-ring-gold/10 p-3">
+      <div>
+        <h4 className="text-sm font-bold text-ring-gold">Growth Recommendations</h4>
+        <p className="mt-1 text-xs text-ring-light/65">
+          Ranked from directory actions, promotion visits, and affiliate-click signals.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+        {recommendations.map((recommendation) => (
+          <div key={recommendation.key} className="rounded border border-ring-gold/25 bg-black/20 p-3">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="text-xs uppercase text-ring-light/55">{recommendation.label}</p>
+                <p className="mt-1 text-sm font-bold text-ring-gold">{recommendation.action}</p>
+              </div>
+              <span className="rounded border border-ring-gold/35 px-2 py-1 text-[0.65rem] uppercase text-ring-light/70">
+                {recommendation.priority}
+              </span>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-ring-light/70">{recommendation.detail}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function getInternalSourcePath(sourcePath?: string) {
   if (!sourcePath || !sourcePath.startsWith('/') || sourcePath.startsWith('//')) {
     return undefined;
@@ -409,6 +443,10 @@ export default function AdminPanel({
   const reviewedSubmissions = submissions.filter((submission) => submission.status !== 'pending');
   const affiliateInsights = useMemo(
     () => affiliateStats ? getAffiliateStatsInsights(affiliateStats) : [],
+    [affiliateStats],
+  );
+  const trackerGrowthRecommendations = useMemo(
+    () => affiliateStats ? getTrackerGrowthRecommendations(affiliateStats) : [],
     [affiliateStats],
   );
   const matchesReviewCardFilter = (submission: DiscoverySubmission) => {
@@ -1462,6 +1500,7 @@ export default function AdminPanel({
                   </div>
 
                   <AffiliateInsightCards insights={affiliateInsights} />
+                  <TrackerGrowthRecommendationCards recommendations={trackerGrowthRecommendations} />
 
                   {affiliateStats.directory.rows.length > 0 && (
                     <div className="space-y-3 rounded border border-ring-gold/30 bg-ring-gold/10 p-3">
