@@ -1,10 +1,11 @@
+import type { AffiliatePlacement } from '@/lib/affiliate-placements';
 import { AffiliateLink, defaultAffiliateLinks } from '@/lib/trackers';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 
 interface PrimaryAffiliateCtasProps {
   links?: AffiliateLink[];
   trackerSlug: string;
-  placement?: string;
+  placement?: AffiliatePlacement;
   title?: string;
   description?: string;
 }

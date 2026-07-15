@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { AFFILIATE_PLACEMENTS } from '@/lib/affiliate-placements';
 import { serializedCatalog } from '@/lib/serialized-catalog';
 import { defaultAffiliateLinks, getSerialAffiliateLinks, trackers, type AffiliateLink } from '@/lib/trackers';
 
@@ -22,6 +23,24 @@ function collectAffiliateLinks() {
 }
 
 describe('tracker config consistency', () => {
+  it('keeps affiliate telemetry placements key-safe and unique', () => {
+    expect(new Set(AFFILIATE_PLACEMENTS).size).toBe(AFFILIATE_PLACEMENTS.length);
+    expect(AFFILIATE_PLACEMENTS).toEqual(expect.arrayContaining([
+      'tracker-top-cta',
+      'tracker-filtered-cta',
+      'tracker-stats-cta',
+      'tracker-directory',
+      'tracker-marketplace',
+      'tracker-card-serial',
+      'serial-detail',
+      'marketplace-links',
+    ]));
+
+    for (const placement of AFFILIATE_PLACEMENTS) {
+      expect(placement).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+    }
+  });
+
   it('maps every live tracker to a valid serialized catalog entry', () => {
     const catalogBySlug = new Map(serializedCatalog.map((entry) => [entry.slug, entry]));
     const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');

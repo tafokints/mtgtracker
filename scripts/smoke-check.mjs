@@ -201,7 +201,7 @@ async function main() {
       'TrackerMarketTrustStrip',
       'tracker-stats-cta',
     ]),
-    checkSourceFile('src/app/api/admin/affiliate-stats/route.ts', ['tracker-stats-cta']),
+    checkSourceFile('src/lib/affiliate-placements.ts', ['tracker-stats-cta', 'serial-detail']),
     ...liveTrackers.flatMap((tracker) => [
       checkPage(`/trackers/${tracker.slug}`, [
         tracker.title,

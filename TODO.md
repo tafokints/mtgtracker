@@ -27,6 +27,7 @@
 - [x] Track middle-click new-tab affiliate clicks through shared outbound links.
 - [x] Add admin affiliate click stats view.
 - [x] Add affiliate stats rollups by tracker, merchant, and placement.
+- [x] Reject unknown affiliate placements before storing click telemetry.
 - [x] Store affiliate click source paths for better CTA and page attribution.
 - [x] Store shareable tracker view context with affiliate click metadata.
 - [x] Surface last-click view-context rollups in affiliate stats.

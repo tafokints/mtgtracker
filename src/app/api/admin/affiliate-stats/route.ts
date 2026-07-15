@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
+import { AFFILIATE_PLACEMENTS } from '@/lib/affiliate-placements';
 import { getRedis } from '@/lib/redis';
 import { defaultAffiliateLinks, trackers } from '@/lib/trackers';
 import { formatTrackerSerial, getTrackerCardDefinitions } from '@/lib/tracker-data';
@@ -10,7 +11,7 @@ export const revalidate = 0;
 
 const DEFAULT_DAYS = 30;
 const MAX_DAYS = 90;
-const PLACEMENTS = ['tracker-top-cta', 'tracker-filtered-cta', 'tracker-stats-cta', 'tracker-directory', 'tracker-marketplace', 'tracker-card-serial', 'serial-detail', 'marketplace-links'];
+const PLACEMENTS = AFFILIATE_PLACEMENTS;
 const PROMOTION_ACTIONS = ['copy', 'native-share', 'x', 'reddit'];
 const PROMOTION_SOURCES = ['admin_copy', 'x', 'reddit'];
 const DIRECTORY_ACTIONS = ['open-tracker', 'report-find', 'latest-discovery'];

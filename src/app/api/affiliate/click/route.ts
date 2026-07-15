@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isAffiliatePlacement } from '@/lib/affiliate-placements';
 import { getRedis } from '@/lib/redis';
 import { readJsonBody } from '@/lib/request-json';
 import { AffiliateLink, defaultAffiliateLinks, getTracker, trackers } from '@/lib/trackers';
@@ -129,7 +130,7 @@ export async function POST(request: Request) {
   const merchant = typeof input.merchant === 'string' ? input.merchant : '';
   const href = typeof input.href === 'string' ? input.href : '';
   const label = typeof input.label === 'string' ? input.label.slice(0, 120) : undefined;
-  const placement = typeof input.placement === 'string' ? input.placement.slice(0, 80) : 'unknown';
+  const placement = typeof input.placement === 'string' ? input.placement.slice(0, 80) : '';
   const sourcePath = typeof input.sourcePath === 'string' ? input.sourcePath.slice(0, 200) : undefined;
   const viewContext = sanitizeViewContext(input.viewContext);
 
@@ -139,6 +140,10 @@ export async function POST(request: Request) {
 
   if (!MERCHANTS.includes(merchant as AffiliateLink['merchant'])) {
     return NextResponse.json({ message: 'Unknown merchant' }, { status: 400 });
+  }
+
+  if (!isAffiliatePlacement(placement)) {
+    return NextResponse.json({ message: 'Unknown affiliate placement' }, { status: 400 });
   }
 
   const allowedLink = getAllowedAffiliateLink(trackerSlug, merchant, href);

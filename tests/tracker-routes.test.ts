@@ -441,6 +441,23 @@ describe('tracker API routes', () => {
     await expect(response.json()).resolves.toEqual({ message: 'Unknown affiliate link' });
   });
 
+  it('rejects unknown affiliate placements before writing click counters', async () => {
+    const link = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'ebay');
+    if (!link) throw new Error('Expected One Ring eBay affiliate link');
+
+    const response = await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: link.merchant,
+      href: link.href,
+      label: link.label,
+      placement: 'typo-placement',
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: 'Unknown affiliate placement' });
+    expect([...redisFixture.counters.keys()].some((key) => key.includes('typo-placement'))).toBe(false);
+  });
+
   it('requires admin auth to read affiliate stats', async () => {
     const response = await getAffiliateStats(new NextRequest('https://mtgtrackers.com/api/admin/affiliate-stats'));
 

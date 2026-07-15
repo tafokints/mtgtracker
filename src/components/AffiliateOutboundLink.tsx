@@ -1,12 +1,13 @@
 'use client';
 
 import type React from 'react';
+import type { AffiliatePlacement } from '@/lib/affiliate-placements';
 import { AffiliateLink } from '@/lib/trackers';
 
 interface AffiliateOutboundLinkProps {
   link: AffiliateLink;
   trackerSlug: string;
-  placement: string;
+  placement: AffiliatePlacement;
   className?: string;
   children?: React.ReactNode;
 }

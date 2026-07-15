@@ -1,4 +1,5 @@
 import React from 'react';
+import type { AffiliatePlacement } from '@/lib/affiliate-placements';
 import { AffiliateLink, defaultAffiliateLinks } from '@/lib/trackers';
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
@@ -7,7 +8,7 @@ interface AffiliateLinksProps {
   links?: AffiliateLink[];
   title?: string;
   trackerSlug?: string;
-  placement?: string;
+  placement?: AffiliatePlacement;
 }
 
 export default function AffiliateLinks({
