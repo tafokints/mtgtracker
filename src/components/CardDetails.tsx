@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { SerializedRingCard } from '../lib/types';
 import { getSerialAffiliateLinks, type TrackerSummary } from '@/lib/trackers';
 import { formatTrackerCardLabel, getTrackerCardDeepLinkParams } from '@/lib/tracker-data';
+import { buildDiscoveryShareText } from '@/lib/discovery-share';
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 import ExternalImage from '@/components/ExternalImage';
@@ -36,6 +37,12 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
   const marketplaceLinks = getSerialAffiliateLinks(tracker, card);
   const reportParams = getTrackerCardDeepLinkParams(tracker, card);
   const reportHref = `${tracker.href}/submit?${reportParams.toString()}`;
+  const getDetailUrl = () => (
+    typeof window === 'undefined'
+      ? tracker.href
+      : `${window.location.origin}${tracker.href}?${getTrackerCardDeepLinkParams(tracker, card).toString()}`
+  );
+  const shareText = card.found ? buildDiscoveryShareText(tracker, card, getDetailUrl()) : '';
   const evidenceCount = card.evidenceImages?.length || 0;
   const hasSourceLink = Boolean(card.link);
   const hasMarketData = Boolean(card.price || (card.priceHistory && card.priceHistory.length > 0));
@@ -96,7 +103,7 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
     }, 1800);
   };
   const copyDetailLink = async () => {
-    const href = window.location.href;
+    const href = getDetailUrl();
 
     try {
       if (navigator.clipboard?.writeText) {
@@ -113,7 +120,34 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
         document.body.removeChild(input);
       }
 
-      setCopyMessage('Copied');
+      setCopyMessage('Link copied');
+      clearCopyMessageSoon();
+    } catch {
+      setCopyMessage('Copy failed');
+      clearCopyMessageSoon();
+    }
+  };
+  const copyShareText = async () => {
+    if (!shareText) {
+      return;
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareText);
+      } else {
+        const input = document.createElement('textarea');
+        input.value = shareText;
+        input.setAttribute('readonly', '');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+
+      setCopyMessage('Share text copied');
       clearCopyMessageSoon();
     } catch {
       setCopyMessage('Copy failed');
@@ -138,6 +172,14 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
             >
               Copy Link
             </button>
+            {card.found && (
+              <button
+                onClick={copyShareText}
+                className="rounded border border-ring-teal/60 px-3 py-1.5 text-xs font-bold text-ring-teal transition-colors hover:border-ring-teal hover:bg-ring-teal hover:text-ring-dark"
+              >
+                Copy Share Text
+              </button>
+            )}
             <Link
               href={reportHref}
               className="rounded bg-ring-gold px-3 py-1.5 text-xs font-bold text-ring-dark transition-colors hover:bg-yellow-400"
@@ -203,6 +245,21 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
               )}
             </div>
           </div>
+
+          {card.found && (
+            <div>
+              <h3 className="text-lg font-bold text-ring-gold mb-2">Share This Discovery</h3>
+              <div className="rounded border border-ring-teal/30 bg-ring-teal/10 p-4">
+                <pre className="whitespace-pre-wrap text-sm leading-6 text-ring-light">{shareText}</pre>
+                <button
+                  onClick={copyShareText}
+                  className="mt-3 rounded bg-ring-teal px-3 py-2 text-xs font-bold text-ring-dark transition-colors hover:bg-cyan-300"
+                >
+                  Copy Share Text
+                </button>
+              </div>
+            </div>
+          )}
 
           <div>
             <h3 className="text-lg font-bold text-ring-gold mb-2">Verification Signals</h3>
