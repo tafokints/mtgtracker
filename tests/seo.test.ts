@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getTracker, trackers } from '@/lib/trackers';
-import { buildBreadcrumbJsonLd, buildTrackerDirectoryJsonLd, buildTrackerFaqJsonLd, buildTrackerPageMetadata, buildTrackerSerialItemPageJsonLd, buildTrackerStatsJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildTrackerDirectoryJsonLd, buildTrackerFaqJsonLd, buildTrackerPageMetadata, buildTrackerSerialItemPageJsonLd, buildTrackerStatsJsonLd, buildTrackerSubmitJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
 
 describe('SEO structured data', () => {
   it('builds factual CollectionPage JSON-LD for a tracker', () => {
@@ -89,6 +89,28 @@ describe('SEO structured data', () => {
         }),
       }),
     ]));
+  });
+
+  it('builds WebPage JSON-LD for tracker submit pages', () => {
+    const tracker = getTracker('edgar-markov');
+    if (!tracker) throw new Error('edgar-markov tracker fixture is missing');
+
+    const jsonLd = buildTrackerSubmitJsonLd(tracker);
+
+    expect(jsonLd).toMatchObject({
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: 'Report a Discovery for Edgar Markov',
+      url: 'https://mtgtrackers.com/trackers/edgar-markov/submit',
+      mainEntity: {
+        '@type': 'ContactPage',
+        name: 'Edgar Markov Discovery Report',
+      },
+      about: {
+        '@type': 'Thing',
+        name: 'Edgar Markov',
+      },
+    });
   });
 
   it('builds tracker keywords from the tracker subject and set metadata', () => {

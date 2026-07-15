@@ -214,6 +214,7 @@ async function main() {
       'TrackerMarketTrustStrip',
       'tracker-stats-cta',
     ]),
+    checkSourceFileExcludes('src/components/TrackerSubmitClient.tsx', ['next/head', "'@type': 'Form'"]),
     checkSourceFile('src/lib/affiliate-placements.ts', ['tracker-stats-cta', 'serial-detail']),
     ...liveTrackers.flatMap((tracker) => [
       checkPage(`/trackers/${tracker.slug}`, [
@@ -236,7 +237,7 @@ async function main() {
         'Dataset',
         `${tracker.title} Serialized Card Statistics`,
       ]),
-      checkPage(`/trackers/${tracker.slug}/submit`, ['Report a Find', 'Reports are queued for admin review', 'Source Link', 'Upload Evidence Images', 'BreadcrumbList']),
+      checkPage(`/trackers/${tracker.slug}/submit`, ['Report a Find', 'Reports are queued for admin review', 'Source Link', 'Upload Evidence Images', 'BreadcrumbList', 'ContactPage', `${tracker.title} Discovery Report`]),
       checkBreadcrumbJsonLd(`/trackers/${tracker.slug}`, ['MTG Trackers', 'Trackers', tracker.title]),
       checkBreadcrumbJsonLd(`/trackers/${tracker.slug}/stats`, ['MTG Trackers', 'Trackers', tracker.title, 'Stats']),
       checkBreadcrumbJsonLd(`/trackers/${tracker.slug}/submit`, ['MTG Trackers', 'Trackers', tracker.title, 'Report a Find']),

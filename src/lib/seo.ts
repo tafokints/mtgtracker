@@ -266,6 +266,31 @@ export function buildTrackerFaqJsonLd(tracker: TrackerSummary) {
   };
 }
 
+export function buildTrackerSubmitJsonLd(tracker: TrackerSummary) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: `Report a Discovery for ${tracker.title}`,
+    description: `Submit information about discovered serialized ${tracker.title} cards to help track community discoveries after admin review.`,
+    url: `${trackerCanonicalUrl(tracker)}/submit`,
+    isPartOf: {
+      '@type': 'WebSite',
+      name: 'MTG Trackers',
+      url: siteUrl,
+    },
+    about: {
+      '@type': 'Thing',
+      name: tracker.title,
+      description: tracker.description,
+    },
+    mainEntity: {
+      '@type': 'ContactPage',
+      name: `${tracker.title} Discovery Report`,
+      description: `Form to report newly discovered serialized ${tracker.title} cards for evidence-backed admin review.`,
+    },
+  };
+}
+
 export function buildTrackerDirectoryJsonLd(liveTrackers: TrackerSummary[]) {
   return {
     '@context': 'https://schema.org',

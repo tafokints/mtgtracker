@@ -59,6 +59,7 @@
 - [x] Add robots.txt verification to production smoke checks.
 - [x] Add static trust page, sitemap, and breadcrumb structured data checks to production smoke.
 - [x] Add live tracker submit pages to sitemap and smoke checks.
+- [x] Move tracker submit page structured data from client Head to server-rendered JSON-LD.
 - [x] Add tracker marketplace CTA and stats market-context assertions to production smoke checks.
 - [x] Add GitHub Actions verification for tests, lint, build, audit, affiliate link validation, and production smoke monitoring.
 - [x] Add public JSON and RSS feeds for recent verified discoveries.

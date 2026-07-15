@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import TrackerSubmitClient from '@/components/TrackerSubmitClient';
 import { getTracker, trackers } from '@/lib/trackers';
-import { buildBreadcrumbJsonLd, trackerBreadcrumbItems } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildTrackerSubmitJsonLd, trackerBreadcrumbItems } from '@/lib/seo';
 
 type TrackerSubmitPageProps = {
   params: Promise<{ slug: string }>;
@@ -46,6 +46,10 @@ export default async function TrackerSubmitPage({ params }: TrackerSubmitPagePro
           name: 'Report a Find',
           path: `${tracker.href}/submit`,
         }))) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildTrackerSubmitJsonLd(tracker)) }}
       />
       <TrackerSubmitClient tracker={tracker} />
     </>

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import Head from 'next/head';
 import Link from 'next/link';
 import type { TrackerSummary } from '@/lib/trackers';
 import {
@@ -185,29 +184,8 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
     setUploading(false);
   };
 
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'WebPage',
-    name: `Report a ${tracker.title} Find`,
-    description: `Submit information about discovered serialized ${tracker.title} cards to help track all ${tracker.total} copies.`,
-    url: `https://mtgtrackers.com${trackerPath}/submit`,
-    mainEntity: {
-      '@type': 'Form',
-      name: `${tracker.title} Discovery Report`,
-      description: `Form to report newly discovered serialized ${tracker.title} cards`,
-    },
-  };
-
   return (
     <>
-      <Head>
-        <title>Report a Find | {tracker.title} Tracker</title>
-        <meta name="description" content={`Submit a discovered serialized ${tracker.title} card for admin review.`} />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-        />
-      </Head>
       <main className="flex min-h-screen flex-col items-center justify-center p-8">
         <div className="w-full max-w-2xl mb-6 flex items-center justify-between">
           <div>
