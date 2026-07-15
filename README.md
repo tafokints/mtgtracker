@@ -138,6 +138,7 @@ Admin backups are tracker-scoped:
 - Evidence uploads: report forms accept JPEG, PNG, or WebP uploads up to 4 MB per image. Uploaded images are stored in Vercel Blob and saved as evidence image URLs on the queued report.
 - Admin panel: press `Ctrl + Alt + A` on `/trackers/one-ring`.
 - Review queue: use the admin panel `Review` tab to approve or reject pending reports.
+- Pending reports show evidence-strength summaries and are prioritized by review signal count.
 - Affiliate stats: use the admin panel `Affiliate` tab to compare tracker, merchant, and placement click totals.
 - Directory marketplace links are tracked as `tracker-directory`.
 - Primary marketplace CTAs: tracker pages include top-of-page marketplace actions tracked as `tracker-top-cta`, plus contextual filtered-view actions tracked as `tracker-filtered-cta` with the active view summarized near the links.

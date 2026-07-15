@@ -66,6 +66,7 @@
   - [x] cannot verify
 - [x] Allow admins to merge evidence from multiple pending reports.
 - [x] Add audit trail for who reviewed each report.
+- [x] Add admin evidence-strength summaries and prioritize stronger pending reports.
 - [x] Add public report evidence image count guardrails and removal controls.
 - [x] Show selected card and serial confirmation on the public report form.
 - [x] Require source or image evidence when public reports request confirmed status.

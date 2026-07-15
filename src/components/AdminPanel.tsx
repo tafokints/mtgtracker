@@ -146,6 +146,45 @@ export default function AdminPanel({
       ? `${submission.cardTitle} ${serialLabel(submission.serialNumber, submission.serialTotal)}`
       : serialLabel(submission.serialNumber, submission.serialTotal)
   );
+  const getSubmissionEvidenceSummary = (submission: DiscoverySubmission) => {
+    const imageCount = new Set([
+      submission.imageUrl,
+      ...(submission.evidenceImages || []).map((image) => image.url),
+    ].filter(Boolean)).size;
+    const hasSource = Boolean(submission.link);
+    const hasSaleData = submission.price !== undefined;
+    const hasFinder = Boolean(submission.foundBy);
+    const hasDate = Boolean(submission.dateFound);
+    const hasNotes = Boolean(submission.notes);
+    const score = [
+      hasSource,
+      imageCount > 0,
+      hasSaleData,
+      hasFinder,
+      hasDate,
+      hasNotes,
+    ].filter(Boolean).length;
+    const label = score >= 4
+      ? 'Strong evidence'
+      : score >= 2
+        ? 'Moderate evidence'
+        : 'Needs corroboration';
+    const signals = [
+      hasSource && 'source',
+      imageCount > 0 && `${imageCount} image${imageCount === 1 ? '' : 's'}`,
+      hasSaleData && 'price',
+      hasFinder && 'finder',
+      hasDate && 'date',
+      hasNotes && 'notes',
+    ].filter(Boolean) as string[];
+
+    return {
+      imageCount,
+      label,
+      score,
+      signals,
+    };
+  };
   const backupInputRef = useRef<HTMLInputElement>(null);
 
   const [isVisible, setIsVisible] = useState(false);
@@ -194,7 +233,12 @@ export default function AdminPanel({
     const card = cards.find((candidate) => candidate.id === submission.cardId);
     return (submission.cardSlug || card?.cardSlug || 'single-card') === reviewCardFilter;
   };
-  const filteredPendingSubmissions = pendingSubmissions.filter(matchesReviewCardFilter);
+  const filteredPendingSubmissions = pendingSubmissions
+    .filter(matchesReviewCardFilter)
+    .sort((a, b) => (
+      getSubmissionEvidenceSummary(b).score - getSubmissionEvidenceSummary(a).score ||
+      new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+    ));
   const filteredReviewedSubmissions = reviewedSubmissions.filter(matchesReviewCardFilter);
   
   // Grading fields
@@ -766,7 +810,10 @@ export default function AdminPanel({
                   </p>
                 </div>
               )}
-              {filteredPendingSubmissions.map((submission) => (
+              {filteredPendingSubmissions.map((submission) => {
+                const evidenceSummary = getSubmissionEvidenceSummary(submission);
+
+                return (
                 <div key={submission.id} className="rounded border border-ring-gold/40 bg-black/20 p-3 space-y-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -781,6 +828,26 @@ export default function AdminPanel({
                         ${submission.price.toLocaleString()}
                       </span>
                     )}
+                  </div>
+
+                  <div className="rounded border border-ring-gold/25 bg-ring-dark/60 px-3 py-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-bold uppercase text-ring-gold">{evidenceSummary.label}</p>
+                      <p className="text-xs text-ring-light/60">
+                        {evidenceSummary.score}/6 review signals
+                      </p>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {evidenceSummary.signals.length > 0 ? (
+                        evidenceSummary.signals.map((signal) => (
+                          <span key={signal} className="rounded border border-ring-gold/30 px-2 py-0.5 text-xs text-ring-light">
+                            {signal}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-ring-light/60">No structured evidence signals</span>
+                      )}
+                    </div>
                   </div>
 
                   {submission.duplicateOf && (
@@ -917,7 +984,8 @@ export default function AdminPanel({
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
               {filteredReviewedSubmissions.length > 0 && (
                 <div className="space-y-2 pt-2">
