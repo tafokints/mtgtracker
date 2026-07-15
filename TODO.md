@@ -66,6 +66,7 @@
 - [x] Add source-level promotion efficiency for X, Reddit, and copied posts.
 - [x] Include promotion source efficiency in affiliate stats CSV exports.
 - [x] Add recommended next actions to weak promotion funnel insight cards.
+- [x] Add a promote-next recommendation that pairs the best approved discovery with the strongest current promotion source.
 - [ ] Validate Google Search Console setup.
 - [x] Replace placeholder Google verification metadata.
 - [x] Add privacy/contact/about pages before broad promotion.

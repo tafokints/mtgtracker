@@ -7,6 +7,7 @@ import { formatTrackerCardLabel, formatTrackerSerial } from '@/lib/tracker-data'
 import { affiliateStatsCsvFilename, buildAffiliateStatsCsv } from '@/lib/affiliate-stats-export';
 import { getAffiliateStatsInsights } from '@/lib/affiliate-stats-insights';
 import { buildDiscoveryShareLinks, getPromotionCandidates } from '@/lib/discovery-share';
+import { getPromoteNextRecommendation } from '@/lib/promotion-recommendations';
 import ExternalImage from '@/components/ExternalImage';
 
 interface AdminPanelProps {
@@ -406,6 +407,10 @@ export default function AdminPanel({
     () => getPromotionCandidates(tracker, cards, filteredReviewedSubmissions, 3),
     [cards, filteredReviewedSubmissions, tracker],
   );
+  const promoteNextRecommendation = useMemo(
+    () => getPromoteNextRecommendation(promotionCandidates, affiliateStats?.promotion.sourceEfficiency || []),
+    [affiliateStats?.promotion.sourceEfficiency, promotionCandidates],
+  );
   
   // Grading fields
   const [gradingService, setGradingService] = useState('');
@@ -451,7 +456,7 @@ export default function AdminPanel({
   }, []);
 
   const exportAffiliateStatsCsv = () => {
-    if (!affiliateStats || affiliateStats.rows.length === 0) {
+    if (!affiliateStats || (affiliateStats.rows.length === 0 && affiliateStats.promotion.sourceEfficiency.length === 0)) {
       return;
     }
 
@@ -526,7 +531,7 @@ export default function AdminPanel({
   }, [isVisible, isAuthenticated, activeTab, fetchSubmissions]);
 
   useEffect(() => {
-    if (isVisible && isAuthenticated && activeTab === 'affiliate') {
+    if (isVisible && isAuthenticated && (activeTab === 'affiliate' || activeTab === 'review')) {
       fetchAffiliateStats();
     }
   }, [isVisible, isAuthenticated, activeTab, fetchAffiliateStats]);
@@ -1216,11 +1221,30 @@ export default function AdminPanel({
                       {promotionCandidates.length} ready
                     </span>
                   </div>
+                  {promoteNextRecommendation && (
+                    <div className="rounded border border-ring-gold/40 bg-ring-gold/10 p-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-bold uppercase text-ring-gold">Promote this next</p>
+                          <p className="mt-1 text-sm font-bold text-ring-light">
+                            {formatTrackerCardLabel(tracker, promoteNextRecommendation.candidate.card)} via {promoteNextRecommendation.source.label}
+                          </p>
+                          <p className="mt-1 text-xs text-ring-light/65">{promoteNextRecommendation.detail}</p>
+                        </div>
+                        <span className="rounded border border-ring-gold/40 px-2 py-1 text-xs text-ring-gold">
+                          Score {promoteNextRecommendation.candidate.score}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   {promotionCandidates.map((candidate) => {
                     const shareLinks = {
                       x: buildDiscoveryShareLinks(tracker, candidate.card, candidate.promotionUrls.x).x,
                       reddit: buildDiscoveryShareLinks(tracker, candidate.card, candidate.promotionUrls.reddit).reddit,
                     };
+                    const recommendedSource = promoteNextRecommendation?.candidate.submission.id === candidate.submission.id
+                      ? promoteNextRecommendation.source.key
+                      : undefined;
 
                     return (
                       <div key={candidate.submission.id} className="rounded border border-ring-teal/25 bg-black/20 p-3">
@@ -1230,6 +1254,11 @@ export default function AdminPanel({
                             <p className="mt-1 text-xs text-ring-light/65">
                               Score {candidate.score} - {candidate.reasons.join(', ')}
                             </p>
+                            {recommendedSource && (
+                              <p className="mt-1 text-xs font-bold text-ring-gold">
+                                Recommended channel: {promoteNextRecommendation?.source.label}
+                              </p>
+                            )}
                           </div>
                           <a
                             href={candidate.detailUrl}
@@ -1244,27 +1273,39 @@ export default function AdminPanel({
                         <div className="mt-3 flex flex-wrap gap-2">
                           <button
                             onClick={() => copyPromotionShareText(candidate)}
-                            className="rounded bg-ring-teal px-3 py-2 text-xs font-bold text-ring-dark transition-colors hover:bg-cyan-300"
+                            className={`rounded px-3 py-2 text-xs font-bold transition-colors ${
+                              recommendedSource === 'admin_copy'
+                                ? 'bg-ring-gold text-ring-dark hover:bg-yellow-300'
+                                : 'bg-ring-teal text-ring-dark hover:bg-cyan-300'
+                            }`}
                           >
-                            Copy Post
+                            Copy Post{recommendedSource === 'admin_copy' ? ' *' : ''}
                           </button>
                           <a
                             href={shareLinks.x}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={() => trackPromotionAction('x', candidate)}
-                            className="rounded border border-ring-teal/50 px-3 py-2 text-xs font-bold text-ring-teal transition-colors hover:bg-ring-teal hover:text-ring-dark"
+                            className={`rounded border px-3 py-2 text-xs font-bold transition-colors ${
+                              recommendedSource === 'x'
+                                ? 'border-ring-gold bg-ring-gold text-ring-dark hover:bg-yellow-300'
+                                : 'border-ring-teal/50 text-ring-teal hover:bg-ring-teal hover:text-ring-dark'
+                            }`}
                           >
-                            X
+                            X{recommendedSource === 'x' ? ' *' : ''}
                           </a>
                           <a
                             href={shareLinks.reddit}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={() => trackPromotionAction('reddit', candidate)}
-                            className="rounded border border-ring-teal/50 px-3 py-2 text-xs font-bold text-ring-teal transition-colors hover:bg-ring-teal hover:text-ring-dark"
+                            className={`rounded border px-3 py-2 text-xs font-bold transition-colors ${
+                              recommendedSource === 'reddit'
+                                ? 'border-ring-gold bg-ring-gold text-ring-dark hover:bg-yellow-300'
+                                : 'border-ring-teal/50 text-ring-teal hover:bg-ring-teal hover:text-ring-dark'
+                            }`}
                           >
-                            Reddit
+                            Reddit{recommendedSource === 'reddit' ? ' *' : ''}
                           </a>
                         </div>
                       </div>
@@ -1343,7 +1384,7 @@ export default function AdminPanel({
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={exportAffiliateStatsCsv}
-                    disabled={!affiliateStats || affiliateStats.rows.length === 0}
+                    disabled={!affiliateStats || (affiliateStats.rows.length === 0 && affiliateStats.promotion.sourceEfficiency.length === 0)}
                     className="rounded border border-ring-gold/50 px-3 py-2 text-xs font-bold text-ring-gold hover:bg-ring-gold hover:text-ring-dark disabled:cursor-not-allowed disabled:border-ring-gold/20 disabled:text-ring-light/35 disabled:hover:bg-transparent"
                   >
                     Export CSV

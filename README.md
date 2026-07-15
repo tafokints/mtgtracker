@@ -161,6 +161,7 @@ Admin backups are tracker-scoped:
 - Promotion efficiency: use the admin panel `Affiliate` tab to compare promotion actions, promoted page visits, and downstream affiliate clicks by tracker and source.
 - Promotion CSV: use the admin panel `Affiliate` tab export to analyze X, Reddit, and copied-post efficiency outside the admin panel.
 - Promotion funnel insights: use the admin panel `Affiliate` tab to quickly spot which promoted trackers are turning visits into affiliate clicks and which need better CTAs or posting links; weak-source cards include a recommended next action.
+- Promote next: use the admin panel `Review` tab's promotion candidates to see the strongest approved discovery and the currently recommended source/channel.
 - Directory marketplace links are tracked as `tracker-directory`.
 - Primary marketplace CTAs: tracker pages include top-of-page marketplace actions tracked as `tracker-top-cta`, plus contextual filtered-view actions tracked as `tracker-filtered-cta` with the active view summarized near the links.
 - Serial card grid eBay searches are tracked as `tracker-card-serial`.
