@@ -5,6 +5,10 @@ import type { ReactNode } from 'react';
 import { SerializedRingCard } from '@/lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
 import { formatTrackerCardLabel, getTrackerCardDeepLinkParams } from '@/lib/tracker-data';
+import { getTrackerMarketSummary } from '@/lib/tracker-market-summary';
+import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
+import PrimaryAffiliateCtas from '@/components/PrimaryAffiliateCtas';
+import TrackerMarketTrustStrip from '@/components/TrackerMarketTrustStrip';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import type { PieLabelRenderProps } from 'recharts';
 import Link from 'next/link';
@@ -48,6 +52,7 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
   const confirmedCards = useMemo(() => foundCards.filter(c => c.verificationStatus === 'confirmed'), [foundCards]);
   const sourceLinkedCards = useMemo(() => foundCards.filter(c => c.verificationStatus === 'source-linked'), [foundCards]);
   const unverifiedCards = useMemo(() => foundCards.filter(c => c.verificationStatus === 'unverified'), [foundCards]);
+  const marketSummary = useMemo(() => getTrackerMarketSummary(tracker, cards), [cards, tracker]);
 
   const stats = useMemo(() => {
     const prices = foundCards.map(c => c.price).filter(p => p != null) as number[];
@@ -188,10 +193,28 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
 
         {dataError ? (
           <div className="text-center text-ring-light">{dataError}</div>
-        ) : foundCards.length === 0 ? (
-          <div className="text-center text-ring-light">No cards found yet. Check back later for stats!</div>
         ) : (
           <div className="w-full max-w-7xl space-y-8">
+            <section className="rounded-lg border border-ring-gold/30 bg-ring-dark/75 p-4" aria-label="Stats marketplace context">
+              <div className="mb-4">
+                <AffiliateDisclosureNotice links={tracker.affiliateLinks} compact />
+              </div>
+              <PrimaryAffiliateCtas
+                links={tracker.affiliateLinks}
+                trackerSlug={tracker.slug}
+                placement="tracker-stats-cta"
+                title={marketSummary.statsCtaTitle}
+                description={marketSummary.statsCtaDescription}
+              />
+              <TrackerMarketTrustStrip summary={marketSummary} />
+            </section>
+
+            {foundCards.length === 0 ? (
+              <div className="rounded-lg border border-ring-gold/30 bg-ring-dark/75 p-6 text-center text-ring-light">
+                No public discoveries have been approved for this tracker yet. Marketplace context remains available while reports enter review.
+              </div>
+            ) : (
+              <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatCard title="Located" value={`${stats.foundCount}/${stats.totalCards}`} detail={`${stats.foundPercentage.toFixed(1)}% complete`} />
               <StatCard title="Confirmed" value={stats.confirmedCount.toString()} detail="Primary or grading-backed" />
@@ -316,6 +339,8 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
                 ))}
               </ListPanel>
             </div>
+              </>
+            )}
           </div>
         )}
       </main>

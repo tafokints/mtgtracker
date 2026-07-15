@@ -53,6 +53,8 @@ describe('tracker market summary', () => {
       pendingReportCount: 2,
       primaryMerchant: 'ebay',
       primaryMerchantLabel: 'eBay',
+      statsCtaTitle: 'The One Ring Market Context',
+      statsCtaDescription: '1 approved sale data point and 1 marketplace-sourced discovery are reflected in these stats.',
     });
   });
 
@@ -60,6 +62,8 @@ describe('tracker market summary', () => {
     const summary = getTrackerMarketSummary(tracker, []);
 
     expect(summary.primaryMerchant).toBe('tcgplayer');
+    expect(summary.statsCtaTitle).toBe('The One Ring Marketplace Watch');
+    expect(summary.statsCtaDescription).toBe('No approved sale prices yet; use marketplace links to compare active supply while new discoveries are reviewed.');
     expect(summary.trustSignals[0]).toMatchObject({
       label: 'Reviewed discoveries',
       value: `0/${tracker.total}`,

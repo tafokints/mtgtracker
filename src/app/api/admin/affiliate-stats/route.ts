@@ -10,7 +10,7 @@ export const revalidate = 0;
 
 const DEFAULT_DAYS = 30;
 const MAX_DAYS = 90;
-const PLACEMENTS = ['tracker-top-cta', 'tracker-filtered-cta', 'tracker-directory', 'tracker-marketplace', 'tracker-card-serial', 'serial-detail', 'marketplace-links'];
+const PLACEMENTS = ['tracker-top-cta', 'tracker-filtered-cta', 'tracker-stats-cta', 'tracker-directory', 'tracker-marketplace', 'tracker-card-serial', 'serial-detail', 'marketplace-links'];
 const PROMOTION_ACTIONS = ['copy', 'native-share', 'x', 'reddit'];
 const PROMOTION_SOURCES = ['admin_copy', 'x', 'reddit'];
 const DIRECTORY_ACTIONS = ['open-tracker', 'report-find', 'latest-discovery'];

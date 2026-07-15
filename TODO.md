@@ -176,6 +176,7 @@
 - [x] Add stats-page source-quality breakdowns.
 - [x] Make stats-page pricing coverage explicit when sale data is missing.
 - [x] Add stats-page source-type breakdowns.
+- [x] Add tracked marketplace CTAs and market trust context to tracker stats pages.
 
 ## Data Safety
 

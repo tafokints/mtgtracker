@@ -11,6 +11,8 @@ export interface TrackerMarketSummary {
   pendingReportCount: number;
   primaryMerchant: AffiliateLink['merchant'] | 'none';
   primaryMerchantLabel: string;
+  statsCtaTitle: string;
+  statsCtaDescription: string;
   trustSignals: Array<{ label: string; value: string; detail: string }>;
 }
 
@@ -52,6 +54,12 @@ export function getTrackerMarketSummary(tracker: TrackerSummary, cards: Serializ
   const pendingReportCount = cards.reduce((total, card) => total + (card.pendingReports || 0), 0);
   const primaryMerchant = choosePrimaryMerchant(tracker, cards);
   const totalCount = cards.length || tracker.total;
+  const statsCtaTitle = saleDataCount > 0
+    ? `${tracker.title} Market Context`
+    : `${tracker.title} Marketplace Watch`;
+  const statsCtaDescription = saleDataCount > 0
+    ? `${saleDataCount} approved sale data point${saleDataCount === 1 ? '' : 's'} and ${marketplaceSourceCount} marketplace-sourced discover${marketplaceSourceCount === 1 ? 'y' : 'ies'} are reflected in these stats.`
+    : `No approved sale prices yet; use marketplace links to compare active supply while new discoveries are reviewed.`;
 
   return {
     foundCount: foundCards.length,
@@ -63,6 +71,8 @@ export function getTrackerMarketSummary(tracker: TrackerSummary, cards: Serializ
     pendingReportCount,
     primaryMerchant,
     primaryMerchantLabel: merchantLabel(primaryMerchant),
+    statsCtaTitle,
+    statsCtaDescription,
     trustSignals: [
       {
         label: 'Reviewed discoveries',
