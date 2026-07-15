@@ -94,6 +94,18 @@ describe('tracker config consistency', () => {
     }
   });
 
+  it('keeps planned catalog entries available for tracker requests', () => {
+    const plannedEntries = serializedCatalog.filter((entry) => entry.status !== 'live');
+
+    expect(plannedEntries.length).toBeGreaterThan(0);
+
+    for (const entry of plannedEntries) {
+      expect(entry.title, `${entry.slug} title`).toBeTruthy();
+      expect(entry.setName, `${entry.slug} setName`).toBeTruthy();
+      expect(entry.sourceUrls.length, `${entry.slug} source URLs`).toBeGreaterThan(0);
+    }
+  });
+
   it('keeps live trackers wired to all primary affiliate merchants', () => {
     for (const tracker of trackers.filter((entry) => entry.status === 'live')) {
       const merchants = new Set((tracker.affiliateLinks || []).map((link) => link.merchant));

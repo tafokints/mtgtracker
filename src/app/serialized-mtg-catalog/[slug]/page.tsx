@@ -80,6 +80,24 @@ function getDateLabel(entry: SerializedCatalogEntry) {
   return entry.releaseMonth || entry.releaseYear || 'TBD';
 }
 
+function getTrackerRequestIssueUrl(entry: SerializedCatalogEntry) {
+  const body = [
+    `Catalog entry: https://mtgtrackers.com/serialized-mtg-catalog/${entry.slug}`,
+    `Set: ${entry.setName}`,
+    `Numbered: ${getNumberedLabel(entry)}`,
+    '',
+    'Why should this tracker be prioritized?',
+    '',
+    'Known discoveries, source links, sale comps, or collector demand:',
+  ].join('\n');
+  const params = new URLSearchParams({
+    title: `Tracker request: ${entry.title}`,
+    body,
+  });
+
+  return `https://github.com/tafokints/mtgtracker/issues/new?${params.toString()}`;
+}
+
 function getCatalogAffiliateLinks(entry: SerializedCatalogEntry): AffiliateLink[] {
   const ebayLink = defaultAffiliateLinks.find((link) => link.merchant === 'ebay');
   const amazonLink = defaultAffiliateLinks.find((link) => link.merchant === 'amazon');
@@ -121,6 +139,7 @@ export default async function SerializedCatalogEntryPage({ params }: CatalogEntr
 
   const linkedTracker = getTracker(entry);
   const affiliateLinks = getCatalogAffiliateLinks(entry);
+  const trackerRequestIssueUrl = getTrackerRequestIssueUrl(entry);
 
   return (
     <main className="min-h-screen px-6 py-8 md:px-10">
@@ -157,12 +176,20 @@ export default async function SerializedCatalogEntryPage({ params }: CatalogEntr
                 Open Live Tracker
               </Link>
             ) : (
-              <Link
-                href="/verification-guide"
-                className="inline-flex h-10 items-center rounded border border-ring-teal/60 px-4 text-sm font-bold text-ring-teal transition-colors hover:bg-ring-teal hover:text-ring-dark"
-              >
-                Review Evidence Standards
-              </Link>
+              <>
+                <Link
+                  href={trackerRequestIssueUrl}
+                  className="inline-flex h-10 items-center rounded bg-ring-gold px-4 text-sm font-bold text-ring-dark transition-colors hover:bg-yellow-400"
+                >
+                  Request Tracker
+                </Link>
+                <Link
+                  href="/verification-guide"
+                  className="inline-flex h-10 items-center rounded border border-ring-teal/60 px-4 text-sm font-bold text-ring-teal transition-colors hover:bg-ring-teal hover:text-ring-dark"
+                >
+                  Review Evidence Standards
+                </Link>
+              </>
             )}
             <Link
               href={`https://scryfall.com/search?q=${encodeURIComponent(entry.scryfallQuery)}`}
@@ -245,6 +272,30 @@ export default async function SerializedCatalogEntryPage({ params }: CatalogEntr
             </div>
           </aside>
         </section>
+
+        {linkedTracker?.status !== 'live' && (
+          <section className="mt-8 rounded border border-ring-teal/35 bg-ring-teal/10 p-5">
+            <h2 className="text-2xl font-bold text-ring-light">Help Prioritize This Tracker</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-ring-light/80">
+              If you know of public discoveries, sale comps, grading certs, or collector demand for {entry.title}, open a tracker request with the strongest sources you have.
+              Requests help decide which serialized treatments become full tracker pages next.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link
+                href={trackerRequestIssueUrl}
+                className="inline-flex h-10 items-center rounded bg-ring-gold px-4 text-sm font-bold text-ring-dark transition-colors hover:bg-yellow-400"
+              >
+                Request Tracker
+              </Link>
+              <Link
+                href="/contact"
+                className="inline-flex h-10 items-center rounded border border-ring-gold/50 px-4 text-sm font-bold text-ring-gold transition-colors hover:border-ring-gold hover:bg-ring-gold hover:text-ring-dark"
+              >
+                Contact
+              </Link>
+            </div>
+          </section>
+        )}
 
         <section className="mt-8 border border-ring-gold/30 bg-ring-dark/70 p-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
