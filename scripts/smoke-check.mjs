@@ -164,6 +164,7 @@ async function main() {
   const checks = [
     checkPage('/', ['MTG Trackers', 'Live Trackers', 'BreadcrumbList']),
     checkPage('/trackers', ['Trackers', 'Serialized Scaffold Queue', 'Marketplace links are affiliate links', 'BreadcrumbList']),
+    checkPage('/trackers/one-ring?serial=001', ['The One Ring 001/100 | MTG Trackers', `${canonicalBaseUrl}/trackers/one-ring?serial=001`]),
     checkPage('/about', ['About MTG Trackers', 'BreadcrumbList']),
     checkPage('/contact', ['Contact', 'Open GitHub Issue', 'BreadcrumbList']),
     checkPage('/privacy', ['Privacy', 'rate limiting', 'BreadcrumbList']),

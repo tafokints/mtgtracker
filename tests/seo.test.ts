@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getTracker, trackers } from '@/lib/trackers';
-import { buildBreadcrumbJsonLd, buildTrackerDirectoryJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildTrackerDirectoryJsonLd, buildTrackerPageMetadata, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
 
 describe('SEO structured data', () => {
   it('builds factual CollectionPage JSON-LD for a tracker', () => {
@@ -54,6 +54,47 @@ describe('SEO structured data', () => {
       'Innistrad Remastered',
       'MTG serialized cards',
     ]));
+  });
+
+  it('builds exact serial metadata for single-card tracker deep links', () => {
+    const tracker = getTracker('one-ring');
+    if (!tracker) throw new Error('one-ring tracker fixture is missing');
+
+    const metadata = buildTrackerPageMetadata(tracker, { serial: '7' });
+
+    expect(metadata).toMatchObject({
+      title: 'The One Ring 007/100',
+      description: 'Track The One Ring 007/100: serialized Magic: The Gathering discovery status, source evidence, sale data, and marketplace links.',
+      alternates: {
+        canonical: '/trackers/one-ring?serial=007',
+      },
+      openGraph: {
+        title: 'The One Ring 007/100 | MTG Trackers',
+        url: 'https://mtgtrackers.com/trackers/one-ring?serial=007',
+      },
+      twitter: {
+        title: 'The One Ring 007/100 | MTG Trackers',
+      },
+    });
+    expect(metadata.keywords).toEqual(expect.arrayContaining([
+      'The One Ring 007/100',
+      '007/100 MTG serialized',
+    ]));
+  });
+
+  it('builds exact serial metadata for multi-card tracker deep links', () => {
+    const tracker = getTracker('lotr-poster-cards');
+    if (!tracker) throw new Error('lotr-poster-cards tracker fixture is missing');
+
+    const metadata = buildTrackerPageMetadata(tracker, {
+      card: 'dawn-of-a-new-age',
+      serial: '2',
+    });
+
+    expect(metadata.title).toBe('LOTR Poster Cards Dawn of a New Age 002/100');
+    expect(metadata.alternates.canonical).toBe('/trackers/lotr-poster-cards?card=dawn-of-a-new-age&serial=002');
+    expect(metadata.openGraph.url).toBe('https://mtgtrackers.com/trackers/lotr-poster-cards?card=dawn-of-a-new-age&serial=002');
+    expect(metadata.openGraph.images[0].alt).toBe('LOTR Poster Cards Dawn of a New Age 002/100 serial tracker');
   });
 
   it('builds canonical breadcrumb JSON-LD for tracker subpages', () => {

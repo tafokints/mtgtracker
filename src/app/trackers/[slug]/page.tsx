@@ -1,10 +1,11 @@
 import { notFound } from 'next/navigation';
 import TrackerPageClient from '@/components/TrackerPageClient';
 import { getTracker, trackers } from '@/lib/trackers';
-import { buildBreadcrumbJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerCanonicalUrl, trackerKeywords, trackerSocialImage } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildTrackerPageMetadata, buildTrackerWebPageJsonLd, trackerBreadcrumbItems } from '@/lib/seo';
 
 type TrackerPageProps = {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export function generateStaticParams() {
@@ -13,42 +14,16 @@ export function generateStaticParams() {
     .map((tracker) => ({ slug: tracker.slug }));
 }
 
-export async function generateMetadata({ params }: TrackerPageProps) {
+export async function generateMetadata({ params, searchParams }: TrackerPageProps) {
   const { slug } = await params;
+  const resolvedSearchParams = await searchParams;
   const tracker = getTracker(slug);
 
   if (!tracker || tracker.status !== 'live') {
     return {};
   }
 
-  return {
-    title: tracker.title,
-    description: tracker.description,
-    keywords: trackerKeywords(tracker),
-    alternates: {
-      canonical: `/trackers/${tracker.slug}`,
-    },
-    openGraph: {
-      title: `${tracker.title} Tracker`,
-      description: tracker.description,
-      url: trackerCanonicalUrl(tracker),
-      type: 'website',
-      images: [
-        {
-          url: trackerSocialImage(tracker),
-          width: 1200,
-          height: 630,
-          alt: `${tracker.title} tracker`,
-        },
-      ],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: `${tracker.title} Tracker`,
-      description: tracker.description,
-      images: [trackerSocialImage(tracker)],
-    },
-  };
+  return buildTrackerPageMetadata(tracker, resolvedSearchParams);
 }
 
 export default async function TrackerPage({ params }: TrackerPageProps) {

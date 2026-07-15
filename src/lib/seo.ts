@@ -1,4 +1,4 @@
-import { getTrackerCardDefinitions, getTrackerTotalSlots } from '@/lib/tracker-data';
+import { createInitialTrackerCards, findTrackerCardByDeepLinkParams, formatTrackerCardLabel, getTrackerCardDeepLinkParams, getTrackerCardDefinitions, getTrackerTotalSlots } from '@/lib/tracker-data';
 import { TrackerSummary } from '@/lib/trackers';
 
 export const siteUrl = 'https://mtgtrackers.com';
@@ -22,6 +22,82 @@ export function trackerKeywords(tracker: TrackerSummary) {
     'MTG serialized cards',
     'Magic: The Gathering tracker',
   ].filter(Boolean) as string[];
+}
+
+type SearchParamValue = string | string[] | undefined;
+
+function firstSearchParam(value: SearchParamValue) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function toUrlSearchParams(searchParams?: Record<string, SearchParamValue>) {
+  const params = new URLSearchParams();
+
+  if (!searchParams) {
+    return params;
+  }
+
+  for (const [key, value] of Object.entries(searchParams)) {
+    const firstValue = firstSearchParam(value);
+    if (firstValue) {
+      params.set(key, firstValue);
+    }
+  }
+
+  return params;
+}
+
+export function buildTrackerPageMetadata(tracker: TrackerSummary, searchParams?: Record<string, SearchParamValue>) {
+  const params = toUrlSearchParams(searchParams);
+  const deepLinkedCard = findTrackerCardByDeepLinkParams(
+    tracker,
+    createInitialTrackerCards(tracker),
+    params,
+  );
+  const isSerialDetail = Boolean(deepLinkedCard);
+  const serialLabel = deepLinkedCard ? formatTrackerCardLabel(tracker, deepLinkedCard) : undefined;
+  const detailParams = deepLinkedCard ? getTrackerCardDeepLinkParams(tracker, deepLinkedCard) : undefined;
+  const pagePath = detailParams ? `${tracker.href}?${detailParams.toString()}` : tracker.href;
+  const title = serialLabel ? `${tracker.title} ${serialLabel}` : tracker.title;
+  const description = serialLabel
+    ? `Track ${tracker.title} ${serialLabel}: serialized Magic: The Gathering discovery status, source evidence, sale data, and marketplace links.`
+    : tracker.description;
+  const image = trackerSocialImage(tracker);
+
+  return {
+    title,
+    description,
+    keywords: [
+      ...trackerKeywords(tracker),
+      ...(serialLabel ? [
+        `${tracker.title} ${serialLabel}`,
+        `${serialLabel} MTG serialized`,
+      ] : []),
+    ],
+    alternates: {
+      canonical: pagePath,
+    },
+    openGraph: {
+      title: isSerialDetail ? `${title} | MTG Trackers` : `${tracker.title} Tracker`,
+      description,
+      url: `${siteUrl}${pagePath}`,
+      type: 'website',
+      images: [
+        {
+          url: image,
+          width: 1200,
+          height: 630,
+          alt: isSerialDetail ? `${title} serial tracker` : `${tracker.title} tracker`,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: isSerialDetail ? `${title} | MTG Trackers` : `${tracker.title} Tracker`,
+      description,
+      images: [image],
+    },
+  };
 }
 
 export function buildTrackerWebPageJsonLd(tracker: TrackerSummary) {
