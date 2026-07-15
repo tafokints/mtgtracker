@@ -381,6 +381,12 @@ export default function AdminPanel({
     action: 'copy' | 'x' | 'reddit',
     candidate: ReturnType<typeof getPromotionCandidates>[number],
   ) => {
+    const promotionDetailUrl = action === 'copy'
+      ? candidate.promotionUrls.copy
+      : action === 'x'
+        ? candidate.promotionUrls.x
+        : candidate.promotionUrls.reddit;
+
     try {
       await fetch('/api/admin/promotion-action', {
         method: 'POST',
@@ -392,7 +398,7 @@ export default function AdminPanel({
           action,
           card: candidate.card.cardSlug || tracker.slug,
           serial: candidate.card.serialNumber,
-          detailUrl: candidate.detailUrl,
+          detailUrl: promotionDetailUrl,
         }),
       });
     } catch (error) {
@@ -1127,7 +1133,10 @@ export default function AdminPanel({
                     </span>
                   </div>
                   {promotionCandidates.map((candidate) => {
-                    const shareLinks = buildDiscoveryShareLinks(tracker, candidate.card, candidate.detailUrl);
+                    const shareLinks = {
+                      x: buildDiscoveryShareLinks(tracker, candidate.card, candidate.promotionUrls.x).x,
+                      reddit: buildDiscoveryShareLinks(tracker, candidate.card, candidate.promotionUrls.reddit).reddit,
+                    };
 
                     return (
                       <div key={candidate.submission.id} className="rounded border border-ring-teal/25 bg-black/20 p-3">

@@ -7,6 +7,11 @@ export interface PromotionCandidate {
   card: SerializedRingCard;
   submission: DiscoverySubmission;
   detailUrl: string;
+  promotionUrls: {
+    copy: string;
+    x: string;
+    reddit: string;
+  };
   shareText: string;
   score: number;
   reasons: string[];
@@ -56,6 +61,17 @@ export function buildDiscoveryShareLinks(tracker: TrackerSummary, card: Serializ
 
 export function buildDiscoveryDetailUrl(tracker: TrackerSummary, card: SerializedRingCard, baseUrl = siteUrl) {
   return `${baseUrl.replace(/\/+$/, '')}${tracker.href}?${getTrackerCardDeepLinkParams(tracker, card).toString()}`;
+}
+
+export function buildPromotionUrl(detailUrl: string, options: { source: string; content: string }) {
+  const url = new URL(detailUrl);
+
+  url.searchParams.set('utm_source', options.source);
+  url.searchParams.set('utm_medium', 'social');
+  url.searchParams.set('utm_campaign', 'discovery_promotion');
+  url.searchParams.set('utm_content', options.content);
+
+  return url.toString();
 }
 
 function promotionScore(submission: DiscoverySubmission, card: SerializedRingCard) {
@@ -115,13 +131,24 @@ export function getPromotionCandidates(
 
       const { reasons, score } = promotionScore(submission, card);
       const detailUrl = buildDiscoveryDetailUrl(tracker, card);
+      const promotionContent = [
+        tracker.slug,
+        card.cardSlug || tracker.slug,
+        card.serialNumber,
+      ].join('-');
+      const promotionUrls = {
+        copy: buildPromotionUrl(detailUrl, { source: 'admin_copy', content: promotionContent }),
+        x: buildPromotionUrl(detailUrl, { source: 'x', content: promotionContent }),
+        reddit: buildPromotionUrl(detailUrl, { source: 'reddit', content: promotionContent }),
+      };
 
       return {
         card,
         detailUrl,
+        promotionUrls,
         reasons,
         score,
-        shareText: buildDiscoveryShareText(tracker, card, detailUrl),
+        shareText: buildDiscoveryShareText(tracker, card, promotionUrls.copy),
         submission,
       };
     })

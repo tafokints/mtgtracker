@@ -440,7 +440,7 @@ describe('tracker API routes', () => {
       action: 'x',
       card: 'the-one-ring',
       serial: '007',
-      detailUrl: 'https://mtgtrackers.com/trackers/one-ring?serial=007',
+      detailUrl: 'https://mtgtrackers.com/trackers/one-ring?serial=007&utm_source=x&utm_medium=social&utm_campaign=discovery_promotion&utm_content=one-ring-the-one-ring-007',
     }));
     const date = new Date().toISOString().slice(0, 10);
 
@@ -456,7 +456,7 @@ describe('tracker API routes', () => {
       action: 'x',
       card: 'the-one-ring',
       serial: '007',
-      detailUrl: 'https://mtgtrackers.com/trackers/one-ring?serial=007',
+      detailUrl: 'https://mtgtrackers.com/trackers/one-ring?serial=007&utm_source=x&utm_medium=social&utm_campaign=discovery_promotion&utm_content=one-ring-the-one-ring-007',
     });
 
     const statsResponse = await getAffiliateStats(affiliateStatsRequest());
@@ -486,7 +486,7 @@ describe('tracker API routes', () => {
             lastAction: expect.objectContaining({
               card: 'the-one-ring',
               serial: '007',
-              detailUrl: 'https://mtgtrackers.com/trackers/one-ring?serial=007',
+              detailUrl: 'https://mtgtrackers.com/trackers/one-ring?serial=007&utm_source=x&utm_medium=social&utm_campaign=discovery_promotion&utm_content=one-ring-the-one-ring-007',
             }),
           }),
         ],

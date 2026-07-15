@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDiscoveryDetailUrl, buildDiscoveryShareLinks, buildDiscoveryShareText, buildDiscoveryShareTitle, getPromotionCandidates } from '@/lib/discovery-share';
+import { buildDiscoveryDetailUrl, buildDiscoveryShareLinks, buildDiscoveryShareText, buildDiscoveryShareTitle, buildPromotionUrl, getPromotionCandidates } from '@/lib/discovery-share';
 import { getTracker } from '@/lib/trackers';
 import type { DiscoverySubmission, SerializedRingCard } from '@/lib/types';
 
@@ -96,6 +96,15 @@ describe('discovery share text', () => {
     expect(redditUrl.searchParams.get('title')).toBe('The One Ring 007/100 spotted on MTG Trackers');
   });
 
+  it('adds campaign tags to promoted discovery URLs without changing the target path', () => {
+    expect(buildPromotionUrl(
+      'https://mtgtrackers.com/trackers/one-ring?serial=007',
+      { source: 'x', content: 'one-ring-the-one-ring-007' },
+    )).toBe(
+      'https://mtgtrackers.com/trackers/one-ring?serial=007&utm_source=x&utm_medium=social&utm_campaign=discovery_promotion&utm_content=one-ring-the-one-ring-007',
+    );
+  });
+
   it('ranks approved promotion candidates by evidence strength before recency', () => {
     const candidates = getPromotionCandidates(
       tracker,
@@ -141,7 +150,11 @@ describe('discovery share text', () => {
     );
     expect(candidates.map((candidate) => candidate.submission.id)).toEqual(['older-strong', 'recent-weak']);
     expect(candidates[0].detailUrl).toBe('https://mtgtrackers.com/trackers/one-ring?serial=007');
+    expect(candidates[0].promotionUrls.copy).toContain('utm_source=admin_copy');
+    expect(candidates[0].promotionUrls.x).toContain('utm_source=x');
+    expect(candidates[0].promotionUrls.reddit).toContain('utm_source=reddit');
+    expect(candidates[0].promotionUrls.x).toContain('utm_campaign=discovery_promotion');
     expect(candidates[0].reasons).toEqual(expect.arrayContaining(['confirmed', 'source', 'price']));
-    expect(candidates[0].shareText).toContain('Track it: https://mtgtrackers.com/trackers/one-ring?serial=007');
+    expect(candidates[0].shareText).toContain('Track it: https://mtgtrackers.com/trackers/one-ring?serial=007&utm_source=admin_copy');
   });
 });
