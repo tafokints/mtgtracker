@@ -1,4 +1,4 @@
-import { createInitialTrackerCards, findTrackerCardByDeepLinkParams, formatTrackerCardLabel, getTrackerCardDeepLinkParams, getTrackerCardDefinitions, getTrackerTotalSlots } from '@/lib/tracker-data';
+import { createInitialTrackerCards, findTrackerCardByDeepLinkParams, formatTrackerCardLabel, getTrackerCardDeepLinkParams, getTrackerCardDefinitions, getTrackerTotalSlots, type RecentTrackerDiscovery } from '@/lib/tracker-data';
 import { TrackerSummary } from '@/lib/trackers';
 
 export const siteUrl = 'https://mtgtrackers.com';
@@ -311,6 +311,31 @@ export function buildTrackerDirectoryJsonLd(liveTrackers: TrackerSummary[]) {
         position: index + 1,
         name: tracker.title,
         url: trackerCanonicalUrl(tracker),
+      })),
+    },
+  };
+}
+
+export function buildDiscoveriesPageJsonLd(discoveries: RecentTrackerDiscovery[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'Recent Serialized MTG Discoveries',
+    description: 'Recent admin-reviewed serialized Magic: The Gathering card discoveries from MTG Trackers.',
+    url: `${siteUrl}/discoveries`,
+    isPartOf: {
+      '@type': 'WebSite',
+      name: 'MTG Trackers',
+      url: siteUrl,
+    },
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: discoveries.length,
+      itemListElement: discoveries.map((discovery, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        name: discovery.label,
+        url: `${siteUrl}${discovery.detailHref}`,
       })),
     },
   };

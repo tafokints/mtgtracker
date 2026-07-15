@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getTracker, trackers } from '@/lib/trackers';
-import { buildBreadcrumbJsonLd, buildTrackerDirectoryJsonLd, buildTrackerFaqJsonLd, buildTrackerPageMetadata, buildTrackerSerialItemPageJsonLd, buildTrackerStatsJsonLd, buildTrackerSubmitJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildDiscoveriesPageJsonLd, buildTrackerDirectoryJsonLd, buildTrackerFaqJsonLd, buildTrackerPageMetadata, buildTrackerSerialItemPageJsonLd, buildTrackerStatsJsonLd, buildTrackerSubmitJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
 
 describe('SEO structured data', () => {
   it('builds factual CollectionPage JSON-LD for a tracker', () => {
@@ -41,6 +41,41 @@ describe('SEO structured data', () => {
       liveTrackers.map((tracker) => `https://mtgtrackers.com${tracker.href}`)
     );
     expect(jsonLd.mainEntity.itemListElement.map((item) => item.name)).not.toContain('Golden Chocobo');
+  });
+
+  it('builds recent discoveries CollectionPage JSON-LD', () => {
+    const jsonLd = buildDiscoveriesPageJsonLd([
+      {
+        trackerSlug: 'one-ring',
+        trackerTitle: 'The One Ring',
+        trackerHref: '/trackers/one-ring',
+        detailHref: '/trackers/one-ring?serial=007',
+        cardId: 7,
+        serialNumber: '007',
+        serialTotal: 100,
+        label: 'The One Ring 007/100',
+        verificationStatus: 'confirmed',
+      },
+    ]);
+
+    expect(jsonLd).toMatchObject({
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: 'Recent Serialized MTG Discoveries',
+      url: 'https://mtgtrackers.com/discoveries',
+      mainEntity: {
+        '@type': 'ItemList',
+        numberOfItems: 1,
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'The One Ring 007/100',
+            url: 'https://mtgtrackers.com/trackers/one-ring?serial=007',
+          },
+        ],
+      },
+    });
   });
 
   it('builds Dataset JSON-LD for tracker statistics pages', () => {

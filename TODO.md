@@ -63,6 +63,7 @@
 - [x] Add tracker marketplace CTA and stats market-context assertions to production smoke checks.
 - [x] Add GitHub Actions verification for tests, lint, build, audit, affiliate link validation, and production smoke monitoring.
 - [x] Add public JSON and RSS feeds for recent verified discoveries.
+- [x] Add a public recent discoveries page with exact serial links and feed links.
 - [x] Add copy-ready share text for located serial discoveries.
 - [x] Add serial-aware social metadata for exact tracker links.
 - [x] Add one-click native, X, and Reddit share actions for located serials.

@@ -6,6 +6,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes = [
     '',
     '/trackers',
+    '/discoveries',
     '/about',
     '/contact',
     '/privacy',
@@ -41,8 +42,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...staticRoutes.map((route) => ({
       url: `${baseUrl}${route}`,
       lastModified: new Date(),
-      changeFrequency: route === '' || route === '/trackers' ? 'daily' as const : 'monthly' as const,
-      priority: route === '' ? 1 : route === '/trackers' ? 0.8 : 0.4,
+      changeFrequency: route === '' || route === '/trackers' || route === '/discoveries' ? 'daily' as const : 'monthly' as const,
+      priority: route === '' ? 1 : route === '/trackers' ? 0.8 : route === '/discoveries' ? 0.7 : 0.4,
     })),
     ...liveTrackerRoutes,
   ]

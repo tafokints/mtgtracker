@@ -30,6 +30,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - Directory model for multiple serialized-card trackers
 - Tracker directory cards include open-tracker, report-a-find, latest-discovery, and marketplace paths to move visitors into useful tracker actions quickly
 - Cross-tracker recent discovery feed on the homepage with exact serial detail links
+- Human-readable `/discoveries` page for recent admin-reviewed serialized card finds
 - Public JSON and RSS discovery feeds for community bots, readers, and sharing workflows
 - Stats-page recent discovery links that jump to the exact serial detail view
 - Structured data for live tracker pages and the tracker directory
@@ -219,6 +220,7 @@ Also verify:
 - eBay affiliate links use campaign `5339113954` and a `customid` matching the tracker slug.
 - Amazon affiliate links use Associate tag `meleeitonme0a-20`.
 - `/about`, `/contact`, `/privacy`, and `/affiliate-disclosure` load in production.
+- `/discoveries`, `/discoveries.json`, and `/discoveries.xml` load in production.
 - Google Search Console ownership is verified and `https://mtgtrackers.com/sitemap.xml` is submitted.
 
 `npm run smoke` defaults to `https://mtgtrackers.com`. To check another deployment, run `npm run smoke -- https://your-preview-url.vercel.app` or set `SMOKE_BASE_URL`. For local production-build smoke checks without Redis health, set `SMOKE_SKIP_HEALTH=1` and `SMOKE_CANONICAL_BASE_URL=https://mtgtrackers.com`.

@@ -116,6 +116,7 @@ async function checkSitemap(liveTrackers) {
   const requiredUrls = [
     `${canonicalBaseUrl}/`,
     `${canonicalBaseUrl}/trackers`,
+    `${canonicalBaseUrl}/discoveries`,
     `${canonicalBaseUrl}/about`,
     `${canonicalBaseUrl}/contact`,
     `${canonicalBaseUrl}/privacy`,
@@ -186,6 +187,7 @@ async function main() {
   const checks = [
     checkPage('/', ['MTG Trackers', 'Live Trackers', 'BreadcrumbList']),
     checkPage('/trackers', ['Trackers', 'Serialized Scaffold Queue', 'Marketplace links are affiliate links', 'BreadcrumbList']),
+    checkPage('/discoveries', ['Recent Discoveries', 'Discovery Feeds', 'JSON Feed', 'RSS Feed', 'CollectionPage', 'BreadcrumbList']),
     checkPage('/trackers/one-ring?serial=001', [
       'The One Ring 001/100 | MTG Trackers',
       `${canonicalBaseUrl}/trackers/one-ring?serial=001`,
@@ -202,6 +204,7 @@ async function main() {
     checkDiscoveryJsonFeed(),
     checkDiscoveryRssFeed(),
     checkBreadcrumbJsonLd('/affiliate-disclosure', ['MTG Trackers', 'Affiliate Disclosure']),
+    checkBreadcrumbJsonLd('/discoveries', ['MTG Trackers', 'Recent Discoveries']),
     checkSourceFile('src/components/TrackerPageClient.tsx', [
       'TrackerMarketTrustStrip',
       'PrimaryAffiliateCtas',

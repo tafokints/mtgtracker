@@ -84,8 +84,8 @@ function RecentActivity({ discoveries }: { discoveries: RecentTrackerDiscovery[]
             Fresh located serials from active community trackers.
           </p>
         </div>
-        <Link href="/trackers" className="text-sm font-bold text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline">
-          View all trackers
+        <Link href="/discoveries" className="text-sm font-bold text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline">
+          View all discoveries
         </Link>
       </div>
 
