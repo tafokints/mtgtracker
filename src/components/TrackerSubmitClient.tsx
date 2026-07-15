@@ -364,6 +364,9 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
                 <option value="confirmed">Looks Confirmed</option>
                 <option value="unverified">Unverified</option>
               </select>
+              <p className="mt-2 text-xs text-ring-light/70">
+                Use Looks Confirmed only when you can include a source link or evidence image.
+              </p>
             </div>
           </div>
           <div className="mt-6">

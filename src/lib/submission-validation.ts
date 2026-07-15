@@ -99,6 +99,10 @@ export function validateDiscoverySubmission(body: any, totalCards: number) {
     errors.push('Evidence image URLs must be valid http(s) URLs.');
   }
 
+  if (verificationStatus === 'confirmed' && !link && evidenceUrls.length === 0) {
+    errors.push('Looks confirmed reports need a source link or evidence image.');
+  }
+
   const notes = cleanString(body.notes);
   if (notes.length > MAX_NOTE_LENGTH) {
     errors.push(`Notes must be ${MAX_NOTE_LENGTH} characters or fewer.`);

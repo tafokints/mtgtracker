@@ -65,6 +65,17 @@ describe('validateDiscoverySubmission', () => {
     expect(result.errors).toContain('Please include a source link, evidence image, or note for review.');
   });
 
+  it('requires source or image evidence when a report requests confirmed status', () => {
+    const result = validateDiscoverySubmission({
+      cardId: '10',
+      sourceType: 'other',
+      verificationStatus: 'confirmed',
+      notes: 'I saw this mentioned somewhere.',
+    }, 100);
+
+    expect(result.errors).toContain('Looks confirmed reports need a source link or evidence image.');
+  });
+
   it('caps evidence images', () => {
     const evidenceImageUrls = Array.from({ length: 9 }, (_, index) => `https://example.com/${index}.jpg`).join('\n');
     const result = validateDiscoverySubmission({

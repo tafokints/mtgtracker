@@ -134,6 +134,7 @@ Admin backups are tracker-scoped:
 ## Admin And Review Workflows
 
 - Report form: use the `Report a Find` link on any live tracker page to send a discovery into admin review.
+- Evidence level: public reports can request `Looks Confirmed` only when they include a source link or evidence image.
 - Evidence uploads: report forms accept JPEG, PNG, or WebP uploads up to 4 MB per image. Uploaded images are stored in Vercel Blob and saved as evidence image URLs on the queued report.
 - Admin panel: press `Ctrl + Alt + A` on `/trackers/one-ring`.
 - Review queue: use the admin panel `Review` tab to approve or reject pending reports.
