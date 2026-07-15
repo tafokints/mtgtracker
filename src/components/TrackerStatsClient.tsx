@@ -8,6 +8,7 @@ import { formatTrackerCardLabel, getTrackerCardDeepLinkParams } from '@/lib/trac
 import { getTrackerMarketSummary } from '@/lib/tracker-market-summary';
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import PrimaryAffiliateCtas from '@/components/PrimaryAffiliateCtas';
+import TrackerMarketInsights from '@/components/TrackerMarketInsights';
 import TrackerMarketTrustStrip from '@/components/TrackerMarketTrustStrip';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import type { PieLabelRenderProps } from 'recharts';
@@ -141,7 +142,10 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
   if (loading) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-8">
-        <div className="text-ring-gold text-xl">Loading Stats...</div>
+        <div className="w-full max-w-5xl space-y-6">
+          <div className="text-center text-ring-gold text-xl">Loading {tracker.title} Statistics...</div>
+          <TrackerMarketInsights tracker={tracker} />
+        </div>
       </main>
     );
   }
@@ -185,6 +189,8 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
               />
               <TrackerMarketTrustStrip summary={marketSummary} />
             </section>
+
+            <TrackerMarketInsights tracker={tracker} />
 
             {foundCards.length === 0 ? (
               <div className="rounded-lg border border-ring-gold/30 bg-ring-dark/75 p-6 text-center text-ring-light">

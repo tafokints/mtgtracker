@@ -22,6 +22,12 @@ export interface TrackerTheme {
   glowClass: string;
 }
 
+export interface TrackerMarketInsight {
+  title: string;
+  summary: string;
+  bullets: string[];
+}
+
 export interface TrackerStorage {
   cardsKey: string;
   submissionsKey: string;
@@ -56,6 +62,7 @@ export interface TrackerSummary {
   referenceLinks?: ReferenceLink[];
   cardDefinitions?: TrackerCardDefinition[];
   referenceImage?: string;
+  marketInsights?: TrackerMarketInsight[];
 }
 
 const tcgplayerPartnerLink = 'https://partner.tcgplayer.com/DyJ25G';
@@ -186,6 +193,26 @@ export const trackers: TrackerSummary[] = [
         type: 'scryfall',
       },
     ],
+    marketInsights: [
+      {
+        title: 'Collector Demand',
+        summary: 'The serialized poster One Ring sits at the center of LOTR collector demand because it combines the set icon, a tiny run of 100, and a visually distinct treatment.',
+        bullets: [
+          'Watch confirmed serials with public images first, then source-linked reports with marketplace or grading references.',
+          'Exact serial searches matter because premium listings often mention the stamped number in the title or description.',
+          'Sealed LOTR collector booster demand can move separately from discovered singles, so compare both signals.',
+        ],
+      },
+      {
+        title: 'Discovery Signals',
+        summary: 'New public discoveries usually surface through eBay listings, grading population reveals, social posts, and collector sale threads.',
+        bullets: [
+          'Prioritize reports with image evidence that shows both the card face and stamped serial.',
+          'Treat marketplace screenshots as leads until the listing URL or sold comp can be reviewed.',
+          'Use the report form when a serial is missing so an admin can verify it before it changes the public count.',
+        ],
+      },
+    ],
     referenceImage: 'https://cards.scryfall.io/large/front/4/e/4e6fee52-33a8-4085-b632-bf95dfd2b16d.jpg?1782694957',
   },
   {
@@ -242,6 +269,26 @@ export const trackers: TrackerSummary[] = [
         label: 'Scryfall card page',
         href: 'https://scryfall.com/card/inr/491/edgar-markov',
         type: 'scryfall',
+      },
+    ],
+    marketInsights: [
+      {
+        title: 'Collector Demand',
+        summary: 'Edgar Markov is a headliner serialized card with demand from vampire Commander players, Innistrad collectors, and serialized chase-card buyers.',
+        bullets: [
+          'Track public sales against active listings because headliner cards can have wide asking-price spreads.',
+          'Graded copies may become more important as the discovery count grows and collectors compare condition.',
+          'Innistrad Remastered sealed interest is useful context, but exact Edgar serial comps are the strongest signal.',
+        ],
+      },
+      {
+        title: 'Discovery Signals',
+        summary: 'The cleanest reports pair a serial image with the original marketplace, grading, or social source that revealed the card.',
+        bullets: [
+          'Check eBay, TCGplayer-adjacent discussion, grading posts, and collector groups for newly opened copies.',
+          'Report untracked serials even when price is unknown so the discovery queue can preserve evidence.',
+          'Use source-linked status for credible public sightings that still need stronger primary proof.',
+        ],
       },
     ],
     referenceImage: 'https://cards.scryfall.io/large/front/e/7/e70bfc25-3c0c-4574-b504-1d1f73e9e790.jpg?1782726466',
@@ -329,6 +376,26 @@ export const trackers: TrackerSummary[] = [
       { slug: 'palantir-of-orthanc', title: 'Palantir of Orthanc', referenceImage: 'https://cards.scryfall.io/large/front/b/9/b9b95f71-ca89-4173-89bf-99abccd259de.jpg?1782694956', scryfallUrl: 'https://scryfall.com/card/ltr/749z/palant%C3%ADr-of-orthanc' },
       { slug: 'mount-doom', title: 'Mount Doom', referenceImage: 'https://cards.scryfall.io/large/front/6/c/6c53dace-4597-4d34-96d1-7aa6290594d4.jpg?1782694955', scryfallUrl: 'https://scryfall.com/card/ltr/750z/mount-doom' },
     ],
+    marketInsights: [
+      {
+        title: 'Collector Demand',
+        summary: 'The LOTR poster tracker covers twenty serialized cards, so collectors often compare demand by character, card playability, and art popularity.',
+        bullets: [
+          'Use card filters to separate character-led demand from broader set-completion activity.',
+          'Poster cards with Commander demand may trade differently than lore-heavy collector favorites.',
+          'Exact card-and-serial searches are more useful than broad LOTR searches when checking comps.',
+        ],
+      },
+      {
+        title: 'Discovery Signals',
+        summary: 'Multi-card treatments need card-plus-serial evidence so the same stamped number can be tracked correctly across different cards.',
+        bullets: [
+          'Reports should identify both the card name and serial number before admin review.',
+          'Evidence images are especially important because each card has its own 001/100 through 100/100 run.',
+          'Use card activity summaries to spot which poster cards have the strongest public discovery momentum.',
+        ],
+      },
+    ],
     referenceImage: 'https://cards.scryfall.io/large/front/4/e/4e6fee52-33a8-4085-b632-bf95dfd2b16d.jpg?1782694957',
   },
   {
@@ -378,6 +445,17 @@ export const trackers: TrackerSummary[] = [
         intent: 'sealed-product',
         ctaEyebrow: 'Sealed Product',
         ctaDetail: 'Browse Final Fantasy collector booster products.',
+      },
+    ],
+    marketInsights: [
+      {
+        title: 'Collector Demand',
+        summary: 'Golden Chocobo is queued for migration so Final Fantasy serial discovery, sealed-product interest, and legacy tracker data can eventually live in the same platform.',
+        bullets: [
+          'Keep the existing tracker stable until the generic MTG Trackers path can preserve its data.',
+          'Validate Final Fantasy affiliate links before launch so collector traffic lands on relevant products.',
+          'Use the same admin review workflow once migrated so public discoveries stay evidence-backed.',
+        ],
       },
     ],
   },

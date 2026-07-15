@@ -180,6 +180,7 @@
 - [x] Add stats-page source-type breakdowns.
 - [x] Add tracked marketplace CTAs and market trust context to tracker stats pages.
 - [x] Add server-rendered Dataset JSON-LD to tracker stats pages.
+- [x] Add tracker-specific collector notes and discovery guidance to tracker and stats pages.
 
 ## Data Safety
 

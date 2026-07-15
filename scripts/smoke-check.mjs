@@ -201,12 +201,16 @@ async function main() {
       checkPage(`/trackers/${tracker.slug}`, [
         tracker.title,
         `${tracker.title} Tracker`,
+        'Collector Notes',
+        `${tracker.title} Market Context`,
         'CollectionPage',
         'BreadcrumbList',
         'application/ld+json',
       ]),
       checkPage(`/trackers/${tracker.slug}/stats`, [
         `${tracker.title} Statistics`,
+        'Collector Notes',
+        `${tracker.title} Market Context`,
         'BreadcrumbList',
         'Dataset',
         `${tracker.title} Serialized Card Statistics`,

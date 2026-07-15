@@ -14,6 +14,7 @@ import AffiliateLinks from "@/components/AffiliateLinks";
 import AffiliateDisclosureNotice from "@/components/AffiliateDisclosureNotice";
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 import PrimaryAffiliateCtas from '@/components/PrimaryAffiliateCtas';
+import TrackerMarketInsights from '@/components/TrackerMarketInsights';
 import TrackerMarketTrustStrip from '@/components/TrackerMarketTrustStrip';
 import ReferenceLinks from '@/components/ReferenceLinks';
 import ReportButton from '@/components/ReportButton';
@@ -628,7 +629,10 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   if (loading) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-8">
-        <div className="text-ring-gold text-xl">Loading...</div>
+        <div className="w-full max-w-5xl space-y-6">
+          <div className="text-center text-ring-gold text-xl">Loading {tracker.title} Tracker...</div>
+          <TrackerMarketInsights tracker={tracker} />
+        </div>
       </main>
     );
   }
@@ -698,6 +702,10 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
               {pendingReportCount > 0 && ` ${pendingReportCount} report${pendingReportCount === 1 ? ' is' : 's are'} currently pending.`}
             </p>
           )}
+        </div>
+
+        <div className="mt-6 w-full max-w-5xl">
+          <TrackerMarketInsights tracker={tracker} />
         </div>
 
         {!dataError && (
