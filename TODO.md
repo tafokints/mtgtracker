@@ -45,6 +45,7 @@
 - [x] Add affiliate attribution checks for eBay custom IDs, Amazon tags, and TCGplayer redirects.
 - [x] Add admin affiliate coverage audit for tracker-specific merchant coverage, attribution, and CTA copy.
 - [x] Add affiliate intent metadata for singles, auction comps, and sealed product links.
+- [x] Add marketplace CTA recommendations from affiliate coverage, directory interest, and click winners.
 - [x] Add baseline security headers.
 - [x] Return 400 for malformed JSON request bodies.
 - [x] Remove placeholder aggregate rating structured data.

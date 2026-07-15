@@ -9,6 +9,7 @@ import { getAffiliateStatsInsights } from '@/lib/affiliate-stats-insights';
 import { buildDiscoveryShareLinks, getPromotionCandidates } from '@/lib/discovery-share';
 import { getPromoteNextRecommendation } from '@/lib/promotion-recommendations';
 import { getTrackerGrowthRecommendations } from '@/lib/tracker-growth-recommendations';
+import { getMarketplaceCtaRecommendations } from '@/lib/marketplace-cta-recommendations';
 import ExternalImage from '@/components/ExternalImage';
 
 interface AdminPanelProps {
@@ -405,6 +406,39 @@ function TrackerGrowthRecommendationCards({ recommendations }: { recommendations
   );
 }
 
+function MarketplaceCtaRecommendationCards({ recommendations }: { recommendations: ReturnType<typeof getMarketplaceCtaRecommendations> }) {
+  if (recommendations.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-2 rounded border border-ring-teal/30 bg-black/20 p-3">
+      <div>
+        <h4 className="text-sm font-bold text-ring-teal">Marketplace CTA Recommendations</h4>
+        <p className="mt-1 text-xs text-ring-light/65">
+          Which affiliate path to emphasize next based on coverage and recent click behavior.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
+        {recommendations.map((recommendation) => (
+          <div key={recommendation.key} className="rounded border border-ring-teal/25 bg-ring-dark/60 p-3">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="text-xs uppercase text-ring-light/55">{recommendation.trackerTitle}</p>
+                <p className="mt-1 text-sm font-bold text-ring-teal">{recommendation.action}</p>
+              </div>
+              <span className="rounded border border-ring-teal/35 px-2 py-1 text-[0.65rem] uppercase text-ring-light/70">
+                {recommendation.merchant}
+              </span>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-ring-light/70">{recommendation.detail}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function getInternalSourcePath(sourcePath?: string) {
   if (!sourcePath || !sourcePath.startsWith('/') || sourcePath.startsWith('//')) {
     return undefined;
@@ -542,6 +576,10 @@ export default function AdminPanel({
   );
   const trackerGrowthRecommendations = useMemo(
     () => affiliateStats ? getTrackerGrowthRecommendations(affiliateStats) : [],
+    [affiliateStats],
+  );
+  const marketplaceCtaRecommendations = useMemo(
+    () => affiliateStats ? getMarketplaceCtaRecommendations(affiliateStats) : [],
     [affiliateStats],
   );
   const matchesReviewCardFilter = (submission: DiscoverySubmission) => {
@@ -1596,6 +1634,7 @@ export default function AdminPanel({
 
                   <AffiliateInsightCards insights={affiliateInsights} />
                   <AffiliateCoverageAudit coverage={affiliateStats.affiliateCoverage} />
+                  <MarketplaceCtaRecommendationCards recommendations={marketplaceCtaRecommendations} />
                   <TrackerGrowthRecommendationCards recommendations={trackerGrowthRecommendations} />
 
                   {affiliateStats.directory.rows.length > 0 && (
