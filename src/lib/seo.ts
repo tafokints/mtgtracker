@@ -1,4 +1,5 @@
 import { createInitialTrackerCards, findTrackerCardByDeepLinkParams, formatTrackerCardLabel, getTrackerCardDeepLinkParams, getTrackerCardDefinitions, getTrackerTotalSlots, type RecentTrackerDiscovery } from '@/lib/tracker-data';
+import { type SerializedCatalogEntry } from '@/lib/serialized-catalog';
 import { TrackerSummary } from '@/lib/trackers';
 
 export const siteUrl = 'https://mtgtrackers.com';
@@ -336,6 +337,32 @@ export function buildDiscoveriesPageJsonLd(discoveries: RecentTrackerDiscovery[]
         position: index + 1,
         name: discovery.label,
         url: `${siteUrl}${discovery.detailHref}`,
+      })),
+    },
+  };
+}
+
+export function buildSerializedCatalogJsonLd(entries: SerializedCatalogEntry[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'Serialized MTG Catalog',
+    description: 'A researched catalog of Magic: The Gathering serialized card treatments, print ranges, release sets, and tracker launch status.',
+    url: `${siteUrl}/serialized-mtg-catalog`,
+    isPartOf: {
+      '@type': 'WebSite',
+      name: 'MTG Trackers',
+      url: siteUrl,
+    },
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: entries.length,
+      itemListElement: entries.map((entry, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        name: entry.title,
+        description: `${entry.treatment} from ${entry.setName}. Numbered ${entry.numbered || entry.defaultSerialTotal || 'unknown'}.`,
+        url: `${siteUrl}/serialized-mtg-catalog#${entry.slug}`,
       })),
     },
   };

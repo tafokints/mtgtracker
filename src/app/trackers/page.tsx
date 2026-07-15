@@ -246,12 +246,20 @@ export default async function TrackersPage() {
                 Researched serialized MTG treatments to convert into tracker pages.
               </p>
             </div>
-            <Link
-              href="https://scryfall.com/search?q=is%3Aserialized&unique=prints&order=set"
-              className="text-sm text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline"
-            >
-              Scryfall source query
-            </Link>
+            <div className="flex flex-wrap gap-3 text-sm">
+              <Link
+                href="/serialized-mtg-catalog"
+                className="font-bold text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline"
+              >
+                Open full catalog
+              </Link>
+              <Link
+                href="https://scryfall.com/search?q=is%3Aserialized&unique=prints&order=set"
+                className="text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline"
+              >
+                Scryfall source query
+              </Link>
+            </div>
           </div>
 
           <div className="overflow-x-auto rounded-lg border border-ring-gold/30">

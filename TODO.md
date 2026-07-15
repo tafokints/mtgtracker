@@ -65,6 +65,7 @@
 - [x] Add public JSON and RSS feeds for recent verified discoveries.
 - [x] Add a public recent discoveries page with exact serial links and feed links.
 - [x] Add tracked marketplace CTAs to recent discovery cards.
+- [x] Add a crawlable serialized MTG catalog page with source links, tracker status, and broad marketplace CTAs.
 - [x] Add public share actions with campaign-tagged discovery URLs.
 - [x] Add copy-ready share text for located serial discoveries.
 - [x] Add serial-aware social metadata for exact tracker links.

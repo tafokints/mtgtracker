@@ -36,12 +36,20 @@ export default async function HomePage() {
               A home for community-maintained trackers covering Magic: The Gathering serialized chase cards, sightings, sales, grading, and source quality.
             </p>
           </div>
-          <Link
-            href="/trackers"
-            className="inline-flex h-11 items-center justify-center rounded border border-ring-gold px-5 font-bold text-ring-gold transition-colors hover:bg-ring-gold hover:text-ring-dark"
-          >
-            Browse Trackers
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/trackers"
+              className="inline-flex h-11 items-center justify-center rounded border border-ring-gold px-5 font-bold text-ring-gold transition-colors hover:bg-ring-gold hover:text-ring-dark"
+            >
+              Browse Trackers
+            </Link>
+            <Link
+              href="/serialized-mtg-catalog"
+              className="inline-flex h-11 items-center justify-center rounded border border-ring-teal/60 px-5 font-bold text-ring-teal transition-colors hover:bg-ring-teal hover:text-ring-dark"
+            >
+              Serialized Catalog
+            </Link>
+          </div>
         </header>
 
         <RecentActivity discoveries={recentDiscoveries} />
