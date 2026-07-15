@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry } from "@/lib/types";
-import type { TrackerSummary } from '@/lib/trackers';
+import { getSerialAffiliateLinks, type TrackerSummary } from '@/lib/trackers';
 import Link from "next/link";
 import {
   findTrackerCardByDeepLinkParams,
@@ -12,6 +12,7 @@ import {
 } from '@/lib/tracker-data';
 import AffiliateLinks from "@/components/AffiliateLinks";
 import AffiliateDisclosureNotice from "@/components/AffiliateDisclosureNotice";
+import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 import PrimaryAffiliateCtas from '@/components/PrimaryAffiliateCtas';
 import ReferenceLinks from '@/components/ReferenceLinks';
 import ReportButton from '@/components/ReportButton';
@@ -741,6 +742,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
               const imageSrc = card.image || referenceImage;
               const reportParams = getTrackerCardDeepLinkParams(tracker, card);
               const reportHref = `${trackerPath}/submit?${reportParams.toString()}`;
+              const serialEbayLink = getSerialAffiliateLinks(tracker, card).find((link) => link.merchant === 'ebay');
               const statusLabel = card.found
                 ? card.verificationStatus === 'confirmed'
                   ? 'Confirmed'
@@ -826,7 +828,11 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                       <div className="text-sm mt-2 text-ring-light">
                         <p>Found by: {card.foundBy}</p>
                         <p>Date: {card.dateFound}</p>
-                        {card.link && <a href={card.link} target="_blank" rel="noopener noreferrer" className="text-ring-gold hover:underline">{card.link.toLowerCase().includes('ebay') ? 'Buy on eBay' : 'Source'}</a>}
+                        {card.link && (
+                          <a href={card.link} target="_blank" rel="noopener noreferrer" className="text-ring-gold hover:underline">
+                            View Source
+                          </a>
+                        )}
                       </div>
                     )}
 
@@ -838,6 +844,16 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                         >
                           Report This Serial
                         </Link>
+                      )}
+                      {serialEbayLink && (
+                        <AffiliateOutboundLink
+                          link={serialEbayLink}
+                          trackerSlug={tracker.slug}
+                          placement="tracker-card-serial"
+                          className="w-full rounded border border-ring-gold/60 px-4 py-2 text-center text-sm font-bold text-ring-gold transition-colors hover:border-yellow-400 hover:text-yellow-400"
+                        >
+                          Search eBay
+                        </AffiliateOutboundLink>
                       )}
                       <button
                         onClick={() => openCardDetails(card)}

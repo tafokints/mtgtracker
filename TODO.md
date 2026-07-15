@@ -37,6 +37,7 @@
 - [x] Add contextual affiliate CTA placement for active filtered tracker views.
 - [x] Add active-view summary copy to contextual filtered affiliate CTAs.
 - [x] Add serial detail marketplace CTA placement.
+- [x] Add tracked exact-serial eBay CTAs to tracker grid cards.
 - [x] Use exact card-and-serial eBay searches from serial detail CTAs while preserving affiliate attribution.
 - [x] Add affiliate attribution checks for eBay custom IDs, Amazon tags, and TCGplayer redirects.
 - [x] Add affiliate intent metadata for singles, auction comps, and sealed product links.

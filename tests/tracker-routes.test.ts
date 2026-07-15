@@ -415,8 +415,17 @@ describe('tracker API routes', () => {
   it('returns affiliate stats for tracked clicks', async () => {
     const ebayLink = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'ebay');
     const tcgplayerLink = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'tcgplayer');
+    const serialGridEbayLink = getSerialAffiliateLinks(tracker, {
+      id: 7,
+      serialNumber: '007',
+      name: tracker.title,
+      found: false,
+      verificationStatus: 'unverified',
+      priceHistory: [],
+    }).find((affiliateLink) => affiliateLink.merchant === 'ebay');
     if (!ebayLink) throw new Error('Expected One Ring eBay affiliate link');
     if (!tcgplayerLink) throw new Error('Expected One Ring TCGplayer affiliate link');
+    if (!serialGridEbayLink) throw new Error('Expected serial grid eBay affiliate link');
 
     await trackAffiliateClick(affiliateClickRequest({
       tracker: tracker.slug,
@@ -468,6 +477,17 @@ describe('tracker API routes', () => {
         serial: '007',
       },
     }));
+    await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: serialGridEbayLink.merchant,
+      href: serialGridEbayLink.href,
+      label: serialGridEbayLink.label,
+      placement: 'tracker-card-serial',
+      sourcePath: '/trackers/one-ring?serial=007',
+      viewContext: {
+        serial: '007',
+      },
+    }));
     const response = await getAffiliateStats(affiliateStatsRequest());
     const body = await json(response);
 
@@ -475,18 +495,18 @@ describe('tracker API routes', () => {
     expect(body).toMatchObject({
       days: 30,
       summary: {
-        clicksInWindow: 5,
-        totalClicks: 5,
+        clicksInWindow: 6,
+        totalClicks: 6,
         bestTracker: expect.objectContaining({
           key: 'one-ring',
-          clicksInWindow: 5,
+          clicksInWindow: 6,
         }),
         byIntent: expect.arrayContaining([
-          expect.objectContaining({ key: 'auction-comps', clicksInWindow: 3 }),
+          expect.objectContaining({ key: 'auction-comps', clicksInWindow: 4 }),
           expect.objectContaining({ key: 'singles', clicksInWindow: 2 }),
         ]),
         byMerchant: expect.arrayContaining([
-          expect.objectContaining({ key: 'ebay', clicksInWindow: 3 }),
+          expect.objectContaining({ key: 'ebay', clicksInWindow: 4 }),
           expect.objectContaining({ key: 'tcgplayer', clicksInWindow: 2 }),
         ]),
         byPlacement: expect.arrayContaining([
@@ -494,6 +514,7 @@ describe('tracker API routes', () => {
           expect.objectContaining({ key: 'tracker-top-cta', clicksInWindow: 1 }),
           expect.objectContaining({ key: 'tracker-filtered-cta', clicksInWindow: 1 }),
           expect.objectContaining({ key: 'tracker-directory', clicksInWindow: 1 }),
+          expect.objectContaining({ key: 'tracker-card-serial', clicksInWindow: 1 }),
           expect.objectContaining({ key: 'serial-detail', clicksInWindow: 1 }),
         ]),
         byViewFilter: expect.arrayContaining([
@@ -507,7 +528,7 @@ describe('tracker API routes', () => {
           expect.objectContaining({ key: 'all', clicksInWindow: 1, totalClicks: 1 }),
         ]),
         byViewSerial: expect.arrayContaining([
-          expect.objectContaining({ key: '007', clicksInWindow: 2, totalClicks: 2 }),
+          expect.objectContaining({ key: '007', clicksInWindow: 3, totalClicks: 3 }),
         ]),
         byLastClickFilter: expect.arrayContaining([
           expect.objectContaining({ key: 'has-evidence', clicksInWindow: 1 }),
@@ -516,7 +537,7 @@ describe('tracker API routes', () => {
           expect.objectContaining({ key: 'evidence-desc', clicksInWindow: 1 }),
         ]),
         byLastClickSerial: expect.arrayContaining([
-          expect.objectContaining({ key: '007', clicksInWindow: 2 }),
+          expect.objectContaining({ key: '007', clicksInWindow: 3 }),
         ]),
       },
       rows: expect.arrayContaining([
@@ -580,6 +601,24 @@ describe('tracker API routes', () => {
           totalClicks: 1,
           lastClick: expect.objectContaining({
             sourcePath: '/trackers/one-ring?serial=007',
+          }),
+        }),
+        expect.objectContaining({
+          tracker: 'one-ring',
+          trackerTitle: 'The One Ring',
+          merchant: 'ebay',
+          intent: 'auction-comps',
+          label: ebayLink.label,
+          href: ebayLink.href,
+          placement: 'tracker-card-serial',
+          clicksInWindow: 1,
+          totalClicks: 1,
+          lastClick: expect.objectContaining({
+            label: serialGridEbayLink.label,
+            sourcePath: '/trackers/one-ring?serial=007',
+            viewContext: {
+              serial: '007',
+            },
           }),
         }),
       ]),

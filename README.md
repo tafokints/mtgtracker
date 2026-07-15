@@ -140,6 +140,7 @@ Admin backups are tracker-scoped:
 - Affiliate stats: use the admin panel `Affiliate` tab to compare tracker, merchant, and placement click totals.
 - Directory marketplace links are tracked as `tracker-directory`.
 - Primary marketplace CTAs: tracker pages include top-of-page marketplace actions tracked as `tracker-top-cta`, plus contextual filtered-view actions tracked as `tracker-filtered-cta` with the active view summarized near the links.
+- Serial card grid eBay searches are tracked as `tracker-card-serial`.
 - Serial detail marketplace links are tracked as `serial-detail`.
 - Serial detail eBay links use exact card-and-serial search queries while preserving the tracker campaign `customid`.
 
