@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getTracker, trackers } from '@/lib/trackers';
-import { buildBreadcrumbJsonLd, buildTrackerDirectoryJsonLd, buildTrackerFaqJsonLd, buildTrackerPageMetadata, buildTrackerStatsJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildTrackerDirectoryJsonLd, buildTrackerFaqJsonLd, buildTrackerPageMetadata, buildTrackerSerialItemPageJsonLd, buildTrackerStatsJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
 
 describe('SEO structured data', () => {
   it('builds factual CollectionPage JSON-LD for a tracker', () => {
@@ -130,6 +130,33 @@ describe('SEO structured data', () => {
     ]));
   });
 
+  it('builds ItemPage JSON-LD for exact single-card serial links', () => {
+    const tracker = getTracker('one-ring');
+    if (!tracker) throw new Error('one-ring tracker fixture is missing');
+
+    const jsonLd = buildTrackerSerialItemPageJsonLd(tracker, { serial: '1' });
+
+    expect(jsonLd).toMatchObject({
+      '@context': 'https://schema.org',
+      '@type': 'ItemPage',
+      name: 'The One Ring 001/100 Tracker',
+      url: 'https://mtgtrackers.com/trackers/one-ring?serial=001',
+      isPartOf: {
+        '@type': 'CollectionPage',
+        name: 'The One Ring Tracker',
+      },
+      about: {
+        '@type': 'Thing',
+        name: 'The One Ring 001/100',
+        identifier: '001/100',
+      },
+      potentialAction: {
+        '@type': 'CommunicateAction',
+        target: 'https://mtgtrackers.com/trackers/one-ring/submit?serial=001',
+      },
+    });
+  });
+
   it('builds exact serial metadata for multi-card tracker deep links', () => {
     const tracker = getTracker('lotr-poster-cards');
     if (!tracker) throw new Error('lotr-poster-cards tracker fixture is missing');
@@ -143,6 +170,29 @@ describe('SEO structured data', () => {
     expect(metadata.alternates.canonical).toBe('/trackers/lotr-poster-cards?card=dawn-of-a-new-age&serial=002');
     expect(metadata.openGraph.url).toBe('https://mtgtrackers.com/trackers/lotr-poster-cards?card=dawn-of-a-new-age&serial=002');
     expect(metadata.openGraph.images[0].alt).toBe('LOTR Poster Cards Dawn of a New Age 002/100 serial tracker');
+  });
+
+  it('builds ItemPage JSON-LD for exact multi-card serial links', () => {
+    const tracker = getTracker('lotr-poster-cards');
+    if (!tracker) throw new Error('lotr-poster-cards tracker fixture is missing');
+
+    const jsonLd = buildTrackerSerialItemPageJsonLd(tracker, {
+      card: 'dawn-of-a-new-age',
+      serial: '2',
+    });
+
+    expect(jsonLd).toMatchObject({
+      '@type': 'ItemPage',
+      name: 'LOTR Poster Cards Dawn of a New Age 002/100 Tracker',
+      url: 'https://mtgtrackers.com/trackers/lotr-poster-cards?card=dawn-of-a-new-age&serial=002',
+      about: {
+        name: 'Dawn of a New Age 002/100',
+        identifier: '002/100',
+      },
+      potentialAction: {
+        target: 'https://mtgtrackers.com/trackers/lotr-poster-cards/submit?card=dawn-of-a-new-age&serial=002',
+      },
+    });
   });
 
   it('builds canonical breadcrumb JSON-LD for tracker subpages', () => {

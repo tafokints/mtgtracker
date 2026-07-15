@@ -147,6 +147,57 @@ export function buildTrackerWebPageJsonLd(tracker: TrackerSummary) {
   };
 }
 
+export function buildTrackerSerialItemPageJsonLd(
+  tracker: TrackerSummary,
+  searchParams?: Record<string, SearchParamValue>,
+) {
+  const params = toUrlSearchParams(searchParams);
+  const card = findTrackerCardByDeepLinkParams(
+    tracker,
+    createInitialTrackerCards(tracker),
+    params,
+  );
+
+  if (!card) {
+    return null;
+  }
+
+  const detailParams = getTrackerCardDeepLinkParams(tracker, card);
+  const serialLabel = formatTrackerCardLabel(tracker, card);
+  const url = `${trackerCanonicalUrl(tracker)}?${detailParams.toString()}`;
+  const cardName = card.cardTitle || tracker.title;
+  const serialIdentifier = `${card.serialNumber}/${card.serialTotal || tracker.total}`;
+  const serialEntityName = serialLabel.includes(cardName) ? serialLabel : `${cardName} ${serialLabel}`;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemPage',
+    name: `${tracker.title} ${serialLabel} Tracker`,
+    description: `Tracking page for ${cardName} ${serialLabel}: discovery status, evidence, sale data, and marketplace context for this serialized Magic: The Gathering card slot.`,
+    url,
+    isPartOf: {
+      '@type': 'CollectionPage',
+      name: `${tracker.title} Tracker`,
+      url: trackerCanonicalUrl(tracker),
+    },
+    about: {
+      '@type': 'Thing',
+      name: serialEntityName,
+      identifier: serialIdentifier,
+      description: `Serialized ${cardName} card slot from ${tracker.setName || 'Magic: The Gathering'}.`,
+    },
+    primaryImageOfPage: {
+      '@type': 'ImageObject',
+      url: card.image || trackerSocialImage(tracker),
+    },
+    potentialAction: {
+      '@type': 'CommunicateAction',
+      name: `Report ${cardName} ${serialLabel}`,
+      target: `${trackerCanonicalUrl(tracker)}/submit?${detailParams.toString()}`,
+    },
+  };
+}
+
 export function buildTrackerStatsJsonLd(tracker: TrackerSummary) {
   const totalSlots = getTrackerTotalSlots(tracker);
 

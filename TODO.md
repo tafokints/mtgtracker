@@ -182,6 +182,7 @@
 - [x] Add server-rendered Dataset JSON-LD to tracker stats pages.
 - [x] Add tracker-specific collector notes and discovery guidance to tracker and stats pages.
 - [x] Add tracker-specific FAQs with FAQPage structured data.
+- [x] Add exact-serial ItemPage structured data for shareable serial links.
 
 ## Data Safety
 

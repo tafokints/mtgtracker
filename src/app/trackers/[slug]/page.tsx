@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import TrackerPageClient from '@/components/TrackerPageClient';
 import { getTracker, trackers } from '@/lib/trackers';
-import { buildBreadcrumbJsonLd, buildTrackerFaqJsonLd, buildTrackerPageMetadata, buildTrackerWebPageJsonLd, trackerBreadcrumbItems } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildTrackerFaqJsonLd, buildTrackerPageMetadata, buildTrackerSerialItemPageJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems } from '@/lib/seo';
 
 type TrackerPageProps = {
   params: Promise<{ slug: string }>;
@@ -26,8 +26,9 @@ export async function generateMetadata({ params, searchParams }: TrackerPageProp
   return buildTrackerPageMetadata(tracker, resolvedSearchParams);
 }
 
-export default async function TrackerPage({ params }: TrackerPageProps) {
+export default async function TrackerPage({ params, searchParams }: TrackerPageProps) {
   const { slug } = await params;
+  const resolvedSearchParams = await searchParams;
   const tracker = getTracker(slug);
 
   if (!tracker || tracker.status !== 'live') {
@@ -35,6 +36,7 @@ export default async function TrackerPage({ params }: TrackerPageProps) {
   }
 
   const faqJsonLd = buildTrackerFaqJsonLd(tracker);
+  const serialJsonLd = buildTrackerSerialItemPageJsonLd(tracker, resolvedSearchParams);
 
   return (
     <>
@@ -50,6 +52,12 @@ export default async function TrackerPage({ params }: TrackerPageProps) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      )}
+      {serialJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(serialJsonLd) }}
         />
       )}
       <TrackerPageClient tracker={tracker} />
