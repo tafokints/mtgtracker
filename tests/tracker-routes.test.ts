@@ -59,6 +59,7 @@ import { GET as exportTrackerBackup } from '@/app/api/trackers/[slug]/export/rou
 import { POST as importTrackerBackup } from '@/app/api/trackers/[slug]/import/route';
 import { POST as trackAffiliateClick } from '@/app/api/affiliate/click/route';
 import { GET as getAffiliateStats } from '@/app/api/admin/affiliate-stats/route';
+import { POST as trackPromotionAction } from '@/app/api/admin/promotion-action/route';
 
 const tracker = getTracker('one-ring');
 
@@ -112,6 +113,17 @@ function affiliateStatsRequest(session = createAdminSession(), days = 30) {
     headers: {
       cookie: `${ADMIN_COOKIE_NAME}=${session}`,
     },
+  });
+}
+
+function promotionActionRequest(body: unknown, session = createAdminSession()) {
+  return new NextRequest('https://mtgtrackers.com/api/admin/promotion-action', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      cookie: `${ADMIN_COOKIE_NAME}=${session}`,
+    },
+    body: JSON.stringify(body),
   });
 }
 
@@ -412,6 +424,75 @@ describe('tracker API routes', () => {
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({ message: 'Unauthorized' });
+  });
+
+  it('tracks admin promotion actions separately from affiliate clicks', async () => {
+    const unauthorizedResponse = await trackPromotionAction(new NextRequest('https://mtgtrackers.com/api/admin/promotion-action', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ tracker: tracker.slug, action: 'copy' }),
+    }));
+
+    expect(unauthorizedResponse.status).toBe(401);
+
+    const response = await trackPromotionAction(promotionActionRequest({
+      tracker: tracker.slug,
+      action: 'x',
+      card: 'the-one-ring',
+      serial: '007',
+      detailUrl: 'https://mtgtrackers.com/trackers/one-ring?serial=007',
+    }));
+    const date = new Date().toISOString().slice(0, 10);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(redisFixture.counters.get(`promotion:actions:${date}:one-ring:x`)).toBe(1);
+    expect(redisFixture.counters.get('promotion:actions:total:one-ring:x')).toBe(1);
+    expect(redisFixture.counters.get(`promotion:context:${date}:one-ring:card:the-one-ring`)).toBe(1);
+    expect(redisFixture.counters.get(`promotion:context:${date}:one-ring:serial:007`)).toBe(1);
+    expect(redisFixture.store.get('promotion:last-action:one-ring:x')).toMatchObject({
+      tracker: 'one-ring',
+      trackerTitle: 'The One Ring',
+      action: 'x',
+      card: 'the-one-ring',
+      serial: '007',
+      detailUrl: 'https://mtgtrackers.com/trackers/one-ring?serial=007',
+    });
+
+    const statsResponse = await getAffiliateStats(affiliateStatsRequest());
+    const statsBody = await json(statsResponse);
+
+    expect(statsResponse.status).toBe(200);
+    expect(statsBody).toMatchObject({
+      summary: {
+        clicksInWindow: 0,
+        totalClicks: 0,
+      },
+      promotion: {
+        summary: {
+          clicksInWindow: 1,
+          totalClicks: 1,
+          byAction: [expect.objectContaining({ key: 'x', label: 'X', clicksInWindow: 1, totalClicks: 1 })],
+          byTracker: [expect.objectContaining({ key: 'one-ring', label: 'The One Ring', clicksInWindow: 1, totalClicks: 1 })],
+        },
+        rows: [
+          expect.objectContaining({
+            tracker: 'one-ring',
+            trackerTitle: 'The One Ring',
+            action: 'x',
+            label: 'X',
+            clicksInWindow: 1,
+            totalClicks: 1,
+            lastAction: expect.objectContaining({
+              card: 'the-one-ring',
+              serial: '007',
+              detailUrl: 'https://mtgtrackers.com/trackers/one-ring?serial=007',
+            }),
+          }),
+        ],
+      },
+      rows: [],
+    });
   });
 
   it('returns affiliate stats for tracked clicks', async () => {

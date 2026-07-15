@@ -133,6 +133,7 @@ Affiliate click telemetry is stored separately from tracker backups:
 - Admin affiliate stats include quick-read insights for the top CTA, best placement, stale high-lifetime placements, and latest click source.
 - Admin affiliate stats can be exported as CSV for placement, destination, and last-click context analysis.
 - Affiliate links include an intent label: `singles`, `auction-comps`, `sealed-product`, or `marketplace`.
+- Admin promotion share actions are tracked separately as `promotion:actions:{yyyy-mm-dd}:{trackerSlug}:{action}`, `promotion:actions:total:{trackerSlug}:{action}`, and `promotion:last-action:{trackerSlug}:{action}` so review-to-promotion activity can be compared with affiliate clicks.
 
 Admin backups are tracker-scoped:
 
@@ -150,6 +151,7 @@ Admin backups are tracker-scoped:
 - Review queue: use the admin panel `Review` tab to approve or reject pending reports.
 - Pending reports show evidence-strength summaries and are prioritized by review signal count.
 - Affiliate stats: use the admin panel `Affiliate` tab to compare tracker, merchant, and placement click totals, review quick-read performance insights, then export CSV for outside analysis.
+- Promotion stats: use the admin panel `Affiliate` tab to compare copy, X, and Reddit promotion actions after approved discoveries are prepared for posting.
 - Directory marketplace links are tracked as `tracker-directory`.
 - Primary marketplace CTAs: tracker pages include top-of-page marketplace actions tracked as `tracker-top-cta`, plus contextual filtered-view actions tracked as `tracker-filtered-cta` with the active view summarized near the links.
 - Serial card grid eBay searches are tracked as `tracker-card-serial`.

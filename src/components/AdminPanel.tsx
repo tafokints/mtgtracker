@@ -55,6 +55,21 @@ interface AffiliateStatsBreakdown {
   totalClicks: number;
 }
 
+interface PromotionStatsRow {
+  tracker: string;
+  trackerTitle: string;
+  action: string;
+  label: string;
+  clicksInWindow: number;
+  totalClicks: number;
+  lastAction?: {
+    actedAt?: string;
+    card?: string;
+    serial?: string;
+    detailUrl?: string;
+  } | null;
+}
+
 interface AffiliateStatsResponse {
   days: number;
   generatedAt: string;
@@ -79,6 +94,15 @@ interface AffiliateStatsResponse {
     byLastClickCardFilter: AffiliateStatsBreakdown[];
     byLastClickCard: AffiliateStatsBreakdown[];
     byLastClickSerial: AffiliateStatsBreakdown[];
+  };
+  promotion: {
+    summary: {
+      clicksInWindow: number;
+      totalClicks: number;
+      byTracker: AffiliateStatsBreakdown[];
+      byAction: AffiliateStatsBreakdown[];
+    };
+    rows: PromotionStatsRow[];
   };
   rows: AffiliateStatsRow[];
 }
@@ -353,9 +377,33 @@ export default function AdminPanel({
     );
   };
 
-  const copyPromotionShareText = async (text: string) => {
+  const trackPromotionAction = async (
+    action: 'copy' | 'x' | 'reddit',
+    candidate: ReturnType<typeof getPromotionCandidates>[number],
+  ) => {
     try {
-      await copyTextToClipboard(text);
+      await fetch('/api/admin/promotion-action', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tracker: tracker.slug,
+          action,
+          card: candidate.card.cardSlug || tracker.slug,
+          serial: candidate.card.serialNumber,
+          detailUrl: candidate.detailUrl,
+        }),
+      });
+    } catch (error) {
+      console.error('Error tracking promotion action:', error);
+    }
+  };
+
+  const copyPromotionShareText = async (candidate: ReturnType<typeof getPromotionCandidates>[number]) => {
+    try {
+      await copyTextToClipboard(candidate.shareText);
+      await trackPromotionAction('copy', candidate);
       setMessage('Promotion share text copied');
     } catch {
       setMessage('Promotion copy failed');
@@ -1102,7 +1150,7 @@ export default function AdminPanel({
                         <pre className="mt-3 whitespace-pre-wrap rounded bg-ring-dark/70 p-3 text-xs leading-5 text-ring-light">{candidate.shareText}</pre>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <button
-                            onClick={() => copyPromotionShareText(candidate.shareText)}
+                            onClick={() => copyPromotionShareText(candidate)}
                             className="rounded bg-ring-teal px-3 py-2 text-xs font-bold text-ring-dark transition-colors hover:bg-cyan-300"
                           >
                             Copy Post
@@ -1111,6 +1159,7 @@ export default function AdminPanel({
                             href={shareLinks.x}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={() => trackPromotionAction('x', candidate)}
                             className="rounded border border-ring-teal/50 px-3 py-2 text-xs font-bold text-ring-teal transition-colors hover:bg-ring-teal hover:text-ring-dark"
                           >
                             X
@@ -1119,6 +1168,7 @@ export default function AdminPanel({
                             href={shareLinks.reddit}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={() => trackPromotionAction('reddit', candidate)}
                             className="rounded border border-ring-teal/50 px-3 py-2 text-xs font-bold text-ring-teal transition-colors hover:bg-ring-teal hover:text-ring-dark"
                           >
                             Reddit
@@ -1237,6 +1287,67 @@ export default function AdminPanel({
                   </div>
 
                   <AffiliateInsightCards insights={affiliateInsights} />
+
+                  {affiliateStats.promotion.rows.length > 0 && (
+                    <div className="space-y-3 rounded border border-ring-teal/35 bg-ring-teal/10 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <h4 className="text-sm font-bold text-ring-teal">Promotion Actions</h4>
+                          <p className="mt-1 text-xs text-ring-light/65">
+                            Admin copy and social-share actions from promotion candidates.
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <AffiliateMetric label={`${affiliateStats.days}d actions`} value={affiliateStats.promotion.summary.clicksInWindow} />
+                          <AffiliateMetric label="All-time actions" value={affiliateStats.promotion.summary.totalClicks} />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <AffiliateBreakdown title="Promotion Actions" rows={affiliateStats.promotion.summary.byAction} />
+                        <AffiliateBreakdown title="Promotion Trackers" rows={affiliateStats.promotion.summary.byTracker} />
+                      </div>
+
+                      <div className="overflow-x-auto rounded border border-ring-teal/25">
+                        <table className="min-w-full text-left text-xs">
+                          <thead className="bg-black/20 text-ring-teal">
+                            <tr>
+                              <th className="px-3 py-2">Tracker</th>
+                              <th className="px-3 py-2">Action</th>
+                              <th className="px-3 py-2 text-right">30d</th>
+                              <th className="px-3 py-2 text-right">Total</th>
+                              <th className="px-3 py-2">Last Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-ring-teal/15 text-ring-light">
+                            {affiliateStats.promotion.rows.map((row) => (
+                              <tr key={`${row.tracker}-${row.action}`}>
+                                <td className="px-3 py-2">{row.trackerTitle}</td>
+                                <td className="px-3 py-2">{row.label}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{row.clicksInWindow}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{row.totalClicks}</td>
+                                <td className="px-3 py-2">
+                                  {row.lastAction?.actedAt ? (
+                                    <>
+                                      <span className="block">{new Date(row.lastAction.actedAt).toLocaleString()}</span>
+                                      <span className="block text-ring-light/60">
+                                        {[row.lastAction.card, row.lastAction.serial].filter(Boolean).join(' / ')}
+                                      </span>
+                                      {row.lastAction.detailUrl && (
+                                        <a href={row.lastAction.detailUrl} target="_blank" rel="noopener noreferrer" className="text-ring-teal hover:underline">
+                                          Open card
+                                        </a>
+                                      )}
+                                    </>
+                                  ) : 'None'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                     <AffiliateBreakdown title="Trackers" rows={affiliateStats.summary.byTracker.slice(0, 5)} />
