@@ -208,6 +208,8 @@ async function main() {
       checkPage(`/trackers/${tracker.slug}/stats`, [
         `${tracker.title} Statistics`,
         'BreadcrumbList',
+        'Dataset',
+        `${tracker.title} Serialized Card Statistics`,
       ]),
       checkPage(`/trackers/${tracker.slug}/submit`, ['Report a Find', 'Reports are queued for admin review', 'Source Link', 'Upload Evidence Images', 'BreadcrumbList']),
       checkBreadcrumbJsonLd(`/trackers/${tracker.slug}`, ['MTG Trackers', 'Trackers', tracker.title]),

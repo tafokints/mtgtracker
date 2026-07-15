@@ -12,7 +12,6 @@ import TrackerMarketTrustStrip from '@/components/TrackerMarketTrustStrip';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import type { PieLabelRenderProps } from 'recharts';
 import Link from 'next/link';
-import Head from 'next/head';
 
 export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummary }) {
   const [cards, setCards] = useState<SerializedRingCard[]>([]);
@@ -139,20 +138,6 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
     };
   }, [cards.length, foundCards, gradedCards, confirmedCards, sourceLinkedCards, unverifiedCards, tracker.total]);
 
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'WebPage',
-    name: `${tracker.title} Statistics`,
-    description: `Comprehensive statistics and analytics for serialized ${tracker.title} discoveries, including grading data, price trends, and discovery patterns.`,
-    url: `https://mtgtrackers.com${trackerPath}/stats`,
-    mainEntity: {
-      '@type': 'Dataset',
-      name: `${tracker.title} Card Statistics`,
-      description: `Detailed statistics for ${tracker.total} serialized ${tracker.title} cards from ${tracker.setName || 'Magic: The Gathering'}`,
-      numberOfItems: foundCards.length,
-    },
-  };
-
   if (loading) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-8">
@@ -173,14 +158,6 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
 
   return (
     <>
-      <Head>
-        <title>Statistics | {tracker.title} Tracker</title>
-        <meta name="description" content={`Comprehensive statistics and analytics for serialized ${tracker.title} discoveries, including grading data, price trends, and discovery patterns.`} />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-        />
-      </Head>
       <main className="flex min-h-screen flex-col items-center p-8 md:p-12">
         <div className="z-10 w-full max-w-7xl items-center justify-between font-mono text-sm lg:flex mb-8">
           <h1 className="text-2xl md:text-4xl font-bold text-ring-gold">

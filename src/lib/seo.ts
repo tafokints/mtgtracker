@@ -147,6 +147,51 @@ export function buildTrackerWebPageJsonLd(tracker: TrackerSummary) {
   };
 }
 
+export function buildTrackerStatsJsonLd(tracker: TrackerSummary) {
+  const totalSlots = getTrackerTotalSlots(tracker);
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Dataset',
+    name: `${tracker.title} Serialized Card Statistics`,
+    description: `Statistics, discovery quality, source-type, pricing coverage, and marketplace context for serialized ${tracker.title} Magic: The Gathering cards.`,
+    url: `${trackerCanonicalUrl(tracker)}/stats`,
+    isPartOf: {
+      '@type': 'WebSite',
+      name: 'MTG Trackers',
+      url: siteUrl,
+    },
+    about: {
+      '@type': 'Thing',
+      name: tracker.title,
+      description: tracker.description,
+    },
+    includedInDataCatalog: {
+      '@type': 'DataCatalog',
+      name: 'MTG Trackers',
+      url: siteUrl,
+    },
+    measurementTechnique: [
+      'Community discovery reports',
+      'Admin-reviewed evidence',
+      'Marketplace source links',
+      'Public sale data',
+    ],
+    variableMeasured: [
+      'Located serialized cards',
+      'Confirmed discoveries',
+      'Source-linked discoveries',
+      'Source type distribution',
+      'Public sale price coverage',
+      'Grading service distribution',
+    ],
+    spatialCoverage: 'Worldwide',
+    keywords: trackerKeywords(tracker),
+    size: totalSlots,
+    license: `${siteUrl}/privacy`,
+  };
+}
+
 export function buildTrackerDirectoryJsonLd(liveTrackers: TrackerSummary[]) {
   return {
     '@context': 'https://schema.org',

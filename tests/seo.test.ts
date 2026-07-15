@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getTracker, trackers } from '@/lib/trackers';
-import { buildBreadcrumbJsonLd, buildTrackerDirectoryJsonLd, buildTrackerPageMetadata, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildTrackerDirectoryJsonLd, buildTrackerPageMetadata, buildTrackerStatsJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems, trackerKeywords } from '@/lib/seo';
 
 describe('SEO structured data', () => {
   it('builds factual CollectionPage JSON-LD for a tracker', () => {
@@ -41,6 +41,31 @@ describe('SEO structured data', () => {
       liveTrackers.map((tracker) => `https://mtgtrackers.com${tracker.href}`)
     );
     expect(jsonLd.mainEntity.itemListElement.map((item) => item.name)).not.toContain('Golden Chocobo');
+  });
+
+  it('builds Dataset JSON-LD for tracker statistics pages', () => {
+    const tracker = getTracker('one-ring');
+    if (!tracker) throw new Error('one-ring tracker fixture is missing');
+
+    const jsonLd = buildTrackerStatsJsonLd(tracker);
+
+    expect(jsonLd).toMatchObject({
+      '@context': 'https://schema.org',
+      '@type': 'Dataset',
+      name: 'The One Ring Serialized Card Statistics',
+      url: 'https://mtgtrackers.com/trackers/one-ring/stats',
+      includedInDataCatalog: {
+        '@type': 'DataCatalog',
+        name: 'MTG Trackers',
+      },
+      size: 100,
+      license: 'https://mtgtrackers.com/privacy',
+    });
+    expect(jsonLd.variableMeasured).toEqual(expect.arrayContaining([
+      'Confirmed discoveries',
+      'Public sale price coverage',
+      'Source type distribution',
+    ]));
   });
 
   it('builds tracker keywords from the tracker subject and set metadata', () => {

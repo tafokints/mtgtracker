@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import TrackerStatsClient from '@/components/TrackerStatsClient';
 import { getTracker, trackers } from '@/lib/trackers';
-import { buildBreadcrumbJsonLd, trackerBreadcrumbItems } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildTrackerStatsJsonLd, trackerBreadcrumbItems } from '@/lib/seo';
 
 type TrackerStatsPageProps = {
   params: Promise<{ slug: string }>;
@@ -46,6 +46,10 @@ export default async function TrackerStatsPage({ params }: TrackerStatsPageProps
           name: 'Stats',
           path: `${tracker.href}/stats`,
         }))) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildTrackerStatsJsonLd(tracker)) }}
       />
       <TrackerStatsClient tracker={tracker} />
     </>
