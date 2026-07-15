@@ -65,7 +65,7 @@ describe('affiliate stats insights', () => {
       {
         label: 'Funnel Gap',
         value: 'Edgar Markov',
-        detail: '5 promoted visits but no affiliate clicks yet. Check CTA relevance, above-the-fold links, and source match.',
+        detail: '5 promoted visits but no affiliate clicks yet. Next: check CTA relevance, above-the-fold links, and source match.',
       },
       {
         label: 'Top CTA',
@@ -133,7 +133,7 @@ describe('affiliate stats insights', () => {
       {
         label: 'Distribution Gap',
         value: 'LOTR Poster Cards',
-        detail: '3 promotion actions but no promoted visits yet. Recheck posted links and audience fit.',
+        detail: '3 promotion actions but no promoted visits yet. Next: recheck posted links and audience fit.',
       },
     ]);
   });
@@ -185,7 +185,37 @@ describe('affiliate stats insights', () => {
       {
         label: 'Funnel Gap',
         value: 'Source: Reddit',
-        detail: '5 promoted visits but no affiliate clicks yet. Check CTA relevance, above-the-fold links, and source match.',
+        detail: '5 promoted visits but no affiliate clicks yet. Next: try an eBay exact-serial CTA near the top and lead the post with the proof image.',
+      },
+    ]);
+  });
+
+  it('gives source-specific distribution recommendations when shared links do not create visits', () => {
+    const insights = getAffiliateStatsInsights({
+      summary: {
+        bestPlacement: null,
+      },
+      promotion: {
+        efficiency: [],
+        sourceEfficiency: [
+          {
+            label: 'X',
+            promotionActionsInWindow: 4,
+            promotionVisitsInWindow: 0,
+            affiliateClicksInWindow: 0,
+            affiliateClicksPerActionInWindow: 0,
+            affiliateClicksPerVisitInWindow: null,
+          },
+        ],
+      },
+      rows: [],
+    });
+
+    expect(insights).toEqual([
+      {
+        label: 'Distribution Gap',
+        value: 'Source: X',
+        detail: '4 promotion actions but no promoted visits yet. Next: confirm the X post uses the generated share URL and repost during collector-heavy hours.',
       },
     ]);
   });

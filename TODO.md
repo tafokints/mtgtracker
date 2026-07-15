@@ -65,6 +65,7 @@
 - [x] Add promotion funnel insight cards for best funnels, CTA gaps, and distribution gaps.
 - [x] Add source-level promotion efficiency for X, Reddit, and copied posts.
 - [x] Include promotion source efficiency in affiliate stats CSV exports.
+- [x] Add recommended next actions to weak promotion funnel insight cards.
 - [ ] Validate Google Search Console setup.
 - [x] Replace placeholder Google verification metadata.
 - [x] Add privacy/contact/about pages before broad promotion.

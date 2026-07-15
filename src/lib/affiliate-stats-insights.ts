@@ -54,6 +54,42 @@ function formatRatio(value: number | null) {
   return value === null ? 'n/a' : value.toFixed(2);
 }
 
+function recommendationForFunnelGap(label: string) {
+  const normalized = label.toLowerCase();
+
+  if (normalized.includes('reddit')) {
+    return 'Next: try an eBay exact-serial CTA near the top and lead the post with the proof image.';
+  }
+
+  if (normalized.includes('x')) {
+    return 'Next: repost with the exact serial link first and a shorter CTA toward marketplace comps.';
+  }
+
+  if (normalized.includes('admin copy') || normalized.includes('cop')) {
+    return 'Next: check where the copied post was shared and make sure the first link is the tagged tracker URL.';
+  }
+
+  return 'Next: check CTA relevance, above-the-fold links, and source match.';
+}
+
+function recommendationForDistributionGap(label: string) {
+  const normalized = label.toLowerCase();
+
+  if (normalized.includes('reddit')) {
+    return 'Next: confirm the Reddit post link kept its UTM tags and was posted where collectors can click it.';
+  }
+
+  if (normalized.includes('x')) {
+    return 'Next: confirm the X post uses the generated share URL and repost during collector-heavy hours.';
+  }
+
+  if (normalized.includes('admin copy') || normalized.includes('cop')) {
+    return 'Next: paste the copied post into a public channel and verify the tagged URL opens correctly.';
+  }
+
+  return 'Next: recheck posted links and audience fit.';
+}
+
 function getPromotionFunnelInsights(efficiencyRows: PromotionEfficiencyInsightRow[]): AffiliateStatsInsight[] {
   const activeRows = efficiencyRows.filter((row) => (
     row.promotionActionsInWindow > 0 ||
@@ -91,7 +127,7 @@ function getPromotionFunnelInsights(efficiencyRows: PromotionEfficiencyInsightRo
     insights.push({
       label: 'Funnel Gap',
       value: needsWork.label,
-      detail: `${needsWork.promotionVisitsInWindow} promoted visits but no affiliate clicks yet. Check CTA relevance, above-the-fold links, and source match.`,
+      detail: `${needsWork.promotionVisitsInWindow} promoted visits but no affiliate clicks yet. ${recommendationForFunnelGap(needsWork.label)}`,
     });
   }
 
@@ -103,7 +139,7 @@ function getPromotionFunnelInsights(efficiencyRows: PromotionEfficiencyInsightRo
     insights.push({
       label: 'Distribution Gap',
       value: actionGap.label,
-      detail: `${actionGap.promotionActionsInWindow} promotion actions but no promoted visits yet. Recheck posted links and audience fit.`,
+      detail: `${actionGap.promotionActionsInWindow} promotion actions but no promoted visits yet. ${recommendationForDistributionGap(actionGap.label)}`,
     });
   }
 
