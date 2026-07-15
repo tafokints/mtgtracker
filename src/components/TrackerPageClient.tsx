@@ -26,7 +26,6 @@ import CardDetails from '@/components/CardDetails';
 import ExternalImage from '@/components/ExternalImage';
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
-import Head from 'next/head';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { getTrackerMarketSummary } from '@/lib/tracker-market-summary';
 
@@ -611,22 +610,6 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     return new Date(b.dateFound).getTime() - new Date(a.dateFound).getTime();
   })[0];
 
-  // Structured data for SEO
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": `${tracker.title} Tracker`,
-    "description": tracker.description,
-    "url": `https://mtgtrackers.com${trackerPath}`,
-    "applicationCategory": "EntertainmentApplication",
-    "operatingSystem": "Web Browser",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    }
-  };
-
   if (loading) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-8">
@@ -640,12 +623,6 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
 
   return (
     <>
-      <Head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-        />
-      </Head>
       <main className="flex min-h-screen flex-col items-center p-8 md:p-12">
         <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
           <h1 className="text-2xl md:text-4xl font-bold text-ring-gold mb-4 lg:mb-0">

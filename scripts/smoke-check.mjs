@@ -88,6 +88,18 @@ function checkSourceFile(relativePath, needles) {
   return { path: relativePath, ok: true };
 }
 
+function checkSourceFileExcludes(relativePath, needles) {
+  const text = fs.readFileSync(path.join(rootDir, relativePath), 'utf8');
+
+  for (const needle of needles) {
+    if (text.includes(needle)) {
+      throw new Error(`${relativePath} still contains "${needle}"`);
+    }
+  }
+
+  return { path: `${relativePath} excludes`, ok: true };
+}
+
 async function checkHealth() {
   const { text } = await fetchText('/api/health');
   const health = JSON.parse(text);
@@ -196,6 +208,7 @@ async function main() {
       'tracker-filtered-cta',
       'tracker-marketplace',
     ]),
+    checkSourceFileExcludes('src/components/TrackerPageClient.tsx', ['WebApplication', 'next/head']),
     checkSourceFile('src/components/TrackerStatsClient.tsx', [
       'AffiliateDisclosureNotice',
       'TrackerMarketTrustStrip',

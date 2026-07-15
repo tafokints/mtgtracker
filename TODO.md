@@ -52,6 +52,7 @@
 - [x] Add baseline security headers.
 - [x] Return 400 for malformed JSON request bodies.
 - [x] Remove placeholder aggregate rating structured data.
+- [x] Remove stale client-side WebApplication structured data from tracker pages.
 - [x] Add verified structured data for tracker pages and directory.
 - [x] Add breadcrumb structured data across core public pages and tracker routes.
 - [x] Add production smoke-check script for core pages, health, sitemap, and live trackers.
