@@ -60,6 +60,7 @@
 - [x] Add admin promotion candidates for approved high-signal discoveries.
 - [x] Track admin promotion share actions separately from affiliate clicks.
 - [x] Add UTM-tagged promoted discovery URLs for copy, X, and Reddit posts.
+- [x] Add promotion efficiency rollups that compare promotion actions with affiliate clicks by tracker.
 - [ ] Validate Google Search Console setup.
 - [x] Replace placeholder Google verification metadata.
 - [x] Add privacy/contact/about pages before broad promotion.

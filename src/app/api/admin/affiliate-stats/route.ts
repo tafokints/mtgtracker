@@ -162,6 +162,53 @@ function summarizeRows(rows: Array<{
   };
 }
 
+function readBreakdownCount(
+  breakdowns: Array<{ key: string; clicksInWindow: number; totalClicks: number }>,
+  key: string,
+) {
+  return breakdowns.find((item) => item.key === key) || { clicksInWindow: 0, totalClicks: 0 };
+}
+
+function buildPromotionEfficiency(
+  promotionTrackers: Array<{ key: string; label: string; clicksInWindow: number; totalClicks: number }>,
+  affiliateTrackers: Array<{ key: string; label: string; clicksInWindow: number; totalClicks: number }>,
+) {
+  const trackerKeys = new Set([
+    ...promotionTrackers.map((tracker) => tracker.key),
+    ...affiliateTrackers.filter((tracker) => tracker.key !== 'default').map((tracker) => tracker.key),
+  ]);
+
+  return [...trackerKeys]
+    .map((key) => {
+      const promotion = readBreakdownCount(promotionTrackers, key);
+      const affiliate = readBreakdownCount(affiliateTrackers, key);
+      const label = promotionTrackers.find((tracker) => tracker.key === key)?.label
+        || affiliateTrackers.find((tracker) => tracker.key === key)?.label
+        || key;
+
+      return {
+        key,
+        label,
+        promotionActionsInWindow: promotion.clicksInWindow,
+        promotionActionsTotal: promotion.totalClicks,
+        affiliateClicksInWindow: affiliate.clicksInWindow,
+        affiliateClicksTotal: affiliate.totalClicks,
+        affiliateClicksPerActionInWindow: promotion.clicksInWindow > 0
+          ? Number((affiliate.clicksInWindow / promotion.clicksInWindow).toFixed(2))
+          : null,
+        affiliateClicksPerActionTotal: promotion.totalClicks > 0
+          ? Number((affiliate.totalClicks / promotion.totalClicks).toFixed(2))
+          : null,
+      };
+    })
+    .sort((a, b) => (
+      (b.affiliateClicksPerActionInWindow || 0) - (a.affiliateClicksPerActionInWindow || 0) ||
+      b.affiliateClicksInWindow - a.affiliateClicksInWindow ||
+      b.promotionActionsInWindow - a.promotionActionsInWindow ||
+      a.label.localeCompare(b.label)
+    ));
+}
+
 async function readViewContextBreakdown(
   redis: RedisCounterReader,
   trackerEntries: AffiliateStatsTrackerEntry[],
@@ -339,16 +386,20 @@ export async function GET(request: NextRequest) {
 
     rows.sort((a, b) => b.clicksInWindow - a.clicksInWindow || b.totalClicks - a.totalClicks);
 
+    const summary = {
+      ...summarizeRows(rows),
+      ...await readViewContextBreakdowns(redis, trackerEntries, dateKeys),
+    };
     const promotion = await readPromotionStats(redis, trackerEntries, dateKeys);
 
     return NextResponse.json({
       days,
       generatedAt: new Date().toISOString(),
-      summary: {
-        ...summarizeRows(rows),
-        ...await readViewContextBreakdowns(redis, trackerEntries, dateKeys),
+      summary,
+      promotion: {
+        ...promotion,
+        efficiency: buildPromotionEfficiency(promotion.summary.byTracker, summary.byTracker),
       },
-      promotion,
       rows,
     });
   } catch (error) {

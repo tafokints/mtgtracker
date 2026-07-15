@@ -55,6 +55,17 @@ interface AffiliateStatsBreakdown {
   totalClicks: number;
 }
 
+interface PromotionEfficiencyRow {
+  key: string;
+  label: string;
+  promotionActionsInWindow: number;
+  promotionActionsTotal: number;
+  affiliateClicksInWindow: number;
+  affiliateClicksTotal: number;
+  affiliateClicksPerActionInWindow: number | null;
+  affiliateClicksPerActionTotal: number | null;
+}
+
 interface PromotionStatsRow {
   tracker: string;
   trackerTitle: string;
@@ -102,6 +113,7 @@ interface AffiliateStatsResponse {
       byTracker: AffiliateStatsBreakdown[];
       byAction: AffiliateStatsBreakdown[];
     };
+    efficiency: PromotionEfficiencyRow[];
     rows: PromotionStatsRow[];
   };
   rows: AffiliateStatsRow[];
@@ -146,6 +158,39 @@ function AffiliateBreakdown({ title, rows }: { title: string; rows: AffiliateSta
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function PromotionEfficiencyTable({ rows }: { rows: PromotionEfficiencyRow[] }) {
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="overflow-x-auto rounded border border-ring-teal/25">
+      <table className="min-w-full text-left text-xs">
+        <thead className="bg-black/20 text-ring-teal">
+          <tr>
+            <th className="px-3 py-2">Tracker</th>
+            <th className="px-3 py-2 text-right">Actions</th>
+            <th className="px-3 py-2 text-right">Affiliate clicks</th>
+            <th className="px-3 py-2 text-right">Clicks/action</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-ring-teal/15 text-ring-light">
+          {rows.map((row) => (
+            <tr key={row.key}>
+              <td className="px-3 py-2">{row.label}</td>
+              <td className="px-3 py-2 text-right tabular-nums">{row.promotionActionsInWindow}/{row.promotionActionsTotal}</td>
+              <td className="px-3 py-2 text-right tabular-nums">{row.affiliateClicksInWindow}/{row.affiliateClicksTotal}</td>
+              <td className="px-3 py-2 text-right tabular-nums">
+                {row.affiliateClicksPerActionInWindow === null ? 'No actions' : row.affiliateClicksPerActionInWindow.toFixed(2)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -1277,7 +1322,7 @@ export default function AdminPanel({
                 <p className="text-sm text-ring-light">Loading affiliate stats...</p>
               )}
 
-              {!affiliateStatsLoading && (!affiliateStats || affiliateStats.rows.length === 0) && (
+              {!affiliateStatsLoading && (!affiliateStats || (affiliateStats.rows.length === 0 && affiliateStats.promotion.rows.length === 0)) && (
                 <div className="rounded border border-ring-gold/30 bg-black/20 p-4">
                   <p className="text-sm font-bold text-ring-gold">No affiliate clicks tracked yet</p>
                   <p className="mt-1 text-xs text-ring-light">
@@ -1286,7 +1331,7 @@ export default function AdminPanel({
                 </div>
               )}
 
-              {!affiliateStatsLoading && affiliateStats && affiliateStats.rows.length > 0 && (
+              {!affiliateStatsLoading && affiliateStats && (affiliateStats.rows.length > 0 || affiliateStats.promotion.rows.length > 0) && (
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
                     <AffiliateMetric label={`${affiliateStats.days}d clicks`} value={affiliateStats.summary.clicksInWindow} />
@@ -1316,6 +1361,8 @@ export default function AdminPanel({
                         <AffiliateBreakdown title="Promotion Actions" rows={affiliateStats.promotion.summary.byAction} />
                         <AffiliateBreakdown title="Promotion Trackers" rows={affiliateStats.promotion.summary.byTracker} />
                       </div>
+
+                      <PromotionEfficiencyTable rows={affiliateStats.promotion.efficiency} />
 
                       <div className="overflow-x-auto rounded border border-ring-teal/25">
                         <table className="min-w-full text-left text-xs">

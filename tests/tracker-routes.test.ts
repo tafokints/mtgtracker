@@ -475,6 +475,18 @@ describe('tracker API routes', () => {
           byAction: [expect.objectContaining({ key: 'x', label: 'X', clicksInWindow: 1, totalClicks: 1 })],
           byTracker: [expect.objectContaining({ key: 'one-ring', label: 'The One Ring', clicksInWindow: 1, totalClicks: 1 })],
         },
+        efficiency: [
+          expect.objectContaining({
+            key: 'one-ring',
+            label: 'The One Ring',
+            promotionActionsInWindow: 1,
+            promotionActionsTotal: 1,
+            affiliateClicksInWindow: 0,
+            affiliateClicksTotal: 0,
+            affiliateClicksPerActionInWindow: 0,
+            affiliateClicksPerActionTotal: 0,
+          }),
+        ],
         rows: [
           expect.objectContaining({
             tracker: 'one-ring',
@@ -492,6 +504,66 @@ describe('tracker API routes', () => {
         ],
       },
       rows: [],
+    });
+  });
+
+  it('summarizes promotion efficiency against affiliate clicks by tracker', async () => {
+    const ebayLink = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'ebay');
+    if (!ebayLink) throw new Error('Expected One Ring eBay affiliate link');
+
+    await trackPromotionAction(promotionActionRequest({
+      tracker: tracker.slug,
+      action: 'x',
+      card: 'the-one-ring',
+      serial: '007',
+      detailUrl: 'https://mtgtrackers.com/trackers/one-ring?serial=007&utm_source=x&utm_medium=social&utm_campaign=discovery_promotion&utm_content=one-ring-the-one-ring-007',
+    }));
+    await trackPromotionAction(promotionActionRequest({
+      tracker: tracker.slug,
+      action: 'reddit',
+      card: 'the-one-ring',
+      serial: '007',
+      detailUrl: 'https://mtgtrackers.com/trackers/one-ring?serial=007&utm_source=reddit&utm_medium=social&utm_campaign=discovery_promotion&utm_content=one-ring-the-one-ring-007',
+    }));
+    await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: ebayLink.merchant,
+      href: ebayLink.href,
+      label: ebayLink.label,
+      placement: 'serial-detail',
+      sourcePath: '/trackers/one-ring?serial=007&utm_source=x&utm_medium=social&utm_campaign=discovery_promotion&utm_content=one-ring-the-one-ring-007',
+      viewContext: {
+        serial: '007',
+      },
+    }));
+
+    const response = await getAffiliateStats(affiliateStatsRequest());
+    const body = await json(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      summary: {
+        clicksInWindow: 1,
+        totalClicks: 1,
+      },
+      promotion: {
+        summary: {
+          clicksInWindow: 2,
+          totalClicks: 2,
+        },
+        efficiency: [
+          expect.objectContaining({
+            key: 'one-ring',
+            label: 'The One Ring',
+            promotionActionsInWindow: 2,
+            promotionActionsTotal: 2,
+            affiliateClicksInWindow: 1,
+            affiliateClicksTotal: 1,
+            affiliateClicksPerActionInWindow: 0.5,
+            affiliateClicksPerActionTotal: 0.5,
+          }),
+        ],
+      },
     });
   });
 
