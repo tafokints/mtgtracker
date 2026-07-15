@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, createAdminSession } from '@/lib/admin-auth';
-import { buildTrackerEbaySearchUrl, getSerialAffiliateLinks, getTracker } from '@/lib/trackers';
+import { buildAmazonSearchUrl, buildTrackerEbaySearchUrl, getSerialAffiliateLinks, getTracker } from '@/lib/trackers';
 
 const redisFixture = vi.hoisted(() => {
   const store = new Map<string, unknown>();
@@ -359,6 +359,57 @@ describe('tracker API routes', () => {
         card: 'aetherdrift-aetherspark',
       },
     });
+  });
+
+  it('tracks catalog-specific default Amazon searches with affiliate attribution', async () => {
+    const href = buildAmazonSearchUrl('Aetherdrift collector booster');
+    const response = await trackAffiliateClick(affiliateClickRequest({
+      tracker: 'default',
+      merchant: 'amazon',
+      href,
+      label: 'Aetherdrift on Amazon',
+      placement: 'marketplace-links',
+      sourcePath: '/serialized-mtg-catalog/aetherdrift-aetherspark',
+      viewContext: {
+        card: 'aetherdrift-aetherspark',
+      },
+    }));
+    const date = new Date().toISOString().slice(0, 10);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(redisFixture.counters.get(`affiliate:clicks:${date}:default:amazon:marketplace-links`)).toBe(1);
+    expect(redisFixture.counters.get('affiliate:clicks:total:default:amazon:marketplace-links')).toBe(1);
+    expect(redisFixture.counters.get(`affiliate:context:${date}:default:card:aetherdrift-aetherspark`)).toBe(1);
+    expect(redisFixture.store.get('affiliate:last-click:default:amazon:marketplace-links')).toMatchObject({
+      tracker: 'default',
+      merchant: 'amazon',
+      label: 'Aetherdrift on Amazon',
+      href,
+      intent: 'sealed-product',
+      placement: 'marketplace-links',
+      sourcePath: '/serialized-mtg-catalog/aetherdrift-aetherspark',
+      viewContext: {
+        card: 'aetherdrift-aetherspark',
+      },
+    });
+  });
+
+  it('rejects catalog Amazon searches that drop the Associate tag', async () => {
+    const unsafeHref = new URL(buildAmazonSearchUrl('Aetherdrift collector booster'));
+    unsafeHref.searchParams.delete('tag');
+
+    const response = await trackAffiliateClick(affiliateClickRequest({
+      tracker: 'default',
+      merchant: 'amazon',
+      href: unsafeHref.toString(),
+      label: 'Aetherdrift on Amazon',
+      placement: 'marketplace-links',
+      sourcePath: '/serialized-mtg-catalog/aetherdrift-aetherspark',
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: 'Unknown affiliate link' });
   });
 
   it('tracks serial-specific eBay affiliate clicks with the tracker campaign id', async () => {

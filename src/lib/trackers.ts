@@ -95,7 +95,7 @@ export function buildTrackerEbaySearchUrl(query: string, trackerSlug: string) {
   return buildEbaySearchUrl(query, trackerSlug);
 }
 
-function buildAmazonSearchUrl(query: string) {
+export function buildAmazonSearchUrl(query: string) {
   const params = new URLSearchParams({
     k: query,
     tag: 'meleeitonme0a-20',

@@ -5,7 +5,7 @@ import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 import { serializedCatalog, type SerializedCatalogEntry } from '@/lib/serialized-catalog';
 import { buildBreadcrumbJsonLd, buildSerializedCatalogEntryJsonLd } from '@/lib/seo';
-import { buildTrackerEbaySearchUrl, defaultAffiliateLinks, trackers, type AffiliateLink } from '@/lib/trackers';
+import { buildAmazonSearchUrl, buildTrackerEbaySearchUrl, defaultAffiliateLinks, trackers, type AffiliateLink } from '@/lib/trackers';
 
 type CatalogEntryPageProps = {
   params: Promise<{ slug: string }>;
@@ -82,6 +82,7 @@ function getDateLabel(entry: SerializedCatalogEntry) {
 
 function getCatalogAffiliateLinks(entry: SerializedCatalogEntry): AffiliateLink[] {
   const ebayLink = defaultAffiliateLinks.find((link) => link.merchant === 'ebay');
+  const amazonLink = defaultAffiliateLinks.find((link) => link.merchant === 'amazon');
   const specificEbayLink = ebayLink
     ? {
       ...ebayLink,
@@ -91,9 +92,22 @@ function getCatalogAffiliateLinks(entry: SerializedCatalogEntry): AffiliateLink[
       ctaDetail: `Search public eBay listings and sold comps for ${entry.title}.`,
     }
     : undefined;
+  const specificAmazonLink = amazonLink
+    ? {
+      ...amazonLink,
+      label: `${entry.setName} on Amazon`,
+      href: buildAmazonSearchUrl(`${entry.setName} collector booster`),
+      ctaEyebrow: 'Sealed product',
+      ctaDetail: `Search sealed product and collector booster availability for ${entry.setName}.`,
+    }
+    : undefined;
 
   return defaultAffiliateLinks.map((link) => (
-    link.merchant === 'ebay' && specificEbayLink ? specificEbayLink : link
+    link.merchant === 'ebay' && specificEbayLink
+      ? specificEbayLink
+      : link.merchant === 'amazon' && specificAmazonLink
+        ? specificAmazonLink
+        : link
   ));
 }
 

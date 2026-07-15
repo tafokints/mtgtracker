@@ -66,6 +66,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - Curated serialized MTG catalog for future tracker scaffolding
 - Crawlable serialized MTG catalog page for treatment-level research, live tracker links, source links, and broad marketplace research CTAs
 - Individual serialized catalog entry pages with source links, schema, sitemap coverage, and tracked marketplace research CTAs
+- Catalog entry marketplace CTAs use exact eBay treatment searches and set-specific Amazon sealed-product searches while preserving affiliate attribution
 - Upstash Redis storage for Vercel deployment
 
 ## Local Setup

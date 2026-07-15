@@ -67,6 +67,7 @@
 - [x] Add tracked marketplace CTAs to recent discovery cards.
 - [x] Add a crawlable serialized MTG catalog page with source links, tracker status, and broad marketplace CTAs.
 - [x] Add individual serialized catalog entry pages with source links, schema, sitemap coverage, and tracked marketplace CTAs.
+- [x] Add catalog-specific Amazon sealed-product affiliate searches with Associate-tag telemetry validation.
 - [x] Add a public verification guide linked from report forms to improve crowd-sourced evidence quality.
 - [x] Add public share actions with campaign-tagged discovery URLs.
 - [x] Add copy-ready share text for located serial discoveries.

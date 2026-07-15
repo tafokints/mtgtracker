@@ -32,35 +32,49 @@ function getAllowedAffiliateLink(trackerSlug: string, merchant: string, href: st
     return exactLink;
   }
 
-  if (merchant !== 'ebay') {
-    return undefined;
-  }
-
-  const baseEbayLink = allowedLinks.find((link) => link.merchant === 'ebay');
-  if (!baseEbayLink) {
-    return undefined;
-  }
-
   try {
     const candidateUrl = new URL(href);
-    const baseUrl = new URL(baseEbayLink.href);
 
-    if (!/(^|\.)ebay\.com$/.test(candidateUrl.hostname)) return undefined;
-    if (candidateUrl.protocol !== 'https:') return undefined;
-    if (candidateUrl.pathname !== baseUrl.pathname) return undefined;
-    if (candidateUrl.searchParams.get('mkcid') !== baseUrl.searchParams.get('mkcid')) return undefined;
-    if (candidateUrl.searchParams.get('mkrid') !== baseUrl.searchParams.get('mkrid')) return undefined;
-    if (candidateUrl.searchParams.get('siteid') !== baseUrl.searchParams.get('siteid')) return undefined;
-    if (candidateUrl.searchParams.get('campid') !== baseUrl.searchParams.get('campid')) return undefined;
-    if (candidateUrl.searchParams.get('customid') !== baseUrl.searchParams.get('customid')) return undefined;
-    if (candidateUrl.searchParams.get('mkevt') !== baseUrl.searchParams.get('mkevt')) return undefined;
-    if (candidateUrl.searchParams.get('toolid') !== baseUrl.searchParams.get('toolid')) return undefined;
-    if (!candidateUrl.searchParams.get('_nkw')) return undefined;
+    if (merchant === 'ebay') {
+      const baseEbayLink = allowedLinks.find((link) => link.merchant === 'ebay');
+      if (!baseEbayLink) return undefined;
 
-    return baseEbayLink;
+      const baseUrl = new URL(baseEbayLink.href);
+
+      if (!/(^|\.)ebay\.com$/.test(candidateUrl.hostname)) return undefined;
+      if (candidateUrl.protocol !== 'https:') return undefined;
+      if (candidateUrl.pathname !== baseUrl.pathname) return undefined;
+      if (candidateUrl.searchParams.get('mkcid') !== baseUrl.searchParams.get('mkcid')) return undefined;
+      if (candidateUrl.searchParams.get('mkrid') !== baseUrl.searchParams.get('mkrid')) return undefined;
+      if (candidateUrl.searchParams.get('siteid') !== baseUrl.searchParams.get('siteid')) return undefined;
+      if (candidateUrl.searchParams.get('campid') !== baseUrl.searchParams.get('campid')) return undefined;
+      if (candidateUrl.searchParams.get('customid') !== baseUrl.searchParams.get('customid')) return undefined;
+      if (candidateUrl.searchParams.get('mkevt') !== baseUrl.searchParams.get('mkevt')) return undefined;
+      if (candidateUrl.searchParams.get('toolid') !== baseUrl.searchParams.get('toolid')) return undefined;
+      if (!candidateUrl.searchParams.get('_nkw')) return undefined;
+
+      return baseEbayLink;
+    }
+
+    if (merchant === 'amazon') {
+      const baseAmazonLink = allowedLinks.find((link) => link.merchant === 'amazon');
+      if (!baseAmazonLink) return undefined;
+
+      const baseUrl = new URL(baseAmazonLink.href);
+
+      if (!/(^|\.)amazon\.com$/.test(candidateUrl.hostname)) return undefined;
+      if (candidateUrl.protocol !== 'https:') return undefined;
+      if (candidateUrl.pathname !== baseUrl.pathname) return undefined;
+      if (candidateUrl.searchParams.get('tag') !== baseUrl.searchParams.get('tag')) return undefined;
+      if (!candidateUrl.searchParams.get('k')) return undefined;
+
+      return baseAmazonLink;
+    }
   } catch {
     return undefined;
   }
+
+  return undefined;
 }
 
 function isKnownTrackerSlug(trackerSlug: string) {
