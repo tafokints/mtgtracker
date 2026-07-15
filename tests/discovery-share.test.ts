@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDiscoveryShareText } from '@/lib/discovery-share';
+import { buildDiscoveryShareLinks, buildDiscoveryShareText, buildDiscoveryShareTitle } from '@/lib/discovery-share';
 import { getTracker } from '@/lib/trackers';
 import type { SerializedRingCard } from '@/lib/types';
 
@@ -58,5 +58,26 @@ describe('discovery share text', () => {
       'Status: Located (confirmed)',
       'Track it: https://mtgtrackers.com/trackers/one-ring?serial=007',
     ].join('\n'));
+  });
+
+  it('builds platform share links from the exact detail URL', () => {
+    const links = buildDiscoveryShareLinks(
+      tracker,
+      card(),
+      'https://mtgtrackers.com/trackers/one-ring?serial=007',
+    );
+
+    const xUrl = new URL(links.x);
+    const redditUrl = new URL(links.reddit);
+
+    expect(buildDiscoveryShareTitle(tracker, card())).toBe('The One Ring 007/100 spotted on MTG Trackers');
+    expect(xUrl.hostname).toBe('twitter.com');
+    expect(xUrl.searchParams.get('text')).toBe([
+      'The One Ring 007/100 spotted on MTG Trackers',
+      'https://mtgtrackers.com/trackers/one-ring?serial=007',
+    ].join('\n'));
+    expect(redditUrl.hostname).toBe('www.reddit.com');
+    expect(redditUrl.searchParams.get('url')).toBe('https://mtgtrackers.com/trackers/one-ring?serial=007');
+    expect(redditUrl.searchParams.get('title')).toBe('The One Ring 007/100 spotted on MTG Trackers');
   });
 });

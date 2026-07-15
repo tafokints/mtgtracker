@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { SerializedRingCard } from '../lib/types';
 import { getSerialAffiliateLinks, type TrackerSummary } from '@/lib/trackers';
 import { formatTrackerCardLabel, getTrackerCardDeepLinkParams } from '@/lib/tracker-data';
-import { buildDiscoveryShareText } from '@/lib/discovery-share';
+import { buildDiscoveryShareLinks, buildDiscoveryShareText, buildDiscoveryShareTitle } from '@/lib/discovery-share';
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 import ExternalImage from '@/components/ExternalImage';
@@ -42,7 +42,10 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
       ? tracker.href
       : `${window.location.origin}${tracker.href}?${getTrackerCardDeepLinkParams(tracker, card).toString()}`
   );
-  const shareText = card.found ? buildDiscoveryShareText(tracker, card, getDetailUrl()) : '';
+  const detailUrl = getDetailUrl();
+  const shareTitle = card.found ? buildDiscoveryShareTitle(tracker, card) : '';
+  const shareText = card.found ? buildDiscoveryShareText(tracker, card, detailUrl) : '';
+  const shareLinks = card.found ? buildDiscoveryShareLinks(tracker, card, detailUrl) : null;
   const evidenceCount = card.evidenceImages?.length || 0;
   const hasSourceLink = Boolean(card.link);
   const hasMarketData = Boolean(card.price || (card.priceHistory && card.priceHistory.length > 0));
@@ -103,14 +106,12 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
     }, 1800);
   };
   const copyDetailLink = async () => {
-    const href = getDetailUrl();
-
     try {
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(href);
+        await navigator.clipboard.writeText(detailUrl);
       } else {
         const input = document.createElement('input');
-        input.value = href;
+        input.value = detailUrl;
         input.setAttribute('readonly', '');
         input.style.position = 'fixed';
         input.style.opacity = '0';
@@ -124,6 +125,27 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
       clearCopyMessageSoon();
     } catch {
       setCopyMessage('Copy failed');
+      clearCopyMessageSoon();
+    }
+  };
+  const shareNative = async () => {
+    if (!shareText || !navigator.share) {
+      return;
+    }
+
+    try {
+      await navigator.share({
+        title: shareTitle,
+        text: shareText,
+        url: detailUrl,
+      });
+      setCopyMessage('Share opened');
+      clearCopyMessageSoon();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return;
+      }
+      setCopyMessage('Share failed');
       clearCopyMessageSoon();
     }
   };
@@ -251,12 +273,42 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
               <h3 className="text-lg font-bold text-ring-gold mb-2">Share This Discovery</h3>
               <div className="rounded border border-ring-teal/30 bg-ring-teal/10 p-4">
                 <pre className="whitespace-pre-wrap text-sm leading-6 text-ring-light">{shareText}</pre>
-                <button
-                  onClick={copyShareText}
-                  className="mt-3 rounded bg-ring-teal px-3 py-2 text-xs font-bold text-ring-dark transition-colors hover:bg-cyan-300"
-                >
-                  Copy Share Text
-                </button>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {typeof navigator !== 'undefined' && Boolean(navigator.share) && (
+                    <button
+                      onClick={shareNative}
+                      className="rounded bg-ring-teal px-3 py-2 text-xs font-bold text-ring-dark transition-colors hover:bg-cyan-300"
+                    >
+                      Share
+                    </button>
+                  )}
+                  <button
+                    onClick={copyShareText}
+                    className="rounded bg-ring-teal px-3 py-2 text-xs font-bold text-ring-dark transition-colors hover:bg-cyan-300"
+                  >
+                    Copy Share Text
+                  </button>
+                  {shareLinks && (
+                    <>
+                      <a
+                        href={shareLinks.x}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded border border-ring-teal/50 px-3 py-2 text-xs font-bold text-ring-teal transition-colors hover:bg-ring-teal hover:text-ring-dark"
+                      >
+                        Share on X
+                      </a>
+                      <a
+                        href={shareLinks.reddit}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded border border-ring-teal/50 px-3 py-2 text-xs font-bold text-ring-teal transition-colors hover:bg-ring-teal hover:text-ring-dark"
+                      >
+                        Share on Reddit
+                      </a>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}

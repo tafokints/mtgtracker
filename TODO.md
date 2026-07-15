@@ -56,6 +56,7 @@
 - [x] Add public JSON and RSS feeds for recent verified discoveries.
 - [x] Add copy-ready share text for located serial discoveries.
 - [x] Add serial-aware social metadata for exact tracker links.
+- [x] Add one-click native, X, and Reddit share actions for located serials.
 - [ ] Validate Google Search Console setup.
 - [x] Replace placeholder Google verification metadata.
 - [x] Add privacy/contact/about pages before broad promotion.

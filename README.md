@@ -42,6 +42,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - Stats-page pricing coverage that distinguishes priced copies from discoveries without public sale data
 - Shareable serial detail links through `serial`, `card`, or exact `slot` URL parameters, with one-click copy from the detail modal
 - Copy-ready share text for located serial discoveries, including verification, source, price, and exact tracker link when available
+- One-click native, X, and Reddit share actions for located serial detail modals
 - Serial-aware Open Graph and Twitter metadata for exact serial detail URLs
 - Shareable tracker view links through `q`, `filter`, `sort`, and `cardFilter` URL parameters, with one-click copy from tracker headers
 - Card-level public filtering for multi-card serialized treatments

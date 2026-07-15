@@ -24,3 +24,22 @@ export function buildDiscoveryShareText(tracker: TrackerSummary, card: Serialize
 
   return lines.filter(Boolean).join('\n');
 }
+
+export function buildDiscoveryShareTitle(tracker: TrackerSummary, card: SerializedRingCard) {
+  const label = formatTrackerCardLabel(tracker, card);
+  return `${tracker.title} ${label} spotted on MTG Trackers`;
+}
+
+export function buildDiscoveryShareLinks(tracker: TrackerSummary, card: SerializedRingCard, detailUrl: string) {
+  const title = buildDiscoveryShareTitle(tracker, card);
+
+  return {
+    x: `https://twitter.com/intent/tweet?${new URLSearchParams({
+      text: `${title}\n${detailUrl}`,
+    }).toString()}`,
+    reddit: `https://www.reddit.com/submit?${new URLSearchParams({
+      url: detailUrl,
+      title,
+    }).toString()}`,
+  };
+}
