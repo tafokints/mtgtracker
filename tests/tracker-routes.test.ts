@@ -448,6 +448,34 @@ describe('tracker API routes', () => {
     await expect(response.json()).resolves.toEqual({ message: 'Unauthorized' });
   });
 
+  it('includes affiliate coverage readiness in admin affiliate stats', async () => {
+    const response = await getAffiliateStats(affiliateStatsRequest());
+    const body = await json(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      affiliateCoverage: {
+        summary: {
+          trackerCount: expect.any(Number),
+          readyCount: expect.any(Number),
+          issueCount: 0,
+          errorCount: 0,
+          warningCount: 0,
+          averageScore: 100,
+        },
+        rows: expect.arrayContaining([
+          expect.objectContaining({
+            tracker: 'one-ring',
+            trackerTitle: 'The One Ring',
+            score: 100,
+            issues: [],
+            merchants: expect.arrayContaining(['tcgplayer', 'ebay', 'amazon']),
+          }),
+        ]),
+      },
+    });
+  });
+
   it('tracks public tracker directory CTA clicks for admin stats', async () => {
     const unknownTrackerResponse = await trackDirectoryClick(directoryClickRequest({
       tracker: 'not-real',

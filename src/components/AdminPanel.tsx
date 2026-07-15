@@ -57,6 +57,22 @@ interface AffiliateStatsBreakdown {
   totalClicks: number;
 }
 
+interface AffiliateCoverageIssue {
+  severity: 'error' | 'warning';
+  merchant?: string;
+  message: string;
+}
+
+interface AffiliateCoverageRow {
+  tracker: string;
+  trackerTitle: string;
+  status: 'live' | 'planned';
+  linkCount: number;
+  merchants: string[];
+  score: number;
+  issues: AffiliateCoverageIssue[];
+}
+
 interface PromotionEfficiencyRow {
   key: string;
   label: string;
@@ -122,6 +138,17 @@ interface DirectoryCtaStatsRow {
 interface AffiliateStatsResponse {
   days: number;
   generatedAt: string;
+  affiliateCoverage: {
+    summary: {
+      trackerCount: number;
+      readyCount: number;
+      issueCount: number;
+      errorCount: number;
+      warningCount: number;
+      averageScore: number;
+    };
+    rows: AffiliateCoverageRow[];
+  };
   directory: {
     summary: {
       clicksInWindow: number;
@@ -273,6 +300,74 @@ function AffiliateInsightCards({ insights }: { insights: ReturnType<typeof getAf
           <p className="mt-1 text-xs text-ring-light/65">{insight.detail}</p>
         </div>
       ))}
+    </div>
+  );
+}
+
+function AffiliateCoverageAudit({ coverage }: { coverage: AffiliateStatsResponse['affiliateCoverage'] }) {
+  const issueRows = coverage.rows.filter((row) => row.issues.length > 0);
+
+  return (
+    <div className="space-y-3 rounded border border-ring-teal/30 bg-ring-teal/10 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-bold text-ring-teal">Affiliate Coverage Audit</h4>
+          <p className="mt-1 text-xs text-ring-light/65">
+            Tracker-specific link coverage, attribution parameters, and CTA copy readiness.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <AffiliateMetric label="Ready trackers" value={`${coverage.summary.readyCount}/${coverage.summary.trackerCount}`} />
+          <AffiliateMetric label="Average score" value={coverage.summary.averageScore} />
+          <AffiliateMetric label="Errors" value={coverage.summary.errorCount} />
+          <AffiliateMetric label="Warnings" value={coverage.summary.warningCount} />
+        </div>
+      </div>
+
+      {issueRows.length === 0 ? (
+        <div className="rounded border border-ring-teal/25 bg-black/20 p-3">
+          <p className="text-sm font-bold text-ring-light">All tracker affiliate coverage is promotion-ready.</p>
+          <p className="mt-1 text-xs text-ring-light/65">
+            Live trackers have TCGplayer, eBay, and Amazon coverage with expected attribution parameters.
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded border border-ring-teal/25">
+          <table className="min-w-full text-left text-xs">
+            <thead className="bg-black/20 text-ring-teal">
+              <tr>
+                <th className="px-3 py-2">Tracker</th>
+                <th className="px-3 py-2 text-right">Score</th>
+                <th className="px-3 py-2">Merchants</th>
+                <th className="px-3 py-2">Issues</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ring-teal/15 text-ring-light">
+              {issueRows.map((row) => (
+                <tr key={row.tracker}>
+                  <td className="px-3 py-2">
+                    <span className="block font-bold">{row.trackerTitle}</span>
+                    <span className="text-ring-light/55">{row.status}</span>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">{row.score}</td>
+                  <td className="px-3 py-2 capitalize">{row.merchants.join(', ') || 'none'}</td>
+                  <td className="px-3 py-2">
+                    {row.issues.slice(0, 4).map((issue) => (
+                      <span key={`${issue.severity}-${issue.merchant || 'tracker'}-${issue.message}`} className="block">
+                        <span className={issue.severity === 'error' ? 'text-red-300' : 'text-yellow-200'}>
+                          {issue.severity}
+                        </span>
+                        {issue.merchant ? ` / ${issue.merchant}: ` : ': '}
+                        {issue.message}
+                      </span>
+                    ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -1500,6 +1595,7 @@ export default function AdminPanel({
                   </div>
 
                   <AffiliateInsightCards insights={affiliateInsights} />
+                  <AffiliateCoverageAudit coverage={affiliateStats.affiliateCoverage} />
                   <TrackerGrowthRecommendationCards recommendations={trackerGrowthRecommendations} />
 
                   {affiliateStats.directory.rows.length > 0 && (

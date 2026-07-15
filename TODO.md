@@ -43,6 +43,7 @@
 - [x] Add tracked exact-serial eBay CTAs to tracker grid cards.
 - [x] Use exact card-and-serial eBay searches from serial detail CTAs while preserving affiliate attribution.
 - [x] Add affiliate attribution checks for eBay custom IDs, Amazon tags, and TCGplayer redirects.
+- [x] Add admin affiliate coverage audit for tracker-specific merchant coverage, attribution, and CTA copy.
 - [x] Add affiliate intent metadata for singles, auction comps, and sealed product links.
 - [x] Add baseline security headers.
 - [x] Return 400 for malformed JSON request bodies.

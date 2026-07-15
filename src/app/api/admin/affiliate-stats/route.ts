@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { getRedis } from '@/lib/redis';
 import { defaultAffiliateLinks, trackers } from '@/lib/trackers';
 import { formatTrackerSerial, getTrackerCardDefinitions } from '@/lib/tracker-data';
+import { getAffiliateCoverageRows, getAffiliateCoverageSummary } from '@/lib/affiliate-coverage';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -600,10 +601,15 @@ export async function GET(request: NextRequest) {
     const promotionVisits = await readPromotionVisitStats(redis, trackerEntries, dateKeys);
     const affiliatePromotionSources = await readAffiliatePromotionSourceStats(redis, dateKeys);
     const directory = await readDirectoryCtaStats(redis, trackerEntries, dateKeys);
+    const affiliateCoverageRows = getAffiliateCoverageRows(trackers);
 
     return NextResponse.json({
       days,
       generatedAt: new Date().toISOString(),
+      affiliateCoverage: {
+        summary: getAffiliateCoverageSummary(affiliateCoverageRows),
+        rows: affiliateCoverageRows,
+      },
       summary,
       directory,
       promotion: {

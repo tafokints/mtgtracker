@@ -135,6 +135,7 @@ Affiliate click telemetry is stored separately from tracker backups:
 - Admin affiliate stats include promotion funnel insights for best-performing promoted trackers, promoted-visit gaps, and distribution gaps.
 - Admin affiliate stats can be exported as CSV for placement, destination, last-click context, and promotion-source efficiency analysis.
 - Affiliate links include an intent label: `singles`, `auction-comps`, `sealed-product`, or `marketplace`.
+- Admin affiliate coverage audit checks tracker-specific merchant coverage, eBay campaign/custom IDs, Amazon tags, TCGplayer partner redirects, and top-CTA copy before promotion.
 - Admin promotion share actions are tracked separately as `promotion:actions:{yyyy-mm-dd}:{trackerSlug}:{action}`, `promotion:actions:total:{trackerSlug}:{action}`, and `promotion:last-action:{trackerSlug}:{action}` so review-to-promotion activity can be compared with affiliate clicks.
 - Admin promotion share URLs append `utm_source`, `utm_medium=social`, `utm_campaign=discovery_promotion`, and `utm_content` so promoted discoveries can be separated by copy, X, Reddit, tracker, card, and serial in analytics.
 - Promoted discovery page visits are tracked separately as `promotion:visits:{yyyy-mm-dd}:{trackerSlug}:{source}`, `promotion:visits:total:{trackerSlug}:{source}`, and `promotion:last-visit:{trackerSlug}:{source}` when the URL includes `utm_campaign=discovery_promotion`.
@@ -158,6 +159,7 @@ Admin backups are tracker-scoped:
 - Review queue: use the admin panel `Review` tab to approve or reject pending reports.
 - Pending reports show evidence-strength summaries and are prioritized by review signal count.
 - Affiliate stats: use the admin panel `Affiliate` tab to compare tracker, merchant, and placement click totals, review quick-read performance insights, then export CSV for outside analysis.
+- Affiliate coverage: use the admin panel `Affiliate` tab to confirm every tracker is promotion-ready before you send traffic.
 - Promotion stats: use the admin panel `Affiliate` tab to compare copy, X, and Reddit promotion actions after approved discoveries are prepared for posting.
 - Promotion links: use the admin panel `Review` tab's promotion candidates so copied posts and X/Reddit shares include campaign-tagged tracker URLs.
 - Promotion efficiency: use the admin panel `Affiliate` tab to compare promotion actions, promoted page visits, and downstream affiliate clicks by tracker and source.
