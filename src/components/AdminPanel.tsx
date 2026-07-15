@@ -31,6 +31,7 @@ interface AffiliateStatsRow {
   totalClicks: number;
   lastClick?: {
     clickedAt?: string;
+    href?: string;
     sourcePath?: string;
     viewContext?: {
       query?: string;
@@ -1167,6 +1168,16 @@ export default function AdminPanel({
                                     ) : (
                                       <span className="block max-w-48 truncate text-xs text-ring-light/60">{row.lastClick.sourcePath}</span>
                                     )
+                                  )}
+                                  {row.lastClick.href && (
+                                    <a
+                                      href={row.lastClick.href}
+                                      target="_blank"
+                                      rel="noopener noreferrer sponsored"
+                                      className="block max-w-48 truncate text-xs text-ring-gold/80 hover:underline"
+                                    >
+                                      Last destination
+                                    </a>
                                   )}
                                   {row.lastClick.viewContext && (
                                     <span className="block max-w-64 text-xs text-ring-light/60">

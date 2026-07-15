@@ -277,6 +277,7 @@ describe('tracker API routes', () => {
       tracker: 'one-ring',
       merchant: 'ebay',
       label: link.label,
+      href: link.href,
       intent: link.intent,
       placement: 'tracker-marketplace',
       sourcePath: '/trackers/one-ring?filter=has-evidence&sort=evidence-desc&serial=007',
@@ -327,6 +328,7 @@ describe('tracker API routes', () => {
       tracker: 'one-ring',
       merchant: 'ebay',
       label: link.label,
+      href: link.href,
       intent: 'auction-comps',
       placement: 'serial-detail',
       sourcePath: '/trackers/one-ring?serial=007',
@@ -552,6 +554,7 @@ describe('tracker API routes', () => {
           clicksInWindow: 1,
           totalClicks: 1,
           lastClick: expect.objectContaining({
+            href: ebayLink.href,
             sourcePath: '/trackers/one-ring?filter=has-evidence&sort=evidence-desc&serial=007',
             viewContext: {
               filter: 'has-evidence',
@@ -600,6 +603,7 @@ describe('tracker API routes', () => {
           clicksInWindow: 1,
           totalClicks: 1,
           lastClick: expect.objectContaining({
+            href: ebayLink.href,
             sourcePath: '/trackers/one-ring?serial=007',
           }),
         }),
@@ -615,6 +619,7 @@ describe('tracker API routes', () => {
           totalClicks: 1,
           lastClick: expect.objectContaining({
             label: serialGridEbayLink.label,
+            href: serialGridEbayLink.href,
             sourcePath: '/trackers/one-ring?serial=007',
             viewContext: {
               serial: '007',

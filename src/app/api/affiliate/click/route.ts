@@ -151,6 +151,7 @@ export async function POST(request: Request) {
         tracker: trackerSlug,
         merchant,
         label: label || allowedLink.label,
+        href,
         intent: allowedLink.intent,
         placement,
         sourcePath,
