@@ -29,6 +29,7 @@
 - [x] Add affiliate stats rollups by tracker, merchant, and placement.
 - [x] Reject unknown affiliate placements before storing click telemetry.
 - [x] Store affiliate click source paths for better CTA and page attribution.
+- [x] Sanitize affiliate click source paths to internal paths before storing admin telemetry.
 - [x] Store shareable tracker view context with affiliate click metadata.
 - [x] Surface last-click view-context rollups in affiliate stats.
 - [x] Add per-click affiliate counters for shareable tracker view filters, sorts, and card filters.

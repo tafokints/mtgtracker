@@ -409,6 +409,37 @@ describe('tracker API routes', () => {
     });
   });
 
+  it('drops external affiliate click source paths before storing last-click metadata', async () => {
+    const link = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'amazon');
+    if (!link) throw new Error('Expected One Ring Amazon affiliate link');
+
+    const externalResponse = await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: link.merchant,
+      href: link.href,
+      label: link.label,
+      placement: 'tracker-top-cta',
+      sourcePath: 'https://example.com/trackers/one-ring',
+    }));
+    const protocolRelativeResponse = await trackAffiliateClick(affiliateClickRequest({
+      tracker: tracker.slug,
+      merchant: link.merchant,
+      href: link.href,
+      label: link.label,
+      placement: 'tracker-stats-cta',
+      sourcePath: '//example.com/trackers/one-ring',
+    }));
+
+    expect(externalResponse.status).toBe(200);
+    expect(protocolRelativeResponse.status).toBe(200);
+    expect(redisFixture.store.get('affiliate:last-click:one-ring:amazon:tracker-top-cta')).toMatchObject({
+      sourcePath: undefined,
+    });
+    expect(redisFixture.store.get('affiliate:last-click:one-ring:amazon:tracker-stats-cta')).toMatchObject({
+      sourcePath: undefined,
+    });
+  });
+
   it('tracks primary top CTA affiliate placement separately', async () => {
     const link = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'tcgplayer');
     if (!link) throw new Error('Expected One Ring TCGplayer affiliate link');

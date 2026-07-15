@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
+import { sanitizeInternalPath } from '@/lib/internal-path';
 import { readJsonBody } from '@/lib/request-json';
 import { getTracker } from '@/lib/trackers';
 
@@ -10,17 +11,6 @@ const DIRECTORY_ACTIONS = ['open-tracker', 'report-find', 'latest-discovery'] as
 
 function safeKeyPart(value: string) {
   return value.replace(/[^a-z0-9._-]/gi, '-');
-}
-
-function sanitizeInternalPath(value: unknown) {
-  if (typeof value !== 'string') return undefined;
-  const trimmed = value.slice(0, 240);
-
-  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) {
-    return undefined;
-  }
-
-  return trimmed;
 }
 
 export async function POST(request: Request) {

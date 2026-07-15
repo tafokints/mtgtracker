@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { isAffiliatePlacement } from '@/lib/affiliate-placements';
 import { getRedis } from '@/lib/redis';
+import { sanitizeInternalPath } from '@/lib/internal-path';
 import { readJsonBody } from '@/lib/request-json';
 import { AffiliateLink, defaultAffiliateLinks, getTracker, trackers } from '@/lib/trackers';
 
@@ -131,7 +132,7 @@ export async function POST(request: Request) {
   const href = typeof input.href === 'string' ? input.href : '';
   const label = typeof input.label === 'string' ? input.label.slice(0, 120) : undefined;
   const placement = typeof input.placement === 'string' ? input.placement.slice(0, 80) : '';
-  const sourcePath = typeof input.sourcePath === 'string' ? input.sourcePath.slice(0, 200) : undefined;
+  const sourcePath = sanitizeInternalPath(input.sourcePath, 200);
   const viewContext = sanitizeViewContext(input.viewContext);
 
   if (!trackerSlug || !isKnownTrackerSlug(trackerSlug)) {
