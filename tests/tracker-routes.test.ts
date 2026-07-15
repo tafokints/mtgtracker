@@ -60,6 +60,7 @@ import { POST as importTrackerBackup } from '@/app/api/trackers/[slug]/import/ro
 import { POST as trackAffiliateClick } from '@/app/api/affiliate/click/route';
 import { GET as getAffiliateStats } from '@/app/api/admin/affiliate-stats/route';
 import { POST as trackPromotionAction } from '@/app/api/admin/promotion-action/route';
+import { POST as trackPromotionVisit } from '@/app/api/promotion/visit/route';
 
 const tracker = getTracker('one-ring');
 
@@ -122,6 +123,16 @@ function promotionActionRequest(body: unknown, session = createAdminSession()) {
     headers: {
       'content-type': 'application/json',
       cookie: `${ADMIN_COOKIE_NAME}=${session}`,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+function promotionVisitRequest(body: unknown) {
+  return new Request('https://mtgtrackers.com/api/promotion/visit', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
     },
     body: JSON.stringify(body),
   });
@@ -481,10 +492,14 @@ describe('tracker API routes', () => {
             label: 'The One Ring',
             promotionActionsInWindow: 1,
             promotionActionsTotal: 1,
+            promotionVisitsInWindow: 0,
+            promotionVisitsTotal: 0,
             affiliateClicksInWindow: 0,
             affiliateClicksTotal: 0,
             affiliateClicksPerActionInWindow: 0,
             affiliateClicksPerActionTotal: 0,
+            affiliateClicksPerVisitInWindow: null,
+            affiliateClicksPerVisitTotal: null,
           }),
         ],
         rows: [
@@ -507,6 +522,82 @@ describe('tracker API routes', () => {
     });
   });
 
+  it('tracks promoted discovery page visits for known campaign URLs', async () => {
+    const rejectedResponse = await trackPromotionVisit(promotionVisitRequest({
+      tracker: tracker.slug,
+      source: 'x',
+      campaign: 'not-ours',
+    }));
+
+    expect(rejectedResponse.status).toBe(400);
+    await expect(rejectedResponse.json()).resolves.toEqual({ message: 'Unknown promotion campaign' });
+
+    const response = await trackPromotionVisit(promotionVisitRequest({
+      tracker: tracker.slug,
+      source: 'x',
+      campaign: 'discovery_promotion',
+      content: 'one-ring-the-one-ring-007',
+      card: 'the-one-ring',
+      serial: '007',
+      path: '/trackers/one-ring?serial=007&utm_source=x&utm_medium=social&utm_campaign=discovery_promotion&utm_content=one-ring-the-one-ring-007',
+    }));
+    const date = new Date().toISOString().slice(0, 10);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(redisFixture.counters.get(`promotion:visits:${date}:one-ring:x`)).toBe(1);
+    expect(redisFixture.counters.get('promotion:visits:total:one-ring:x')).toBe(1);
+    expect(redisFixture.counters.get(`promotion:visit-context:${date}:one-ring:card:the-one-ring`)).toBe(1);
+    expect(redisFixture.counters.get(`promotion:visit-context:${date}:one-ring:serial:007`)).toBe(1);
+    expect(redisFixture.counters.get(`promotion:visit-context:${date}:one-ring:content:one-ring-the-one-ring-007`)).toBe(1);
+    expect(redisFixture.store.get('promotion:last-visit:one-ring:x')).toMatchObject({
+      tracker: 'one-ring',
+      trackerTitle: 'The One Ring',
+      source: 'x',
+      campaign: 'discovery_promotion',
+      content: 'one-ring-the-one-ring-007',
+      card: 'the-one-ring',
+      serial: '007',
+      path: '/trackers/one-ring?serial=007&utm_source=x&utm_medium=social&utm_campaign=discovery_promotion&utm_content=one-ring-the-one-ring-007',
+    });
+
+    const statsResponse = await getAffiliateStats(affiliateStatsRequest());
+    const statsBody = await json(statsResponse);
+
+    expect(statsResponse.status).toBe(200);
+    expect(statsBody).toMatchObject({
+      promotion: {
+        visits: {
+          summary: {
+            clicksInWindow: 1,
+            totalClicks: 1,
+            bySource: [expect.objectContaining({ key: 'x', label: 'X', clicksInWindow: 1, totalClicks: 1 })],
+            byTracker: [expect.objectContaining({ key: 'one-ring', label: 'The One Ring', clicksInWindow: 1, totalClicks: 1 })],
+          },
+          rows: [
+            expect.objectContaining({
+              tracker: 'one-ring',
+              trackerTitle: 'The One Ring',
+              source: 'x',
+              label: 'X',
+              clicksInWindow: 1,
+              totalClicks: 1,
+            }),
+          ],
+        },
+        efficiency: [
+          expect.objectContaining({
+            key: 'one-ring',
+            promotionActionsInWindow: 0,
+            promotionVisitsInWindow: 1,
+            affiliateClicksInWindow: 0,
+            affiliateClicksPerVisitInWindow: 0,
+          }),
+        ],
+      },
+    });
+  });
+
   it('summarizes promotion efficiency against affiliate clicks by tracker', async () => {
     const ebayLink = tracker.affiliateLinks?.find((affiliateLink) => affiliateLink.merchant === 'ebay');
     if (!ebayLink) throw new Error('Expected One Ring eBay affiliate link');
@@ -524,6 +615,15 @@ describe('tracker API routes', () => {
       card: 'the-one-ring',
       serial: '007',
       detailUrl: 'https://mtgtrackers.com/trackers/one-ring?serial=007&utm_source=reddit&utm_medium=social&utm_campaign=discovery_promotion&utm_content=one-ring-the-one-ring-007',
+    }));
+    await trackPromotionVisit(promotionVisitRequest({
+      tracker: tracker.slug,
+      source: 'x',
+      campaign: 'discovery_promotion',
+      content: 'one-ring-the-one-ring-007',
+      card: 'the-one-ring',
+      serial: '007',
+      path: '/trackers/one-ring?serial=007&utm_source=x&utm_medium=social&utm_campaign=discovery_promotion&utm_content=one-ring-the-one-ring-007',
     }));
     await trackAffiliateClick(affiliateClickRequest({
       tracker: tracker.slug,
@@ -557,10 +657,14 @@ describe('tracker API routes', () => {
             label: 'The One Ring',
             promotionActionsInWindow: 2,
             promotionActionsTotal: 2,
+            promotionVisitsInWindow: 1,
+            promotionVisitsTotal: 1,
             affiliateClicksInWindow: 1,
             affiliateClicksTotal: 1,
             affiliateClicksPerActionInWindow: 0.5,
             affiliateClicksPerActionTotal: 0.5,
+            affiliateClicksPerVisitInWindow: 1,
+            affiliateClicksPerVisitTotal: 1,
           }),
         ],
       },

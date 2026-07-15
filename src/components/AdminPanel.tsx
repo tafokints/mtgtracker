@@ -60,10 +60,14 @@ interface PromotionEfficiencyRow {
   label: string;
   promotionActionsInWindow: number;
   promotionActionsTotal: number;
+  promotionVisitsInWindow: number;
+  promotionVisitsTotal: number;
   affiliateClicksInWindow: number;
   affiliateClicksTotal: number;
   affiliateClicksPerActionInWindow: number | null;
   affiliateClicksPerActionTotal: number | null;
+  affiliateClicksPerVisitInWindow: number | null;
+  affiliateClicksPerVisitTotal: number | null;
 }
 
 interface PromotionStatsRow {
@@ -78,6 +82,24 @@ interface PromotionStatsRow {
     card?: string;
     serial?: string;
     detailUrl?: string;
+  } | null;
+}
+
+interface PromotionVisitRow {
+  tracker: string;
+  trackerTitle: string;
+  source: string;
+  label: string;
+  clicksInWindow: number;
+  totalClicks: number;
+  lastVisit?: {
+    visitedAt?: string;
+    source?: string;
+    campaign?: string;
+    content?: string;
+    card?: string;
+    serial?: string;
+    path?: string;
   } | null;
 }
 
@@ -112,6 +134,15 @@ interface AffiliateStatsResponse {
       totalClicks: number;
       byTracker: AffiliateStatsBreakdown[];
       byAction: AffiliateStatsBreakdown[];
+    };
+    visits: {
+      summary: {
+        clicksInWindow: number;
+        totalClicks: number;
+        byTracker: AffiliateStatsBreakdown[];
+        bySource: AffiliateStatsBreakdown[];
+      };
+      rows: PromotionVisitRow[];
     };
     efficiency: PromotionEfficiencyRow[];
     rows: PromotionStatsRow[];
@@ -174,8 +205,10 @@ function PromotionEfficiencyTable({ rows }: { rows: PromotionEfficiencyRow[] }) 
           <tr>
             <th className="px-3 py-2">Tracker</th>
             <th className="px-3 py-2 text-right">Actions</th>
+            <th className="px-3 py-2 text-right">Visits</th>
             <th className="px-3 py-2 text-right">Affiliate clicks</th>
             <th className="px-3 py-2 text-right">Clicks/action</th>
+            <th className="px-3 py-2 text-right">Clicks/visit</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-ring-teal/15 text-ring-light">
@@ -183,9 +216,13 @@ function PromotionEfficiencyTable({ rows }: { rows: PromotionEfficiencyRow[] }) 
             <tr key={row.key}>
               <td className="px-3 py-2">{row.label}</td>
               <td className="px-3 py-2 text-right tabular-nums">{row.promotionActionsInWindow}/{row.promotionActionsTotal}</td>
+              <td className="px-3 py-2 text-right tabular-nums">{row.promotionVisitsInWindow}/{row.promotionVisitsTotal}</td>
               <td className="px-3 py-2 text-right tabular-nums">{row.affiliateClicksInWindow}/{row.affiliateClicksTotal}</td>
               <td className="px-3 py-2 text-right tabular-nums">
                 {row.affiliateClicksPerActionInWindow === null ? 'No actions' : row.affiliateClicksPerActionInWindow.toFixed(2)}
+              </td>
+              <td className="px-3 py-2 text-right tabular-nums">
+                {row.affiliateClicksPerVisitInWindow === null ? 'No visits' : row.affiliateClicksPerVisitInWindow.toFixed(2)}
               </td>
             </tr>
           ))}
@@ -1322,7 +1359,11 @@ export default function AdminPanel({
                 <p className="text-sm text-ring-light">Loading affiliate stats...</p>
               )}
 
-              {!affiliateStatsLoading && (!affiliateStats || (affiliateStats.rows.length === 0 && affiliateStats.promotion.rows.length === 0)) && (
+              {!affiliateStatsLoading && (!affiliateStats || (
+                affiliateStats.rows.length === 0 &&
+                affiliateStats.promotion.rows.length === 0 &&
+                affiliateStats.promotion.visits.rows.length === 0
+              )) && (
                 <div className="rounded border border-ring-gold/30 bg-black/20 p-4">
                   <p className="text-sm font-bold text-ring-gold">No affiliate clicks tracked yet</p>
                   <p className="mt-1 text-xs text-ring-light">
@@ -1331,7 +1372,11 @@ export default function AdminPanel({
                 </div>
               )}
 
-              {!affiliateStatsLoading && affiliateStats && (affiliateStats.rows.length > 0 || affiliateStats.promotion.rows.length > 0) && (
+              {!affiliateStatsLoading && affiliateStats && (
+                affiliateStats.rows.length > 0 ||
+                affiliateStats.promotion.rows.length > 0 ||
+                affiliateStats.promotion.visits.rows.length > 0
+              ) && (
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
                     <AffiliateMetric label={`${affiliateStats.days}d clicks`} value={affiliateStats.summary.clicksInWindow} />
@@ -1342,7 +1387,7 @@ export default function AdminPanel({
 
                   <AffiliateInsightCards insights={affiliateInsights} />
 
-                  {affiliateStats.promotion.rows.length > 0 && (
+                  {(affiliateStats.promotion.rows.length > 0 || affiliateStats.promotion.visits.rows.length > 0) && (
                     <div className="space-y-3 rounded border border-ring-teal/35 bg-ring-teal/10 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -1353,13 +1398,17 @@ export default function AdminPanel({
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <AffiliateMetric label={`${affiliateStats.days}d actions`} value={affiliateStats.promotion.summary.clicksInWindow} />
+                          <AffiliateMetric label={`${affiliateStats.days}d visits`} value={affiliateStats.promotion.visits.summary.clicksInWindow} />
                           <AffiliateMetric label="All-time actions" value={affiliateStats.promotion.summary.totalClicks} />
+                          <AffiliateMetric label="All-time visits" value={affiliateStats.promotion.visits.summary.totalClicks} />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                         <AffiliateBreakdown title="Promotion Actions" rows={affiliateStats.promotion.summary.byAction} />
                         <AffiliateBreakdown title="Promotion Trackers" rows={affiliateStats.promotion.summary.byTracker} />
+                        <AffiliateBreakdown title="Promotion Visit Sources" rows={affiliateStats.promotion.visits.summary.bySource} />
+                        <AffiliateBreakdown title="Promotion Visit Trackers" rows={affiliateStats.promotion.visits.summary.byTracker} />
                       </div>
 
                       <PromotionEfficiencyTable rows={affiliateStats.promotion.efficiency} />

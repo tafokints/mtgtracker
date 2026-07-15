@@ -112,6 +112,67 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   const [selectedCardForDetails, setSelectedCardForDetails] = useState<SerializedRingCard | null>(null);
   const [copyViewMessage, setCopyViewMessage] = useState('');
   const copyViewMessageTimeoutRef = useRef<number | null>(null);
+  const promotionVisitTrackedRef = useRef(false);
+
+  useEffect(() => {
+    if (promotionVisitTrackedRef.current) {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('utm_campaign') !== 'discovery_promotion') {
+      return;
+    }
+
+    const source = params.get('utm_source');
+    if (!source) {
+      return;
+    }
+
+    const path = `${window.location.pathname}${window.location.search}`;
+    const sessionKey = `mtgtrackers:promotion-visit:${tracker.slug}:${path}`;
+    try {
+      if (window.sessionStorage.getItem(sessionKey)) {
+        promotionVisitTrackedRef.current = true;
+        return;
+      }
+      window.sessionStorage.setItem(sessionKey, '1');
+    } catch {
+      // Browsers can disable storage; still try to record the visit once for this mounted page.
+    }
+
+    promotionVisitTrackedRef.current = true;
+
+    const payload = JSON.stringify({
+      tracker: tracker.slug,
+      source,
+      campaign: params.get('utm_campaign'),
+      content: params.get('utm_content') || undefined,
+      card: params.get('card') || undefined,
+      serial: params.get('serial') || undefined,
+      path,
+    });
+
+    if (navigator.sendBeacon) {
+      const queued = navigator.sendBeacon('/api/promotion/visit', new Blob([payload], { type: 'application/json' }));
+      if (queued) {
+        return;
+      }
+    }
+
+    if (typeof fetch !== 'function') {
+      return;
+    }
+
+    void fetch('/api/promotion/visit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: payload,
+      keepalive: true,
+    }).catch(() => undefined);
+  }, [tracker.slug]);
 
   const syncViewStateFromUrl = useCallback(() => {
     const params = new URLSearchParams(window.location.search);

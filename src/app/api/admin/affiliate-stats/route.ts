@@ -11,6 +11,7 @@ const DEFAULT_DAYS = 30;
 const MAX_DAYS = 90;
 const PLACEMENTS = ['tracker-top-cta', 'tracker-filtered-cta', 'tracker-directory', 'tracker-marketplace', 'tracker-card-serial', 'serial-detail', 'marketplace-links'];
 const PROMOTION_ACTIONS = ['copy', 'native-share', 'x', 'reddit'];
+const PROMOTION_SOURCES = ['admin_copy', 'x', 'reddit'];
 const VIEW_FILTERS = [
   'found',
   'pending',
@@ -74,7 +75,7 @@ function sortBreakdown(items: Iterable<{ key: string; label: string; clicksInWin
 function actionLabel(action: string) {
   return action === 'x'
     ? 'X'
-    : action.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+    : action.split(/[-_]/).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
 }
 
 function readLastClickViewContext(lastClick: unknown) {
@@ -171,18 +172,22 @@ function readBreakdownCount(
 
 function buildPromotionEfficiency(
   promotionTrackers: Array<{ key: string; label: string; clicksInWindow: number; totalClicks: number }>,
+  promotionVisitTrackers: Array<{ key: string; label: string; clicksInWindow: number; totalClicks: number }>,
   affiliateTrackers: Array<{ key: string; label: string; clicksInWindow: number; totalClicks: number }>,
 ) {
   const trackerKeys = new Set([
     ...promotionTrackers.map((tracker) => tracker.key),
+    ...promotionVisitTrackers.map((tracker) => tracker.key),
     ...affiliateTrackers.filter((tracker) => tracker.key !== 'default').map((tracker) => tracker.key),
   ]);
 
   return [...trackerKeys]
     .map((key) => {
       const promotion = readBreakdownCount(promotionTrackers, key);
+      const visits = readBreakdownCount(promotionVisitTrackers, key);
       const affiliate = readBreakdownCount(affiliateTrackers, key);
       const label = promotionTrackers.find((tracker) => tracker.key === key)?.label
+        || promotionVisitTrackers.find((tracker) => tracker.key === key)?.label
         || affiliateTrackers.find((tracker) => tracker.key === key)?.label
         || key;
 
@@ -191,6 +196,8 @@ function buildPromotionEfficiency(
         label,
         promotionActionsInWindow: promotion.clicksInWindow,
         promotionActionsTotal: promotion.totalClicks,
+        promotionVisitsInWindow: visits.clicksInWindow,
+        promotionVisitsTotal: visits.totalClicks,
         affiliateClicksInWindow: affiliate.clicksInWindow,
         affiliateClicksTotal: affiliate.totalClicks,
         affiliateClicksPerActionInWindow: promotion.clicksInWindow > 0
@@ -199,11 +206,19 @@ function buildPromotionEfficiency(
         affiliateClicksPerActionTotal: promotion.totalClicks > 0
           ? Number((affiliate.totalClicks / promotion.totalClicks).toFixed(2))
           : null,
+        affiliateClicksPerVisitInWindow: visits.clicksInWindow > 0
+          ? Number((affiliate.clicksInWindow / visits.clicksInWindow).toFixed(2))
+          : null,
+        affiliateClicksPerVisitTotal: visits.totalClicks > 0
+          ? Number((affiliate.totalClicks / visits.totalClicks).toFixed(2))
+          : null,
       };
     })
     .sort((a, b) => (
+      (b.affiliateClicksPerVisitInWindow || 0) - (a.affiliateClicksPerVisitInWindow || 0) ||
       (b.affiliateClicksPerActionInWindow || 0) - (a.affiliateClicksPerActionInWindow || 0) ||
       b.affiliateClicksInWindow - a.affiliateClicksInWindow ||
+      b.promotionVisitsInWindow - a.promotionVisitsInWindow ||
       b.promotionActionsInWindow - a.promotionActionsInWindow ||
       a.label.localeCompare(b.label)
     ));
@@ -308,6 +323,56 @@ async function readPromotionStats(redis: RedisCounterReader, trackerEntries: Aff
   };
 }
 
+async function readPromotionVisitStats(redis: RedisCounterReader, trackerEntries: AffiliateStatsTrackerEntry[], dateKeys: string[]) {
+  const rows = [];
+
+  for (const tracker of trackerEntries.filter((entry) => entry.slug !== 'default')) {
+    for (const source of PROMOTION_SOURCES) {
+      const keyParts = [tracker.slug, source].map(safeKeyPart);
+      const keySuffix = keyParts.join(':');
+      const [totalValue, lastVisitValue, ...dailyValues] = await Promise.all([
+        redis.get(`promotion:visits:total:${keySuffix}`),
+        redis.get(`promotion:last-visit:${keySuffix}`),
+        ...dateKeys.map((date) => redis.get(`promotion:visits:${date}:${keySuffix}`)),
+      ]);
+      const clicksInWindow = dailyValues.reduce<number>((total, item) => total + readCount(item), 0);
+      const totalClicks = readCount(totalValue);
+
+      if (clicksInWindow === 0 && totalClicks === 0) {
+        continue;
+      }
+
+      rows.push({
+        tracker: tracker.slug,
+        trackerTitle: tracker.title,
+        source,
+        label: actionLabel(source),
+        clicksInWindow,
+        totalClicks,
+        lastVisit: lastVisitValue || null,
+      });
+    }
+  }
+
+  const byTracker = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
+  const bySource = new Map<string, { key: string; label: string; clicksInWindow: number; totalClicks: number }>();
+
+  for (const row of rows) {
+    addBreakdown(byTracker, row.tracker, row.trackerTitle, row);
+    addBreakdown(bySource, row.source, row.label, row);
+  }
+
+  return {
+    rows: rows.sort((a, b) => b.clicksInWindow - a.clicksInWindow || b.totalClicks - a.totalClicks),
+    summary: {
+      clicksInWindow: rows.reduce((total, row) => total + row.clicksInWindow, 0),
+      totalClicks: rows.reduce((total, row) => total + row.totalClicks, 0),
+      byTracker: sortBreakdown(byTracker.values()),
+      bySource: sortBreakdown(bySource.values()),
+    },
+  };
+}
+
 export async function GET(request: NextRequest) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
@@ -391,6 +456,7 @@ export async function GET(request: NextRequest) {
       ...await readViewContextBreakdowns(redis, trackerEntries, dateKeys),
     };
     const promotion = await readPromotionStats(redis, trackerEntries, dateKeys);
+    const promotionVisits = await readPromotionVisitStats(redis, trackerEntries, dateKeys);
 
     return NextResponse.json({
       days,
@@ -398,7 +464,8 @@ export async function GET(request: NextRequest) {
       summary,
       promotion: {
         ...promotion,
-        efficiency: buildPromotionEfficiency(promotion.summary.byTracker, summary.byTracker),
+        visits: promotionVisits,
+        efficiency: buildPromotionEfficiency(promotion.summary.byTracker, promotionVisits.summary.byTracker, summary.byTracker),
       },
       rows,
     });

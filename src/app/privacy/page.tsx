@@ -37,6 +37,9 @@ export default function PrivacyPage() {
             The site uses Vercel hosting, Vercel Analytics, Vercel Speed Insights, and Upstash Redis or Vercel KV to run the app, store tracker data, and understand basic site performance.
           </p>
           <p>
+            Marketplace affiliate clicks and promoted discovery visits may be counted with tracker, source, campaign, card, serial, and page-path context so admins can understand which public pages and promotion channels are useful. These counters do not create visitor accounts or store payment information.
+          </p>
+          <p>
             Admin authentication uses a secure session cookie. The public tracker submit flow uses basic rate limiting to reduce spam and protect the review queue.
           </p>
           <p>
