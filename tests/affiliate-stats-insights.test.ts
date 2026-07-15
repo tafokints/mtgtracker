@@ -137,4 +137,56 @@ describe('affiliate stats insights', () => {
       },
     ]);
   });
+
+  it('prioritizes source-level promotion funnel insights when channel data is available', () => {
+    const insights = getAffiliateStatsInsights({
+      summary: {
+        bestPlacement: null,
+      },
+      promotion: {
+        efficiency: [
+          {
+            label: 'The One Ring',
+            promotionActionsInWindow: 4,
+            promotionVisitsInWindow: 8,
+            affiliateClicksInWindow: 2,
+            affiliateClicksPerActionInWindow: 0.5,
+            affiliateClicksPerVisitInWindow: 0.25,
+          },
+        ],
+        sourceEfficiency: [
+          {
+            label: 'X',
+            promotionActionsInWindow: 2,
+            promotionVisitsInWindow: 3,
+            affiliateClicksInWindow: 2,
+            affiliateClicksPerActionInWindow: 1,
+            affiliateClicksPerVisitInWindow: 0.67,
+          },
+          {
+            label: 'Reddit',
+            promotionActionsInWindow: 2,
+            promotionVisitsInWindow: 5,
+            affiliateClicksInWindow: 0,
+            affiliateClicksPerActionInWindow: 0,
+            affiliateClicksPerVisitInWindow: 0,
+          },
+        ],
+      },
+      rows: [],
+    });
+
+    expect(insights.slice(0, 2)).toEqual([
+      {
+        label: 'Best Funnel',
+        value: 'Source: X',
+        detail: '3 promoted visits created 2 affiliate clicks (0.67 clicks/visit).',
+      },
+      {
+        label: 'Funnel Gap',
+        value: 'Source: Reddit',
+        detail: '5 promoted visits but no affiliate clicks yet. Check CTA relevance, above-the-fold links, and source match.',
+      },
+    ]);
+  });
 });

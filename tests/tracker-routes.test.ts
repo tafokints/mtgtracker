@@ -636,6 +636,10 @@ describe('tracker API routes', () => {
         serial: '007',
       },
     }));
+    const date = new Date().toISOString().slice(0, 10);
+
+    expect(redisFixture.counters.get(`affiliate:promotion-source:${date}:x`)).toBe(1);
+    expect(redisFixture.counters.get('affiliate:promotion-source:total:x')).toBe(1);
 
     const response = await getAffiliateStats(affiliateStatsRequest());
     const body = await json(response);
@@ -651,6 +655,14 @@ describe('tracker API routes', () => {
           clicksInWindow: 2,
           totalClicks: 2,
         },
+        affiliateSources: [
+          expect.objectContaining({
+            key: 'x',
+            label: 'X',
+            clicksInWindow: 1,
+            totalClicks: 1,
+          }),
+        ],
         efficiency: [
           expect.objectContaining({
             key: 'one-ring',
@@ -665,6 +677,29 @@ describe('tracker API routes', () => {
             affiliateClicksPerActionTotal: 0.5,
             affiliateClicksPerVisitInWindow: 1,
             affiliateClicksPerVisitTotal: 1,
+          }),
+        ],
+        sourceEfficiency: [
+          expect.objectContaining({
+            key: 'x',
+            label: 'X',
+            promotionActionsInWindow: 1,
+            promotionActionsTotal: 1,
+            promotionVisitsInWindow: 1,
+            promotionVisitsTotal: 1,
+            affiliateClicksInWindow: 1,
+            affiliateClicksTotal: 1,
+            affiliateClicksPerActionInWindow: 1,
+            affiliateClicksPerActionTotal: 1,
+            affiliateClicksPerVisitInWindow: 1,
+            affiliateClicksPerVisitTotal: 1,
+          }),
+          expect.objectContaining({
+            key: 'reddit',
+            label: 'Reddit',
+            promotionActionsInWindow: 1,
+            promotionVisitsInWindow: 0,
+            affiliateClicksInWindow: 0,
           }),
         ],
       },

@@ -7,6 +7,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const MERCHANTS: AffiliateLink['merchant'][] = ['tcgplayer', 'ebay', 'amazon', 'other'];
+const PROMOTION_CAMPAIGN = 'discovery_promotion';
+const PROMOTION_SOURCES = ['admin_copy', 'x', 'reddit'] as const;
 
 function getAllowedLinks(trackerSlug: string) {
   if (trackerSlug === 'default') {
@@ -65,6 +67,27 @@ function isKnownTrackerSlug(trackerSlug: string) {
 
 function safeKeyPart(value: string) {
   return value.replace(/[^a-z0-9._-]/gi, '-');
+}
+
+function readPromotionSource(sourcePath?: string) {
+  if (!sourcePath || !sourcePath.startsWith('/') || sourcePath.startsWith('//')) {
+    return undefined;
+  }
+
+  try {
+    const url = new URL(sourcePath, 'https://mtgtrackers.com');
+    const source = url.searchParams.get('utm_source') || '';
+
+    if (url.searchParams.get('utm_campaign') !== PROMOTION_CAMPAIGN) {
+      return undefined;
+    }
+
+    return PROMOTION_SOURCES.includes(source as typeof PROMOTION_SOURCES[number])
+      ? source
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function sanitizeViewContext(value: unknown) {
@@ -128,6 +151,7 @@ export async function POST(request: Request) {
     const date = new Date().toISOString().slice(0, 10);
     const keyParts = [trackerSlug, merchant, placement].map(safeKeyPart);
     const contextCounterIncrements: Array<Promise<unknown>> = [];
+    const promotionSource = readPromotionSource(sourcePath);
     const addContextCounter = (field: 'filter' | 'sort' | 'cardFilter' | 'card' | 'serial', value?: unknown) => {
       if (typeof value !== 'string' || !value) return;
 
@@ -147,6 +171,10 @@ export async function POST(request: Request) {
     await Promise.all([
       redis.incr(`affiliate:clicks:${date}:${keyParts.join(':')}`),
       redis.incr(`affiliate:clicks:total:${keyParts.join(':')}`),
+      ...(promotionSource ? [
+        redis.incr(`affiliate:promotion-source:${date}:${safeKeyPart(promotionSource)}`),
+        redis.incr(`affiliate:promotion-source:total:${safeKeyPart(promotionSource)}`),
+      ] : []),
       redis.set(`affiliate:last-click:${keyParts.join(':')}`, {
         tracker: trackerSlug,
         merchant,

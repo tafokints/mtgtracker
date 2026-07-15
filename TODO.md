@@ -63,6 +63,7 @@
 - [x] Add promotion efficiency rollups that compare promotion actions with affiliate clicks by tracker.
 - [x] Track promoted discovery page visits from `utm_campaign=discovery_promotion` URLs.
 - [x] Add promotion funnel insight cards for best funnels, CTA gaps, and distribution gaps.
+- [x] Add source-level promotion efficiency for X, Reddit, and copied posts.
 - [ ] Validate Google Search Console setup.
 - [x] Replace placeholder Google verification metadata.
 - [x] Add privacy/contact/about pages before broad promotion.

@@ -31,6 +31,7 @@ export interface AffiliateStatsInsightInput {
   };
   promotion?: {
     efficiency: PromotionEfficiencyInsightRow[];
+    sourceEfficiency?: PromotionEfficiencyInsightRow[];
   };
   rows: AffiliateStatsInsightRow[];
 }
@@ -159,7 +160,10 @@ export function getAffiliateStatsInsights(stats: AffiliateStatsInsightInput): Af
   }
 
   return [
-    ...getPromotionFunnelInsights(stats.promotion?.efficiency || []),
+    ...getPromotionFunnelInsights([
+      ...(stats.promotion?.sourceEfficiency || []).map((row) => ({ ...row, label: `Source: ${row.label}` })),
+      ...(stats.promotion?.efficiency || []),
+    ]),
     ...insights,
   ].slice(0, 6);
 }

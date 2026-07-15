@@ -137,7 +137,8 @@ Affiliate click telemetry is stored separately from tracker backups:
 - Admin promotion share actions are tracked separately as `promotion:actions:{yyyy-mm-dd}:{trackerSlug}:{action}`, `promotion:actions:total:{trackerSlug}:{action}`, and `promotion:last-action:{trackerSlug}:{action}` so review-to-promotion activity can be compared with affiliate clicks.
 - Admin promotion share URLs append `utm_source`, `utm_medium=social`, `utm_campaign=discovery_promotion`, and `utm_content` so promoted discoveries can be separated by copy, X, Reddit, tracker, card, and serial in analytics.
 - Promoted discovery page visits are tracked separately as `promotion:visits:{yyyy-mm-dd}:{trackerSlug}:{source}`, `promotion:visits:total:{trackerSlug}:{source}`, and `promotion:last-visit:{trackerSlug}:{source}` when the URL includes `utm_campaign=discovery_promotion`.
-- Admin promotion efficiency compares promotion actions and promoted visits with affiliate clicks by tracker so promoted discoveries can be judged against monetizable traffic.
+- Affiliate clicks from promoted URLs increment `affiliate:promotion-source:{yyyy-mm-dd}:{source}` and `affiliate:promotion-source:total:{source}` so X, Reddit, and copied posts can be compared as monetization channels.
+- Admin promotion efficiency compares promotion actions and promoted visits with affiliate clicks by tracker and source so promoted discoveries can be judged against monetizable traffic.
 
 Admin backups are tracker-scoped:
 
@@ -157,7 +158,7 @@ Admin backups are tracker-scoped:
 - Affiliate stats: use the admin panel `Affiliate` tab to compare tracker, merchant, and placement click totals, review quick-read performance insights, then export CSV for outside analysis.
 - Promotion stats: use the admin panel `Affiliate` tab to compare copy, X, and Reddit promotion actions after approved discoveries are prepared for posting.
 - Promotion links: use the admin panel `Review` tab's promotion candidates so copied posts and X/Reddit shares include campaign-tagged tracker URLs.
-- Promotion efficiency: use the admin panel `Affiliate` tab to compare promotion actions, promoted page visits, and downstream affiliate clicks by tracker.
+- Promotion efficiency: use the admin panel `Affiliate` tab to compare promotion actions, promoted page visits, and downstream affiliate clicks by tracker and source.
 - Promotion funnel insights: use the admin panel `Affiliate` tab to quickly spot which promoted trackers are turning visits into affiliate clicks and which need better CTAs or posting links.
 - Directory marketplace links are tracked as `tracker-directory`.
 - Primary marketplace CTAs: tracker pages include top-of-page marketplace actions tracked as `tracker-top-cta`, plus contextual filtered-view actions tracked as `tracker-filtered-cta` with the active view summarized near the links.

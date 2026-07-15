@@ -144,7 +144,9 @@ interface AffiliateStatsResponse {
       };
       rows: PromotionVisitRow[];
     };
+    affiliateSources: AffiliateStatsBreakdown[];
     efficiency: PromotionEfficiencyRow[];
+    sourceEfficiency: PromotionEfficiencyRow[];
     rows: PromotionStatsRow[];
   };
   rows: AffiliateStatsRow[];
@@ -193,7 +195,7 @@ function AffiliateBreakdown({ title, rows }: { title: string; rows: AffiliateSta
   );
 }
 
-function PromotionEfficiencyTable({ rows }: { rows: PromotionEfficiencyRow[] }) {
+function PromotionEfficiencyTable({ rows, label = 'Tracker' }: { rows: PromotionEfficiencyRow[]; label?: string }) {
   if (rows.length === 0) {
     return null;
   }
@@ -203,7 +205,7 @@ function PromotionEfficiencyTable({ rows }: { rows: PromotionEfficiencyRow[] }) 
       <table className="min-w-full text-left text-xs">
         <thead className="bg-black/20 text-ring-teal">
           <tr>
-            <th className="px-3 py-2">Tracker</th>
+            <th className="px-3 py-2">{label}</th>
             <th className="px-3 py-2 text-right">Actions</th>
             <th className="px-3 py-2 text-right">Visits</th>
             <th className="px-3 py-2 text-right">Affiliate clicks</th>
@@ -1404,14 +1406,16 @@ export default function AdminPanel({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
                         <AffiliateBreakdown title="Promotion Actions" rows={affiliateStats.promotion.summary.byAction} />
                         <AffiliateBreakdown title="Promotion Trackers" rows={affiliateStats.promotion.summary.byTracker} />
                         <AffiliateBreakdown title="Promotion Visit Sources" rows={affiliateStats.promotion.visits.summary.bySource} />
                         <AffiliateBreakdown title="Promotion Visit Trackers" rows={affiliateStats.promotion.visits.summary.byTracker} />
+                        <AffiliateBreakdown title="Affiliate Click Sources" rows={affiliateStats.promotion.affiliateSources} />
                       </div>
 
                       <PromotionEfficiencyTable rows={affiliateStats.promotion.efficiency} />
+                      <PromotionEfficiencyTable rows={affiliateStats.promotion.sourceEfficiency} label="Source" />
 
                       <div className="overflow-x-auto rounded border border-ring-teal/25">
                         <table className="min-w-full text-left text-xs">

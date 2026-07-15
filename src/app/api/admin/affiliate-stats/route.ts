@@ -170,6 +170,10 @@ function readBreakdownCount(
   return breakdowns.find((item) => item.key === key) || { clicksInWindow: 0, totalClicks: 0 };
 }
 
+function sourceFromAction(action: string) {
+  return action === 'copy' ? 'admin_copy' : action;
+}
+
 function buildPromotionEfficiency(
   promotionTrackers: Array<{ key: string; label: string; clicksInWindow: number; totalClicks: number }>,
   promotionVisitTrackers: Array<{ key: string; label: string; clicksInWindow: number; totalClicks: number }>,
@@ -205,6 +209,65 @@ function buildPromotionEfficiency(
           : null,
         affiliateClicksPerActionTotal: promotion.totalClicks > 0
           ? Number((affiliate.totalClicks / promotion.totalClicks).toFixed(2))
+          : null,
+        affiliateClicksPerVisitInWindow: visits.clicksInWindow > 0
+          ? Number((affiliate.clicksInWindow / visits.clicksInWindow).toFixed(2))
+          : null,
+        affiliateClicksPerVisitTotal: visits.totalClicks > 0
+          ? Number((affiliate.totalClicks / visits.totalClicks).toFixed(2))
+          : null,
+      };
+    })
+    .sort((a, b) => (
+      (b.affiliateClicksPerVisitInWindow || 0) - (a.affiliateClicksPerVisitInWindow || 0) ||
+      (b.affiliateClicksPerActionInWindow || 0) - (a.affiliateClicksPerActionInWindow || 0) ||
+      b.affiliateClicksInWindow - a.affiliateClicksInWindow ||
+      b.promotionVisitsInWindow - a.promotionVisitsInWindow ||
+      b.promotionActionsInWindow - a.promotionActionsInWindow ||
+      a.label.localeCompare(b.label)
+    ));
+}
+
+function buildPromotionSourceEfficiency(
+  promotionActions: Array<{ key: string; label: string; clicksInWindow: number; totalClicks: number }>,
+  promotionVisitSources: Array<{ key: string; label: string; clicksInWindow: number; totalClicks: number }>,
+  affiliatePromotionSources: Array<{ key: string; label: string; clicksInWindow: number; totalClicks: number }>,
+) {
+  const actionBySource = promotionActions.map((action) => ({
+    ...action,
+    key: sourceFromAction(action.key),
+    label: actionLabel(sourceFromAction(action.key)),
+  }));
+  const sourceKeys = new Set([
+    ...actionBySource.map((source) => source.key),
+    ...promotionVisitSources.map((source) => source.key),
+    ...affiliatePromotionSources.map((source) => source.key),
+  ]);
+
+  return [...sourceKeys]
+    .map((key) => {
+      const action = readBreakdownCount(actionBySource, key);
+      const visits = readBreakdownCount(promotionVisitSources, key);
+      const affiliate = readBreakdownCount(affiliatePromotionSources, key);
+      const label = actionBySource.find((source) => source.key === key)?.label
+        || promotionVisitSources.find((source) => source.key === key)?.label
+        || affiliatePromotionSources.find((source) => source.key === key)?.label
+        || actionLabel(key);
+
+      return {
+        key,
+        label,
+        promotionActionsInWindow: action.clicksInWindow,
+        promotionActionsTotal: action.totalClicks,
+        promotionVisitsInWindow: visits.clicksInWindow,
+        promotionVisitsTotal: visits.totalClicks,
+        affiliateClicksInWindow: affiliate.clicksInWindow,
+        affiliateClicksTotal: affiliate.totalClicks,
+        affiliateClicksPerActionInWindow: action.clicksInWindow > 0
+          ? Number((affiliate.clicksInWindow / action.clicksInWindow).toFixed(2))
+          : null,
+        affiliateClicksPerActionTotal: action.totalClicks > 0
+          ? Number((affiliate.totalClicks / action.totalClicks).toFixed(2))
           : null,
         affiliateClicksPerVisitInWindow: visits.clicksInWindow > 0
           ? Number((affiliate.clicksInWindow / visits.clicksInWindow).toFixed(2))
@@ -373,6 +436,33 @@ async function readPromotionVisitStats(redis: RedisCounterReader, trackerEntries
   };
 }
 
+async function readAffiliatePromotionSourceStats(redis: RedisCounterReader, dateKeys: string[]) {
+  const rows = [];
+
+  for (const source of PROMOTION_SOURCES) {
+    const key = safeKeyPart(source);
+    const [totalValue, ...dailyValues] = await Promise.all([
+      redis.get(`affiliate:promotion-source:total:${key}`),
+      ...dateKeys.map((date) => redis.get(`affiliate:promotion-source:${date}:${key}`)),
+    ]);
+    const clicksInWindow = dailyValues.reduce<number>((total, item) => total + readCount(item), 0);
+    const totalClicks = readCount(totalValue);
+
+    if (clicksInWindow === 0 && totalClicks === 0) {
+      continue;
+    }
+
+    rows.push({
+      key: source,
+      label: actionLabel(source),
+      clicksInWindow,
+      totalClicks,
+    });
+  }
+
+  return sortBreakdown(rows);
+}
+
 export async function GET(request: NextRequest) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
@@ -457,6 +547,7 @@ export async function GET(request: NextRequest) {
     };
     const promotion = await readPromotionStats(redis, trackerEntries, dateKeys);
     const promotionVisits = await readPromotionVisitStats(redis, trackerEntries, dateKeys);
+    const affiliatePromotionSources = await readAffiliatePromotionSourceStats(redis, dateKeys);
 
     return NextResponse.json({
       days,
@@ -465,7 +556,9 @@ export async function GET(request: NextRequest) {
       promotion: {
         ...promotion,
         visits: promotionVisits,
+        affiliateSources: affiliatePromotionSources,
         efficiency: buildPromotionEfficiency(promotion.summary.byTracker, promotionVisits.summary.byTracker, summary.byTracker),
+        sourceEfficiency: buildPromotionSourceEfficiency(promotion.summary.byAction, promotionVisits.summary.bySource, affiliatePromotionSources),
       },
       rows,
     });
