@@ -123,6 +123,7 @@ Affiliate click telemetry is stored separately from tracker backups:
 - `affiliate:last-click:{trackerSlug}:{merchant}:{placement}` stores the latest click metadata, including source page path and shareable tracker view context when available, for quick inspection.
 - `GET /api/admin/affiliate-stats` summarizes the tracked click keys for authenticated admins, including tracker, merchant, intent, placement, per-click view-context rollups, detail-card and serial rollups, and last-click view-context hints. Internal last-click source paths are linked from the admin table for quick review.
 - Admin affiliate stats show the actual last-click destination, including dynamic exact-serial marketplace searches.
+- Admin affiliate stats can be exported as CSV for placement, destination, and last-click context analysis.
 - Affiliate links include an intent label: `singles`, `auction-comps`, `sealed-product`, or `marketplace`.
 
 Admin backups are tracker-scoped:
@@ -140,7 +141,7 @@ Admin backups are tracker-scoped:
 - Admin panel: press `Ctrl + Alt + A` on `/trackers/one-ring`.
 - Review queue: use the admin panel `Review` tab to approve or reject pending reports.
 - Pending reports show evidence-strength summaries and are prioritized by review signal count.
-- Affiliate stats: use the admin panel `Affiliate` tab to compare tracker, merchant, and placement click totals.
+- Affiliate stats: use the admin panel `Affiliate` tab to compare tracker, merchant, and placement click totals, then export CSV for outside analysis.
 - Directory marketplace links are tracked as `tracker-directory`.
 - Primary marketplace CTAs: tracker pages include top-of-page marketplace actions tracked as `tracker-top-cta`, plus contextual filtered-view actions tracked as `tracker-filtered-cta` with the active view summarized near the links.
 - Serial card grid eBay searches are tracked as `tracker-card-serial`.

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry, DiscoverySubmission, VerificationStatus, SubmissionStatus } from '../lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
 import { formatTrackerCardLabel, formatTrackerSerial } from '@/lib/tracker-data';
+import { affiliateStatsCsvFilename, buildAffiliateStatsCsv } from '@/lib/affiliate-stats-export';
 import ExternalImage from '@/components/ExternalImage';
 
 interface AdminPanelProps {
@@ -129,6 +130,17 @@ function getInternalSourcePath(sourcePath?: string) {
   }
 
   return sourcePath;
+}
+
+function downloadTextFile(filename: string, content: string) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function AdminPanel({ 
@@ -284,6 +296,17 @@ export default function AdminPanel({
       setAffiliateStatsLoading(false);
     }
   }, []);
+
+  const exportAffiliateStatsCsv = () => {
+    if (!affiliateStats || affiliateStats.rows.length === 0) {
+      return;
+    }
+
+    downloadTextFile(
+      affiliateStatsCsvFilename(affiliateStats.generatedAt),
+      buildAffiliateStatsCsv(affiliateStats),
+    );
+  };
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -1055,12 +1078,21 @@ export default function AdminPanel({
                     Last {affiliateStats?.days || 30} days, tracked by outbound marketplace clicks.
                   </p>
                 </div>
-                <button
-                  onClick={fetchAffiliateStats}
-                  className="rounded border border-ring-gold/50 px-3 py-2 text-xs font-bold text-ring-gold hover:bg-ring-gold hover:text-ring-dark"
-                >
-                  Refresh
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={exportAffiliateStatsCsv}
+                    disabled={!affiliateStats || affiliateStats.rows.length === 0}
+                    className="rounded border border-ring-gold/50 px-3 py-2 text-xs font-bold text-ring-gold hover:bg-ring-gold hover:text-ring-dark disabled:cursor-not-allowed disabled:border-ring-gold/20 disabled:text-ring-light/35 disabled:hover:bg-transparent"
+                  >
+                    Export CSV
+                  </button>
+                  <button
+                    onClick={fetchAffiliateStats}
+                    className="rounded border border-ring-gold/50 px-3 py-2 text-xs font-bold text-ring-gold hover:bg-ring-gold hover:text-ring-dark"
+                  >
+                    Refresh
+                  </button>
+                </div>
               </div>
 
               {affiliateStatsLoading && (
