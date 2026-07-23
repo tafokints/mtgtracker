@@ -16,6 +16,7 @@ jobs:
   local-verification:
     name: Local verification
     runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
 
     steps:
       - name: Check out repository
