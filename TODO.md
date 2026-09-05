@@ -4,6 +4,8 @@
 
 Goal: become a trusted, comprehensive serialized MTG reference funded by relevant affiliate purchases. Accuracy, recoverability, and useful collector workflows come before more promotional placements. Click counts measure interest; merchant-reported commissions and operating costs measure profitability.
 
+Current phase: infrastructure readiness. Zero production discoveries is acceptable and is not a launch blocker. Validate empty and populated workflows with isolated test fixtures; do not seed production just to demonstrate readiness. Content acquisition and audience growth come later.
+
 ### Now: Audit And Reliability
 
 - [x] Prevent concurrent submissions, reviews, and admin edits from overwriting each other; commit approved cards and review status together.
@@ -18,26 +20,28 @@ Goal: become a trusted, comprehensive serialized MTG reference funded by relevan
 
 Audit evidence: 146 tests pass; lint, TypeScript, production build, local smoke, and baseline production smoke pass. Dependency audit is clear. Actual Lua scripts and the Upstash client passed concurrent-write and restore checks against an isolated fakeredis/Lupa service. Mobile report selection and catalog layout were inspected at 390px, with no horizontal overflow. TCGplayer/Amazon destination checks passed; eBay 403 results remain manual-review. See docs/PROJECT_AUDIT_2026-09-05.md for scope and remaining risks. Post-push deployment checks are reported in the task handoff.
 
-### Next: Collector Trust And Growth
+### Next: Infrastructure Readiness
 
 - [ ] Unify the One Ring's canonical records across its dedicated tracker and LOTR Poster Cards, with a reviewed migration and deduplicated discovery counts.
-- [ ] Seed source-backed discoveries through admin review. Audit baseline: all three production trackers have zero approved discoveries and zero pending reports.
-- [ ] Reopen needs-more-info reports with a secure submitter follow-up path; preserve review history.
-- [ ] Preserve earlier source details and verification when approving a follow-up report; record sightings separately from first discovery and distinguish asking prices from completed sales.
 - [ ] Verify uploaded image contents, strip private metadata, and add orphan-upload cleanup with a retention policy.
 - [ ] Bound/rate-limit public telemetry and add retention so analytics cannot create unlimited Redis keys.
-- [ ] Add planned-tracker request demand reporting before prioritizing new live trackers.
-- [ ] Add mobile/browser regression checks for serial selection, submission, image preview, review, and filters; improve the 2,000-slot browsing experience.
+- [ ] Add automated backups and perform an isolated restore drill.
+- [ ] Reopen needs-more-info reports with a secure submitter follow-up path; preserve review history.
+- [ ] Preserve earlier source details and verification when approving a follow-up report; record sightings separately from first discovery and distinguish asking prices from completed sales.
+- [ ] Validate the existing tracker scaffold across single-card and multi-card sets, different serialized quantities, shared identities, themes, and relevant affiliate defaults/fallbacks.
+- [ ] Add mobile/browser regression checks for empty trackers and isolated populated fixtures: serial selection, submission, image preview, review, and filters; improve the 2,000-slot browsing experience.
 - [ ] Recheck catalog quantities, release dates, printings, and product eligibility against primary sources before launching each tracker.
 - [ ] Add per-tracker aesthetics through shared theme tokens and verify contrast/readability.
-- [ ] Add automated backups and perform an isolated restore drill.
+- [ ] Confirm mtgtrackers.com is registered/approved in eBay, Amazon Associates, and TCGplayer/Impact accounts; verify configured IDs against each dashboard and retain prominent disclosures.
 
-### Revenue And Promotion Gates
+Infrastructure acceptance: reports remain pending until authenticated review; overlapping views agree on card identity and discovery counts; image ingestion and telemetry have abuse/cost limits; backups can be restored in isolation; new trackers reuse validated configuration; affiliate destinations, attribution parameters, fallbacks, and disclosures pass checks. No minimum production discovery count is required.
 
-- [ ] Confirm mtgtrackers.com is registered/approved in eBay, Amazon Associates, and TCGplayer/Impact accounts; verify configured IDs against each dashboard.
+### Later: Content And Growth
+
+- [ ] Grow source-backed discoveries through admin review when content work begins; measure report-to-approval time. This is not an infrastructure readiness gate.
+- [ ] Add planned-tracker request demand reporting before prioritizing new live trackers.
 - [ ] Reconcile merchant-reported clicks, qualifying orders, reversals, and commissions with site telemetry. Record hosting/storage costs and net revenue monthly.
 - [ ] Verify Google Search Console ownership and submit the sitemap.
-- [ ] Seed source-backed discoveries through admin review and measure report-to-approval time before broad promotion.
 - [ ] Migrate Golden Chocobo only after canonical identity and backup work is verified; preserve the separate existing tracker.
 
 The sections below retain completed implementation history; unchecked alternatives are not current commitments.

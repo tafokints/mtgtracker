@@ -12,7 +12,7 @@ Public production reads during this audit returned:
 | Edgar Markov | 500 | 0 | 0 |
 | LOTR Poster Cards | 2,000 | 0 | 0 |
 
-These are application slots, not 2,600 distinct physical copies: the poster collection includes the same 100 One Ring copies as the dedicated tracker. Those two views currently have independent storage. Content acquisition and canonical identity are higher priorities than adding more affiliate placements.
+These are application slots, not 2,600 distinct physical copies: the poster collection includes the same 100 One Ring copies as the dedicated tracker. Those two views currently have independent storage. Zero discoveries is acceptable during the current infrastructure-first phase, not a launch blocker. Canonical identity, secure ingestion, recovery, and reusable tracker configuration take priority; content acquisition is deferred. Test populated workflows with isolated fixtures, not fabricated production discoveries.
 
 ## Findings Addressed
 
@@ -50,10 +50,10 @@ Official references: [eBay link creation](https://partnernetwork.ebay.com/resour
 ## Next Outcomes
 
 1. Establish one canonical identity for each printing/card/serial, then reconcile One Ring's two views without losing evidence or counting discoveries twice.
-2. Build a source-backed discovery dataset through review; track approval turnaround and unresolved evidence requests.
-3. Reconcile account-approved affiliate destinations with merchant-reported credited revenue and operating costs before scaling promotion.
-4. Harden image content handling, follow-up reports, telemetry limits/retention, automated backups, and restore drills.
-5. Improve the collector-first mobile layout and 2,000-slot browsing performance; introduce tracker-specific themes through shared components.
-6. Expand catalog coverage from verified sources and measured collector demand. Keep Golden Chocobo migration separate until identity and recovery are proven.
+2. Harden image content handling and telemetry limits/retention; automate backups and prove recovery with an isolated restore drill.
+3. Complete secure report follow-up and evidence history, with regression checks for both empty trackers and populated test fixtures.
+4. Validate reusable tracker scaffolding for different sets, quantities, shared card identities, themes, and affiliate defaults/fallbacks. Improve mobile workflows and 2,000-slot browsing performance.
+5. Verify affiliate account approval, configured IDs, relevant destinations, and prominent disclosures. URL checks alone cannot establish credited commissions.
+6. Later, grow source-backed discoveries and catalog coverage, then reconcile merchant-reported revenue with operating costs as traffic develops. No discovery quota gates infrastructure readiness. Keep Golden Chocobo migration separate until identity and recovery are proven.
 
 The executable priority queue and acceptance status live in TODO.md.

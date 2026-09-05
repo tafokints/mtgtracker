@@ -39,4 +39,6 @@ The user-approved TCGplayer redirect is generic: label it accordingly. Preserve 
 
 ## Product Priorities
 
+Current phase: infrastructure readiness. Zero production discoveries is acceptable and is not a launch blocker. Use isolated fixtures to verify populated workflows; defer discovery acquisition and audience growth to the later TODO queue.
+
 Prefer evidence-backed discoveries, source provenance, reliable review, searchable card/serial identity, and mobile usability. Use shared theme configuration for aesthetic differences. Refer to the current TODO queue instead of recreating completed uploads, backups, filters, or analytics.
