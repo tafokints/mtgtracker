@@ -5,6 +5,7 @@ All records are in memory. Never use this fixture in a deployment.
 """
 
 import json
+import base64
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import fakeredis
@@ -26,14 +27,32 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             command = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            if self.path in ("/pipeline", "/multi-exec"):
+                self.respond([self.execute(item) for item in command])
+            else:
+                self.respond(self.execute(command))
+        except Exception as error:
+            self.respond({"error": str(error)})
+
+    def execute(self, command):
+        try:
             result = database.execute_command(*command)
             if isinstance(result, set):
                 result = list(result)
             if isinstance(result, bool):
                 result = "OK" if result else None
-            self.respond({"result": result})
+            if self.headers.get("Upstash-Encoding") == "base64":
+                result = self.encode(result)
+            return {"result": result}
         except Exception as error:
-            self.respond({"error": str(error)})
+            return {"error": str(error)}
+
+    def encode(self, value):
+        if isinstance(value, str) and value != "OK":
+            return base64.b64encode(value.encode()).decode()
+        if isinstance(value, list):
+            return [self.encode(item) for item in value]
+        return value
 
     def respond(self, value, status=200):
         self.send_response(status)

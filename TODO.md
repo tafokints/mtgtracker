@@ -45,19 +45,22 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 - [ ] Configure private Blob, Turnstile, both image scanners, and Web Risk in isolated Preview/Development, then Production. No real scanner credentials or external moderation calls were used for the local tests. See docs/EVIDENCE_SECURITY.md.
 - [ ] Verify real private upload/read/scan/approve/revoke/delete in an isolated hosted environment before enabling intake broadly; never seed production with QA discoveries.
 - [ ] Add durable scanning jobs with authenticated delivery, retry/backoff, and reconciliation for interrupted requests. Current scanning is synchronous and supports admin retry only.
-- [ ] Add a paginated, indexed all-tracker moderation inbox and independent submission records; current review remains per tracker and report arrays still grow.
+- [ ] Add a paginated, indexed all-tracker moderation inbox and independent submission/event records; preserve printing-based copy IDs and journal rules. Current review remains per tracker and arrays still grow.
 - [ ] Add named moderator/admin roles, MFA, server-derived reviewer identity, and append-only audit history before inviting more moderators.
 - [ ] Add safe review/escalation for content-filter false positives, malicious-content reporting/takedown, and later source rechecks. No manual scanner override exists; legitimate MTG artwork may be held.
 
 ### Next: Infrastructure Readiness
 
-- [ ] Unify the One Ring's canonical records across its dedicated tracker and LOTR Poster Cards, with a reviewed migration and deduplicated discovery counts.
+- [x] Implement printing-based physical-copy identity, shared One Ring/poster views and queues, cross-view evidence ownership, atomic related-record writes/restore, and deduplicated discovery feeds.
+- [x] Add explicit revision-checked reconciliation for historical alias conflicts, archiving original records in the same transaction. No production reconciliation has been run.
+- [x] Add append-only card events and one-to-many price/grading histories. Preserve first-discovery facts on sightings, explicitly confirm corrections, classify prices/currencies, retain certificates/regrades/ungraded observations, and keep admin metadata edits from creating discoveries.
+- [x] Add audited revoke/reopen actions and private, expiring needs-info receipts with bounded replies/owned attachments. Check retry payloads instead of silently dropping changed details; retain merged observations and reject stale merges.
+- [x] Add schema-v2 journal/origin-aware tracker backups and nested restore validation; keep private baselines and withdrawn events out of public card responses. This does not include Blob bytes or asset metadata.
+- [ ] Preview any production shared-copy conflicts and review reconciliation decisions after taking complete backups; do not silently choose a legacy record.
 - [ ] Complete the protected-intake service setup and hosted lifecycle gate above. Earlier public Blob setup advice is superseded: use a private store.
 - [ ] Add orphan-upload cleanup, a retention policy, and audited admin removal. Detaching a form attachment is not physical deletion; report hard-delete is not implemented.
 - [ ] Bound/rate-limit public telemetry and add retention so analytics cannot create unlimited Redis keys.
 - [ ] Add automated backups covering tracker data, `evidence:v1:*` asset records, and private Blob files; perform an isolated restore drill. Existing tracker exports alone do not restore evidence storage.
-- [ ] Reopen needs-more-info reports with a secure submitter follow-up path; preserve review history.
-- [ ] Preserve earlier source details and verification when approving a follow-up report; record sightings separately from first discovery and distinguish asking prices from completed sales.
 - [ ] Validate the existing tracker scaffold across single-card and multi-card sets, different serialized quantities, shared identities, themes, and relevant affiliate defaults/fallbacks.
 - [ ] Add mobile/browser regression checks for empty trackers and isolated populated fixtures: serial selection, submission, image preview, review, and filters; improve the 2,000-slot browsing experience.
 - [ ] Locate primary distribution documentation for the two Secret Lair serialized promos; their pages currently disclose the source limitation. Refresh the printing snapshot for new releases and manually review newly encountered sets.
@@ -65,6 +68,8 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 - [ ] Confirm mtgtrackers.com is registered/approved in eBay, Amazon Associates, and TCGplayer/Impact accounts; verify configured IDs against each dashboard and retain prominent disclosures.
 
 Infrastructure acceptance: reports remain pending until authenticated review; overlapping views agree on card identity and discovery counts; image ingestion and telemetry have abuse/cost limits; backups can be restored in isolation; new trackers reuse validated configuration; affiliate destinations, attribution parameters, fallbacks, and disclosures pass checks. No minimum production discovery count is required.
+
+Backend relationship/workflow details and reconciliation instructions are in docs/DATA_MODEL.md. The current local checkpoint has 307 passing tests across 23 files, successful actual-SDK/Lua shared-copy CAS and archived-reconciliation checks against a disposable emulator, and Playwright checks at 320/390/1440px with intercepted UI fixtures, including price/ungraded submissions and public grading history. Hosted provider/Blob verification remains outstanding. The parent tracker and affiliate configuration/disclosures were not changed.
 
 ### Later: Content And Growth
 

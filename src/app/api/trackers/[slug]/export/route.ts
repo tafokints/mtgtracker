@@ -8,7 +8,7 @@ import { getTrackerState } from '@/lib/tracker-store';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const BACKUP_SCHEMA_VERSION = 1;
+const BACKUP_SCHEMA_VERSION = 2;
 
 type RouteContext = {
   params: Promise<{ slug: string }>;

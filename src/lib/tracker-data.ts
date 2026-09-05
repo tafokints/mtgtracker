@@ -1,15 +1,19 @@
 import { Redis } from '@upstash/redis';
-import { DiscoverySubmission, EvidenceImage, PriceHistoryEntry, SerializedRingCard, VerificationStatus } from './types';
-import { TrackerCardDefinition, TrackerSummary } from './trackers';
+import { DiscoverySubmission, EvidenceImage, SerializedRingCard, VerificationStatus } from './types';
+import { getDefinitionPrintingId, TrackerCardDefinition, TrackerSummary } from './trackers';
+import { appendCardEvent, rebuildCardHistory } from './card-history';
 
 export type ResolvedTrackerCardDefinition = Required<Pick<TrackerCardDefinition, 'slug' | 'title'>> & {
   total: number;
   serialPadding: number;
   referenceImage?: string;
   scryfallUrl?: string;
+  canonicalTrackerSlug?: string;
+  printingId?: string;
 };
 
 export interface RecentTrackerDiscovery {
+  copyId?: string;
   trackerSlug: string;
   trackerTitle: string;
   trackerHref: string;
@@ -35,6 +39,8 @@ export function getTrackerCardDefinitions(tracker: TrackerSummary): ResolvedTrac
       serialPadding: definition.serialPadding || tracker.serialPadding,
       referenceImage: definition.referenceImage || tracker.referenceImage,
       scryfallUrl: definition.scryfallUrl,
+      canonicalTrackerSlug: definition.canonicalTrackerSlug,
+      printingId: getDefinitionPrintingId(tracker, definition),
     }));
   }
 
@@ -44,6 +50,7 @@ export function getTrackerCardDefinitions(tracker: TrackerSummary): ResolvedTrac
     total: tracker.total,
     serialPadding: tracker.serialPadding,
     referenceImage: tracker.referenceImage,
+    printingId: getDefinitionPrintingId(tracker),
   }];
 }
 
@@ -74,6 +81,8 @@ function buildTrackerCardSlot(tracker: TrackerSummary, definition: ResolvedTrack
 
   return {
     id,
+    copyId: `copy:${definition.printingId || `${tracker.slug}:${definition.slug}`}:${serialId}`,
+    printingId: definition.printingId,
     cardSlug: definition.slug,
     cardTitle: definition.title,
     serialTotal: definition.total,
@@ -168,7 +177,7 @@ export function createInitialTrackerCards(tracker: TrackerSummary): SerializedRi
 export function normalizeTrackerCard(tracker: TrackerSummary, card: Partial<SerializedRingCard> & { id: number }): SerializedRingCard {
   const slot = getTrackerCardSlot(tracker, card.id);
 
-  return {
+  const normalized: SerializedRingCard = {
     id: card.id,
     cardSlug: card.cardSlug || slot?.cardSlug,
     cardTitle: card.cardTitle || slot?.cardTitle,
@@ -188,8 +197,15 @@ export function normalizeTrackerCard(tracker: TrackerSummary, card: Partial<Seri
     priceDate: card.priceDate,
     priceHistory: card.priceHistory || [],
     grading: card.grading,
+    copyId: slot?.copyId,
+    printingId: slot?.printingId,
+    historyBaseline: card.historyBaseline,
+    history: card.history || [],
+    gradingHistory: card.gradingHistory || [],
     pendingReports: card.pendingReports || 0,
   };
+  rebuildCardHistory(normalized);
+  return normalized;
 }
 
 export function withPendingReportCounts(cards: SerializedRingCard[], submissions: DiscoverySubmission[]) {
@@ -231,6 +247,8 @@ export function getTrackerDirectoryStats(cards: SerializedRingCard[], submission
 }
 
 async function getStoredTrackerCardsSnapshot(redis: Pick<Redis, 'get'>, tracker: TrackerSummary) {
+  const related = await relatedSnapshot(redis, tracker);
+  if (related) return related.cards;
   const cards = await redis.get(tracker.storage.cardsKey);
   if (Array.isArray(cards) && cards.length > 0) {
     return cards.map((card) => normalizeTrackerCard(tracker, card));
@@ -247,6 +265,8 @@ async function getStoredTrackerCardsSnapshot(redis: Pick<Redis, 'get'>, tracker:
 }
 
 export async function getTrackerDirectoryStatsSnapshot(redis: Pick<Redis, 'get'>, tracker: TrackerSummary) {
+  const related = await relatedSnapshot(redis, tracker);
+  if (related) return getTrackerDirectoryStats(related.cards, related.submissions);
   const [cards, submissions] = await Promise.all([
     getStoredTrackerCardsSnapshot(redis, tracker),
     redis.get(tracker.storage.submissionsKey),
@@ -266,6 +286,7 @@ export async function getRecentTrackerDiscoveriesSnapshot(redis: Pick<Redis, 'ge
       .filter((card) => card.found)
       .map((card): RecentTrackerDiscovery => ({
         trackerSlug: tracker.slug,
+        copyId: card.copyId,
         trackerTitle: tracker.title,
         trackerHref: tracker.href,
         detailHref: `${tracker.href}?${getTrackerCardDeepLinkParams(tracker, card).toString()}`,
@@ -284,12 +305,34 @@ export async function getRecentTrackerDiscoveriesSnapshot(redis: Pick<Redis, 'ge
 
   return discoveries
     .flat()
+    .filter((card, index, all) => all.findIndex((candidate) => (candidate.copyId || `${candidate.trackerSlug}:${candidate.cardId}`) === (card.copyId || `${card.trackerSlug}:${card.cardId}`)) === index)
     .sort((a, b) => {
       const dateDifference = new Date(b.dateFound || 0).getTime() - new Date(a.dateFound || 0).getTime();
       if (dateDifference !== 0) return dateDifference;
       return a.trackerTitle.localeCompare(b.trackerTitle) || a.label.localeCompare(b.label);
     })
     .slice(0, limit);
+}
+
+async function relatedSnapshot(redis: Pick<Redis, 'get'>, tracker: TrackerSummary) {
+  const { relatedTrackers, decodeRelatedCards, projectRelatedState, cardOwner, hasRecordedFacts } = await import('./tracker-relationships');
+  const related = relatedTrackers(tracker);
+  if (related.length <= 1) return undefined;
+  const states = new Map<string, { cards: SerializedRingCard[]; submissions: DiscoverySubmission[] }>();
+  for (const candidate of related) {
+    let stored = await redis.get(candidate.storage.cardsKey);
+    if (stored == null) {
+      for (const key of candidate.storage.legacyCardsKeys || []) {
+        stored = await redis.get(key);
+        if (stored != null) break;
+      }
+    }
+    const cards = decodeRelatedCards(candidate, stored);
+    if (cards.some((card) => cardOwner(candidate, card).slug !== candidate.slug && hasRecordedFacts(card))) throw new Error('Legacy shared copies require reconciliation');
+    const submissions = await redis.get<DiscoverySubmission[]>(candidate.storage.submissionsKey);
+    states.set(candidate.slug, { cards, submissions: submissions || [] });
+  }
+  return projectRelatedState(tracker, states);
 }
 
 export async function getTrackerCards(redis: Redis, tracker: TrackerSummary): Promise<SerializedRingCard[]> {
@@ -317,8 +360,8 @@ export async function getTrackerCards(redis: Redis, tracker: TrackerSummary): Pr
 }
 
 export async function getTrackerSubmissions(redis: Redis, tracker: TrackerSummary) {
-  const submissions: DiscoverySubmission[] = (await redis.get(tracker.storage.submissionsKey)) || [];
-  return submissions;
+  const { getTrackerState } = await import('./tracker-store');
+  return (await getTrackerState(redis, tracker)).submissions;
 }
 
 export function sortSubmissions(submissions: DiscoverySubmission[]) {
@@ -371,6 +414,8 @@ export function applyApprovedSubmission(
     verificationStatus?: VerificationStatus;
     reviewNotes?: string;
     mergedEvidenceSubmissions?: DiscoverySubmission[];
+    applyCorrection?: boolean;
+    eventId?: string;
   }
 ) {
   const cardIndex = cards.findIndex((card) => card.id === submission.cardId);
@@ -389,47 +434,49 @@ export function applyApprovedSubmission(
   const mergedEvidence = (options.mergedEvidenceSubmissions || []).flatMap((mergedSubmission) => (
     evidenceFromSubmission(mergedSubmission, 'Merged report')
   ));
-  const selectedImageEvidence =
-    options.imageUrl && !approvedEvidence.some((image) => image.url === options.imageUrl)
-      ? [{
-          url: options.imageUrl,
-          caption: 'Admin selected primary image',
-          sourceSubmissionId: submission.id,
-          sourceUrl: submission.link,
-          sourceType: submission.sourceType,
-        }]
-      : [];
-
-  cards[cardIndex] = {
-    ...cards[cardIndex],
+  const recordedAt = submission.reviewedAt || submission.submittedAt;
+  const eventId = options.eventId || `report:${submission.id}:${recordedAt}`;
+  const facts = {
     found: true,
     foundBy: submission.foundBy,
     dateFound: submission.dateFound,
     link: submission.link,
     sourceType: submission.sourceType,
     verificationStatus: options.verificationStatus || submission.requestedVerificationStatus || 'source-linked',
-    notes: [submission.notes, options.reviewNotes].filter(Boolean).join('\n\n') || undefined,
-    image: selectedImageUrl,
-    evidenceImages: mergeEvidenceImages(cards[cardIndex].evidenceImages || [], [
-      ...selectedImageEvidence,
+    notes: submission.notes,
+    image: approvedEvidence.concat(mergedEvidence).some((image) => image.url === selectedImageUrl) ? selectedImageUrl : undefined,
+    evidenceImages: mergeEvidenceImages([], [
       ...approvedEvidence,
       ...mergedEvidence,
     ]),
   };
-
-  if (submission.price !== undefined) {
-    const priceEntry: PriceHistoryEntry = {
-      price: submission.price,
-      date: submission.dateFound || new Date().toISOString().split('T')[0],
-      soldBy: submission.foundBy,
-    };
-
-    cards[cardIndex].price = submission.price;
-    cards[cardIndex].priceDate = priceEntry.date;
-    cards[cardIndex].priceHistory = [
-      priceEntry,
-      ...(cards[cardIndex].priceHistory || []),
-    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  appendCardEvent(cards[cardIndex], {
+    id: eventId,
+    kind: submission.kind === 'correction' && options.applyCorrection ? 'correction' : (cards[cardIndex].found ? 'sighting' : 'discovery'),
+    recordedAt,
+    sourceSubmissionId: submission.id,
+    facts: Object.fromEntries(Object.entries(facts).filter(([, value]) => value !== undefined)),
+    price: submission.price !== undefined ? {
+      id: `price:${eventId}`, price: submission.price,
+      date: submission.priceDate || '', kind: submission.priceKind || 'unknown', currency: submission.currency,
+      sourceUrl: submission.link, sourceSubmissionId: submission.id, recordedAt,
+    } : undefined,
+    grading: submission.grading ? {
+      id: `grading:${eventId}`, status: 'graded', grading: submission.grading,
+      occurredOn: submission.grading.dateGraded, recordedAt, sourceSubmissionId: submission.id,
+    } : undefined,
+  });
+  for (const merged of options.mergedEvidenceSubmissions || []) {
+    const mergedId = `${eventId}:merged:${merged.id}`;
+    appendCardEvent(cards[cardIndex], {
+      id: mergedId, kind: 'sighting', recordedAt, sourceSubmissionId: submission.id,
+      facts: Object.fromEntries(Object.entries({ notes: merged.notes, link: merged.link, dateFound: merged.dateFound, sourceType: merged.sourceType }).filter(([, value]) => value !== undefined)),
+      price: merged.price !== undefined ? {
+        id: `price:${mergedId}`, price: merged.price, kind: merged.priceKind || 'unknown', currency: merged.currency,
+        date: merged.priceDate || '', sourceUrl: merged.link, sourceSubmissionId: merged.id, recordedAt,
+      } : undefined,
+      grading: merged.grading ? { id: `grading:${mergedId}`, status: 'graded', grading: merged.grading, occurredOn: merged.grading.dateGraded, recordedAt, sourceSubmissionId: merged.id } : undefined,
+    });
   }
 
   return true;

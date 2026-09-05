@@ -17,14 +17,14 @@ import ReviewSourceLink from '@/components/ReviewSourceLink';
 interface AdminPanelProps {
   tracker: TrackerSummary;
   cards: SerializedRingCard[];
-  onPriceUpdate: (cardId: number, price: number) => void;
+  onPriceUpdate: (cardId: number, entry: PriceHistoryEntry) => Promise<void>;
   onImageUpdate: (cardId: number, imageUrl: string) => Promise<void>;
-  onGradingUpdate: (cardId: number, grading: GradingInfo) => void;
-  onPriceHistoryAdd: (cardId: number, entry: PriceHistoryEntry) => void;
+  onGradingUpdate: (cardId: number, grading: GradingInfo | undefined, status?: 'graded' | 'ungraded', occurredOn?: string) => Promise<void>;
+  onPriceHistoryAdd: (cardId: number, entry: PriceHistoryEntry) => Promise<void>;
   onRefresh: () => void;
 }
 
-type ReviewAction = 'approve' | 'reject' | 'needs-more-info' | 'duplicate' | 'cannot-verify';
+type ReviewAction = 'approve' | 'reject' | 'needs-more-info' | 'duplicate' | 'cannot-verify' | 'reopen' | 'revoke';
 type AdminTab = 'review' | 'price' | 'image' | 'grading' | 'history' | 'affiliate';
 
 interface AffiliateStatsRow {
@@ -208,6 +208,8 @@ interface AffiliateStatsResponse {
 }
 
 const REVIEW_ACTION_LABELS: Record<ReviewAction, string> = {
+  reopen: 'Reopen',
+  revoke: 'Retract approval',
   approve: 'Approve',
   reject: 'Reject',
   'needs-more-info': 'Needs more info',
@@ -216,6 +218,7 @@ const REVIEW_ACTION_LABELS: Record<ReviewAction, string> = {
 };
 
 const SUBMISSION_STATUS_LABELS: Record<SubmissionStatus, string> = {
+  revoked: 'Retracted',
   pending: 'Pending',
   approved: 'Approved',
   rejected: 'Rejected',
@@ -223,6 +226,17 @@ const SUBMISSION_STATUS_LABELS: Record<SubmissionStatus, string> = {
   duplicate: 'Duplicate',
   'cannot-verify': 'Cannot verify',
 };
+
+function PriceObservationFields({ kind, setKind, currency, setCurrency, source, setSource }: {
+  kind: NonNullable<PriceHistoryEntry['kind']>; setKind: (kind: NonNullable<PriceHistoryEntry['kind']>) => void;
+  currency: string; setCurrency: (currency: string) => void; source: string; setSource: (source: string) => void;
+}) {
+  return <fieldset className="mt-3 grid min-w-0 gap-3 text-sm text-ring-gold">
+    <label>Price type<select value={kind} onChange={(event) => setKind(event.target.value as NonNullable<PriceHistoryEntry['kind']>)} className="mt-1 block w-full rounded bg-ring-light p-2 text-ring-dark"><option value="unknown">Unclassified</option><option value="asking-price">Asking price</option><option value="completed-sale">Completed sale</option></select></label>
+    <label>Currency<select value={currency} onChange={(event) => setCurrency(event.target.value)} className="mt-1 block w-full rounded bg-ring-light p-2 text-ring-dark">{['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY'].map((code) => <option key={code}>{code}</option>)}</select></label>
+    <label>Source URL (optional)<input type="url" value={source} onChange={(event) => setSource(event.target.value)} className="mt-1 block w-full rounded bg-ring-light p-2 text-ring-dark" /></label>
+  </fieldset>;
+}
 
 function AffiliateMetric({ label, value, detail }: { label: string; value: string | number; detail?: string }) {
   return (
@@ -549,6 +563,18 @@ export default function AdminPanel({
   const [affiliateStats, setAffiliateStats] = useState<AffiliateStatsResponse | null>(null);
   const [affiliateStatsLoading, setAffiliateStatsLoading] = useState(false);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const [correctionConfirmations, setCorrectionConfirmations] = useState<Record<string, boolean>>({});
+  const mutationLock = useRef(false);
+  const [mutating, setMutating] = useState(false);
+
+  async function runMutation(action: () => Promise<void>) {
+    if (mutationLock.current) return;
+    mutationLock.current = true;
+    setMutating(true);
+    try { await action(); }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Update failed'); }
+    finally { mutationLock.current = false; setMutating(false); }
+  }
   const [imageOverrides, setImageOverrides] = useState<Record<string, string>>({});
   const [verificationOverrides, setVerificationOverrides] = useState<Record<string, VerificationStatus>>({});
   const [mergeSelections, setMergeSelections] = useState<Record<string, string[]>>({});
@@ -619,6 +645,11 @@ export default function AdminPanel({
   const [soldBy, setSoldBy] = useState('');
   const [soldTo, setSoldTo] = useState('');
   const [saleDate, setSaleDate] = useState('');
+  const [priceKind, setPriceKind] = useState<NonNullable<PriceHistoryEntry['kind']>>('unknown');
+  const [priceCurrency, setPriceCurrency] = useState('USD');
+  const [priceSource, setPriceSource] = useState('');
+  const [gradingStatus, setGradingStatus] = useState<'graded' | 'ungraded'>('graded');
+  const [certificateNumber, setCertificateNumber] = useState('');
 
   const fetchSubmissions = useCallback(async () => {
     setSubmissionsLoading(true);
@@ -818,7 +849,7 @@ export default function AdminPanel({
     event.target.value = '';
 
     if (!file) return;
-    if (!window.confirm(`Restore ${tracker.title} from ${file.name}? This overwrites current cards and submissions.`)) {
+    if (!window.confirm(`Restore ${tracker.title} from ${file.name}? This overwrites current cards and submissions. Shared copies will change on every page that shows them.`)) {
       return;
     }
 
@@ -855,6 +886,7 @@ export default function AdminPanel({
   };
 
   const reviewSubmission = async (submission: DiscoverySubmission, action: ReviewAction) => {
+    if (action === 'revoke' && !window.confirm('Retract this approval and remove its public contributions?')) return;
     try {
       const response = await fetch(`${trackerApiBase}/submissions`, {
         method: 'POST',
@@ -868,6 +900,7 @@ export default function AdminPanel({
           imageUrl: imageOverrides[submission.id]?.trim() || undefined,
           verificationStatus: verificationOverrides[submission.id] || submission.requestedVerificationStatus,
           mergeSubmissionIds: mergeSelections[submission.id] || [],
+          applyCorrection: correctionConfirmations[submission.id] || false,
         }),
       });
 
@@ -879,7 +912,8 @@ export default function AdminPanel({
         if (response.status === 401) {
           setIsAuthenticated(false);
         }
-        setMessage('Review action failed');
+        const data = await response.json().catch(() => null);
+        setMessage(data?.message || 'Review action failed');
       }
     } catch (error) {
       console.error('Error reviewing submission:', error);
@@ -903,7 +937,7 @@ export default function AdminPanel({
     });
   };
 
-  const handlePriceUpdate = () => {
+  const handlePriceUpdate = async () => {
     if (!selectedCard || !price) {
       setMessage('Please select a card and enter a price');
       return;
@@ -915,7 +949,8 @@ export default function AdminPanel({
       return;
     }
 
-    onPriceUpdate(selectedCard, priceValue);
+    try { await onPriceUpdate(selectedCard, { price: priceValue, date: saleDate, kind: priceKind, currency: priceCurrency, sourceUrl: priceSource || undefined }); }
+    catch (error) { setMessage((error as Error).message); return; }
     const card = cards.find((candidate) => candidate.id === selectedCard);
     setMessage(`Price updated for ${card ? formatTrackerCardLabel(tracker, card) : serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
     setPrice('');
@@ -941,14 +976,14 @@ export default function AdminPanel({
     setSelectedCard(null);
   };
 
-  const handleGradingUpdate = () => {
-    if (!selectedCard || !gradingService || !grade) {
+  const handleGradingUpdate = async () => {
+    if (!selectedCard || (gradingStatus === 'graded' && (!gradingService || !grade))) {
       setMessage('Please select a card and enter grading service and grade');
       return;
     }
 
     const gradeValue = parseFloat(grade);
-    if (isNaN(gradeValue) || gradeValue < 0) {
+    if (gradingStatus === 'graded' && (isNaN(gradeValue) || gradeValue < 0 || gradeValue > 10)) {
       setMessage('Please enter a valid grade');
       return;
     }
@@ -956,10 +991,12 @@ export default function AdminPanel({
     const gradingInfo: GradingInfo = {
       service: gradingService,
       grade: gradeValue,
-      dateGraded: dateGraded || new Date().toISOString().split('T')[0]
+      dateGraded: dateGraded || undefined,
+      certificateNumber: certificateNumber || undefined,
     };
 
-    onGradingUpdate(selectedCard, gradingInfo);
+    try { await onGradingUpdate(selectedCard, gradingStatus === 'graded' ? gradingInfo : undefined, gradingStatus, dateGraded || undefined); }
+    catch (error) { setMessage((error as Error).message); return; }
     const card = cards.find((candidate) => candidate.id === selectedCard);
     setMessage(`Grading updated for ${card ? formatTrackerCardLabel(tracker, card) : serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
     setGradingService('');
@@ -968,9 +1005,9 @@ export default function AdminPanel({
     setSelectedCard(null);
   };
 
-  const handlePriceHistoryAdd = () => {
-    if (!selectedCard || !historyPrice || !saleDate) {
-      setMessage('Please select a card and enter price and sale date');
+  const handlePriceHistoryAdd = async () => {
+    if (!selectedCard || !historyPrice || (priceKind !== 'unknown' && !saleDate)) {
+      setMessage('Select a card and price; classified observations also require a date');
       return;
     }
 
@@ -983,11 +1020,15 @@ export default function AdminPanel({
     const historyEntry: PriceHistoryEntry = {
       price: priceValue,
       date: saleDate,
-      soldBy: soldBy || undefined,
-      soldTo: soldTo || undefined
+      kind: priceKind,
+      currency: priceCurrency,
+      sourceUrl: priceSource || undefined,
+      soldBy: priceKind === 'completed-sale' ? soldBy || undefined : undefined,
+      soldTo: priceKind === 'completed-sale' ? soldTo || undefined : undefined
     };
 
-    onPriceHistoryAdd(selectedCard, historyEntry);
+    try { await onPriceHistoryAdd(selectedCard, historyEntry); }
+    catch (error) { setMessage((error as Error).message); return; }
     const card = cards.find((candidate) => candidate.id === selectedCard);
     setMessage(`Price history added for ${card ? formatTrackerCardLabel(tracker, card) : serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
     setHistoryPrice('');
@@ -1101,10 +1142,11 @@ export default function AdminPanel({
         {authChecked && isAuthenticated && (
         <div className="space-y-4">
           <div>
-            <label className="block text-ring-gold text-sm font-bold mb-2">
+            <label htmlFor="admin-copy-select" className="block text-ring-gold text-sm font-bold mb-2">
               Select Card
             </label>
             <select
+              id="admin-copy-select"
               value={selectedCard || ''}
               onChange={(e) => handleCardSelect(parseInt(e.target.value) || null)}
               className="w-full bg-ring-light text-ring-dark border border-ring-gold rounded py-2 px-3"
@@ -1362,7 +1404,7 @@ export default function AdminPanel({
                   </div>
 
                   <div>
-                    <label className="block text-ring-gold text-xs font-bold mb-1">Review notes</label>
+                    <label className="block text-ring-gold text-xs font-bold mb-1">Review notes (shared with submitter for Needs Info)</label>
                     <textarea
                       rows={2}
                       value={reviewNotes[submission.id] || ''}
@@ -1371,34 +1413,39 @@ export default function AdminPanel({
                     />
                   </div>
 
+                  {submission.kind === 'correction' && <label className="flex items-start gap-2 text-sm text-ring-light"><input type="checkbox" checked={correctionConfirmations[submission.id] || false} onChange={(event) => setCorrectionConfirmations({ ...correctionConfirmations, [submission.id]: event.target.checked })} />Replace the supplied recorded facts with this correction</label>}
+                  <p className="text-xs text-ring-light">Report type: {submission.kind || 'discovery'}</p>
+                  {submission.price !== undefined && <p className="text-xs text-ring-light">{submission.priceKind || 'unclassified'}: {submission.currency || 'Currency unknown'} {submission.price} - {submission.priceDate || 'Date unknown'}</p>}
+                  {submission.grading && <p className="text-xs text-ring-light">Grading: {submission.grading.service} {submission.grading.grade} - {submission.grading.certificateNumber || 'No certificate recorded'}</p>}
+                  {submission.followUps?.map((reply) => <p key={reply.id} className="whitespace-pre-wrap break-words text-sm text-ring-light">Follow-up {reply.at.slice(0, 10)}: {reply.notes}</p>)}
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <button
-                      onClick={() => reviewSubmission(submission, 'approve')}
-                      disabled={(submission.evidenceImages || []).some((image) => !evidenceIdFromUrl(image.url) || submission.evidenceSafety?.find((item) => item.url === image.url)?.status !== 'clean')}
+                      onClick={() => runMutation(() => reviewSubmission(submission, 'approve'))}
+                      disabled={mutating || (submission.evidenceImages || []).some((image) => !evidenceIdFromUrl(image.url) || submission.evidenceSafety?.find((item) => item.url === image.url)?.status !== 'clean')}
                       className="bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-3 rounded text-sm"
                     >
                       Approve
                     </button>
                     <button
-                      onClick={() => reviewSubmission(submission, 'reject')}
+                      disabled={mutating} onClick={() => runMutation(() => reviewSubmission(submission, 'reject'))}
                       className="border border-red-400/60 text-red-200 hover:bg-red-900/30 font-bold py-2 px-3 rounded text-sm"
                     >
                       Reject
                     </button>
                     <button
-                      onClick={() => reviewSubmission(submission, 'needs-more-info')}
+                      disabled={mutating} onClick={() => runMutation(() => reviewSubmission(submission, 'needs-more-info'))}
                       className="border border-blue-300/60 text-blue-100 hover:bg-blue-900/30 font-bold py-2 px-3 rounded text-sm"
                     >
                       Needs Info
                     </button>
                     <button
-                      onClick={() => reviewSubmission(submission, 'duplicate')}
+                      disabled={mutating} onClick={() => runMutation(() => reviewSubmission(submission, 'duplicate'))}
                       className="border border-yellow-300/60 text-yellow-100 hover:bg-yellow-900/30 font-bold py-2 px-3 rounded text-sm"
                     >
                       Duplicate
                     </button>
                     <button
-                      onClick={() => reviewSubmission(submission, 'cannot-verify')}
+                      disabled={mutating} onClick={() => runMutation(() => reviewSubmission(submission, 'cannot-verify'))}
                       className="border border-ring-light/40 text-ring-light hover:bg-ring-light/10 font-bold py-2 px-3 rounded text-sm sm:col-span-2"
                     >
                       Cannot Verify
@@ -1543,6 +1590,11 @@ export default function AdminPanel({
                       {submission.reviewNotes && (
                         <p className="mt-2 text-xs text-ring-light">Notes: {submission.reviewNotes}</p>
                       )}
+                      <details className="mt-2 text-xs text-ring-light"><summary>Review history</summary>{submission.reviewHistory?.map((event) => <p key={event.id} className="mt-2 break-words">{event.at} - {event.actor}: {event.action}{event.notes ? ` - ${event.notes}` : ''}</p>)}</details>
+                      {(submission.status === 'approved' || ['needs-more-info', 'rejected', 'cannot-verify', 'revoked', 'duplicate'].includes(submission.status)) && <div className="mt-3 space-y-2">
+                        <label className="block text-xs text-ring-light">Reason<textarea rows={2} value={reviewNotes[submission.id] || ''} onChange={(event) => setReviewNotes({ ...reviewNotes, [submission.id]: event.target.value })} className="mt-1 block w-full rounded bg-ring-light p-2 text-ring-dark" /></label>
+                        <button type="button" disabled={mutating} onClick={() => runMutation(() => reviewSubmission(submission, submission.status === 'approved' ? 'revoke' : 'reopen'))} className="rounded border border-ring-gold px-3 py-2 text-sm text-ring-gold">{submission.status === 'approved' ? 'Retract approval' : 'Reopen report'}</button>
+                      </div>}
                     </div>
                   ))}
                 </div>
@@ -1554,7 +1606,7 @@ export default function AdminPanel({
           {activeTab === 'price' && (
             <div>
               <label className="block text-ring-gold text-sm font-bold mb-2">
-                Recent Sale Price ($)
+                Price observation
               </label>
               <input
                 type="number"
@@ -1563,8 +1615,10 @@ export default function AdminPanel({
                 placeholder="Enter price..."
                 className="w-full bg-ring-light text-ring-dark border border-ring-gold rounded py-2 px-3"
               />
+              <PriceObservationFields kind={priceKind} setKind={setPriceKind} currency={priceCurrency} setCurrency={setPriceCurrency} source={priceSource} setSource={setPriceSource} />
+              <label className="mt-3 block text-sm text-ring-gold">Observation date<input type="date" value={saleDate} onChange={(event) => setSaleDate(event.target.value)} className="mt-1 block w-full rounded bg-ring-light p-2 text-ring-dark" /></label>
               <button
-                onClick={handlePriceUpdate}
+                disabled={mutating} onClick={() => runMutation(handlePriceUpdate)}
                 className="w-full bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-4 rounded mt-2"
               >
                 Update Price
@@ -1900,7 +1954,7 @@ export default function AdminPanel({
                 {(cards.find((card) => card.id === selectedCard)?.evidenceImages || []).filter((image) => evidenceIdFromUrl(image.url)).map((image, index) => <option key={image.url} value={image.url}>Evidence {index + 1}</option>)}
               </select>
               <button
-                onClick={handleImageUpdate}
+                disabled={mutating} onClick={() => runMutation(handleImageUpdate)}
                 className="w-full bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-4 rounded mt-2"
               >
                 Update Image
@@ -1911,6 +1965,8 @@ export default function AdminPanel({
           {/* Grading Tab */}
           {activeTab === 'grading' && (
             <div className="space-y-3">
+              <label className="block text-sm text-ring-gold">Observed status<select value={gradingStatus} onChange={(event) => setGradingStatus(event.target.value as 'graded' | 'ungraded')} className="mt-1 block w-full rounded bg-ring-light p-2 text-ring-dark"><option value="graded">Graded</option><option value="ungraded">Ungraded</option></select></label>
+              {gradingStatus === 'graded' && <>
               <div>
                 <label className="block text-ring-gold text-sm font-bold mb-2">
                   Grading Service
@@ -1947,8 +2003,11 @@ export default function AdminPanel({
                   className="w-full bg-ring-light text-ring-dark border border-ring-gold rounded py-2 px-3"
                 />
               </div>
+              <label className="block text-sm text-ring-gold">Certificate number<input value={certificateNumber} maxLength={100} onChange={(event) => setCertificateNumber(event.target.value)} className="mt-1 block w-full rounded bg-ring-light p-2 text-ring-dark" /></label>
+              </>}
+              {gradingStatus === 'ungraded' && <label className="block text-sm text-ring-gold">Observation date<input type="date" value={dateGraded} onChange={(event) => setDateGraded(event.target.value)} className="mt-1 block w-full rounded bg-ring-light p-2 text-ring-dark" /></label>}
               <button
-                onClick={handleGradingUpdate}
+                disabled={mutating} onClick={() => runMutation(handleGradingUpdate)}
                 className="w-full bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-4 rounded"
               >
                 Update Grading
@@ -1959,9 +2018,10 @@ export default function AdminPanel({
           {/* Price History Tab */}
           {activeTab === 'history' && (
             <div className="space-y-3">
+              <PriceObservationFields kind={priceKind} setKind={setPriceKind} currency={priceCurrency} setCurrency={setPriceCurrency} source={priceSource} setSource={setPriceSource} />
               <div>
                 <label className="block text-ring-gold text-sm font-bold mb-2">
-                  Sale Price ($)
+                  Price observation
                 </label>
                 <input
                   type="number"
@@ -1973,7 +2033,7 @@ export default function AdminPanel({
               </div>
               <div>
                 <label className="block text-ring-gold text-sm font-bold mb-2">
-                  Sale Date
+                  Observation or transaction date
                 </label>
                 <input
                   type="date"
@@ -2007,7 +2067,7 @@ export default function AdminPanel({
                 />
               </div>
               <button
-                onClick={handlePriceHistoryAdd}
+                disabled={mutating} onClick={() => runMutation(handlePriceHistoryAdd)}
                 className="w-full bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-4 rounded"
               >
                 Add to Price History

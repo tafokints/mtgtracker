@@ -1,4 +1,6 @@
-import { SourceType, VerificationStatus } from './types';
+import { GradingInfo, PriceHistoryEntry, ReportKind, SourceType, VerificationStatus } from './types';
+import { parseGradingInfo, parsePriceObservation } from './history-validation';
+import { isDateOnly } from './admin-validation';
 import { EVIDENCE_ID, MAX_EVIDENCE_IMAGES, normalizeSourceUrl } from './evidence-policy';
 
 const SOURCE_TYPES: SourceType[] = ['marketplace', 'grading-pop', 'social', 'article', 'private-sale', 'other'];
@@ -16,6 +18,11 @@ export interface ValidatedSubmissionInput {
   price?: number;
   evidenceAssetIds: string[];
   notes?: string;
+  kind: ReportKind;
+  priceKind?: PriceHistoryEntry['kind'];
+  currency?: string;
+  priceDate?: string;
+  grading?: GradingInfo;
 }
 
 function cleanString(value: unknown) {
@@ -38,7 +45,7 @@ export function validateDiscoverySubmission(input: unknown, totalCards: number) 
   }
 
   const dateFound = cleanString(body.dateFound);
-  if (dateFound && Number.isNaN(new Date(dateFound).getTime())) {
+  if (dateFound && !isDateOnly(dateFound)) {
     errors.push('Date found must be a valid date.');
   }
 
@@ -63,6 +70,14 @@ export function validateDiscoverySubmission(input: unknown, totalCards: number) 
   if (priceInput && (!Number.isFinite(price) || price! < 0)) {
     errors.push('Sale price must be a non-negative number.');
   }
+  const kind = body.kind ?? 'discovery';
+  if (!['discovery', 'sighting', 'correction'].includes(String(kind))) errors.push('Invalid report type.');
+  let priceObservation: PriceHistoryEntry | undefined;
+  let grading: GradingInfo | undefined;
+  try {
+    if (price !== undefined) priceObservation = parsePriceObservation({ price, kind: body.priceKind, currency: body.currency, date: body.priceDate });
+    if (body.grading !== undefined) grading = parseGradingInfo(body.grading);
+  } catch (error) { errors.push((error as Error).message); }
 
   if (body.imageUrl || (Array.isArray(body.evidenceImageUrls) ? body.evidenceImageUrls.length : body.evidenceImageUrls) || body.evidenceImages) {
     errors.push('External image URLs are not accepted. Upload evidence files instead.');
@@ -96,6 +111,11 @@ export function validateDiscoverySubmission(input: unknown, totalCards: number) 
     price,
     evidenceAssetIds: evidenceAssetIds as string[],
     notes: notes || undefined,
+    kind: kind as ReportKind,
+    priceKind: priceObservation?.kind,
+    currency: priceObservation?.currency,
+    priceDate: priceObservation?.date,
+    grading,
   };
 
   return {

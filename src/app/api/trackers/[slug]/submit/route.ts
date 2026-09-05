@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { createHash } from 'node:crypto';
+import { createReportAccess } from '@/lib/report-access';
 import { DiscoverySubmission } from '@/lib/types';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
@@ -66,10 +68,15 @@ export async function POST(request: Request, { params }: RouteContext) {
     const assets = await getOwnedEvidence(redis, session, input.evidenceAssetIds);
     const evidenceImages = assets.map((asset) => ({ url: evidenceUrl(asset.id), assetId: asset.id }));
     const submittedAt = new Date().toISOString();
-    await mutateTrackerState(redis, tracker, (state) => {
+    const payloadHash = createHash('sha256').update(JSON.stringify(input)).digest('hex');
+    const savedAt = await mutateTrackerState(redis, tracker, (state) => {
       const { cards, submissions } = state;
       // One session creates one immutable report, including after a lost response.
-      if (submissions.some((submission) => submission.id === submissionId)) return;
+      const existing = submissions.find((submission) => submission.id === submissionId);
+      if (existing) {
+        if (existing.payloadHash !== payloadHash) throw new TrackerStoreError('This report was already submitted with different details. Use its private follow-up link.', 409);
+        return existing.submittedAt;
+      }
       const card = cards.find((item) => item.id === input.cardId);
 
       if (!card) {
@@ -83,6 +90,13 @@ export async function POST(request: Request, { params }: RouteContext) {
 
       const submission: DiscoverySubmission = {
         id: submissionId,
+        copyId: card.copyId,
+        kind: input.kind,
+        priceKind: input.priceKind,
+        currency: input.currency,
+        priceDate: input.priceDate,
+        grading: input.grading,
+        payloadHash,
         cardId: input.cardId,
         cardSlug: card.cardSlug,
         cardTitle: card.cardTitle,
@@ -105,12 +119,14 @@ export async function POST(request: Request, { params }: RouteContext) {
       };
 
       state.submissions = [submission, ...submissions];
+      return submission.submittedAt;
     });
 
     return NextResponse.json(
       {
         message: 'Submission queued for review',
         submissionId,
+        followUpPath: `/reports/${slug}/${submissionId}#${createReportAccess(slug, submissionId, savedAt)}`,
         remaining: rateLimit.remaining,
       },
       { status: 202 }

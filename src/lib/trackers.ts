@@ -48,6 +48,17 @@ export interface TrackerCardDefinition {
   serialPadding?: number;
   referenceImage?: string;
   scryfallUrl?: string;
+  canonicalTrackerSlug?: string;
+  printingId?: string;
+}
+
+const printingIdsByUrl = new Map(serializedPrintings.map((printing) => [printing.scryfallUrl, printing.id]));
+
+export function getDefinitionPrintingId(tracker: TrackerSummary, definition?: TrackerCardDefinition) {
+  if (definition?.printingId) return definition.printingId;
+  if (!definition && tracker.printingId) return tracker.printingId;
+  const source = definition?.scryfallUrl || tracker.referenceLinks?.find((link) => link.type === 'scryfall')?.href;
+  return source ? printingIdsByUrl.get(source) : undefined;
 }
 
 export interface TrackerSummary {
@@ -387,7 +398,7 @@ export const trackers: TrackerSummary[] = [
       { slug: 'tom-bombadil', title: 'Tom Bombadil', referenceImage: 'https://cards.scryfall.io/large/front/5/0/50dd89bd-43a2-49c6-bf56-c9fbbf370540.jpg?1782694962', scryfallUrl: 'https://scryfall.com/card/ltr/745z/tom-bombadil' },
       { slug: 'anduril-flame-of-the-west', title: 'Anduril, Flame of the West', referenceImage: 'https://cards.scryfall.io/large/front/5/a/5a5354dd-ff5f-4231-bf31-039ad3448a09.jpg?1782694961', scryfallUrl: 'https://scryfall.com/card/ltr/746z/and%C3%BAril-flame-of-the-west' },
       { slug: 'glamdring', title: 'Glamdring', referenceImage: 'https://cards.scryfall.io/large/front/8/a/8a5d405b-dfea-44de-a456-eaac8af73100.jpg?1782694960', scryfallUrl: 'https://scryfall.com/card/ltr/747z/glamdring' },
-      { slug: 'the-one-ring', title: 'The One Ring', referenceImage: 'https://cards.scryfall.io/large/front/4/e/4e6fee52-33a8-4085-b632-bf95dfd2b16d.jpg?1782694957', scryfallUrl: 'https://scryfall.com/card/ltr/748z/the-one-ring' },
+      { slug: 'the-one-ring', title: 'The One Ring', canonicalTrackerSlug: 'one-ring', referenceImage: 'https://cards.scryfall.io/large/front/4/e/4e6fee52-33a8-4085-b632-bf95dfd2b16d.jpg?1782694957', scryfallUrl: 'https://scryfall.com/card/ltr/748z/the-one-ring' },
       { slug: 'palantir-of-orthanc', title: 'Palantir of Orthanc', referenceImage: 'https://cards.scryfall.io/large/front/b/9/b9b95f71-ca89-4173-89bf-99abccd259de.jpg?1782694956', scryfallUrl: 'https://scryfall.com/card/ltr/749z/palant%C3%ADr-of-orthanc' },
       { slug: 'mount-doom', title: 'Mount Doom', referenceImage: 'https://cards.scryfall.io/large/front/6/c/6c53dace-4597-4d34-96d1-7aa6290594d4.jpg?1782694955', scryfallUrl: 'https://scryfall.com/card/ltr/750z/mount-doom' },
     ],

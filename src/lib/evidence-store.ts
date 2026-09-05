@@ -104,7 +104,7 @@ export async function assertReportEvidenceClean(redis: Redis, tracker: string, r
   const urls = [...new Set([report.imageUrl, ...(report.evidenceImages || []).map((image) => image.url)].filter(Boolean) as string[])];
   const ids = urls.map(evidenceIdFromUrl);
   if (ids.some((id) => !id)) throw new EvidenceUploadError('External or legacy evidence must be uploaded through the protected form before approval.', 409);
-  const assets = await getOwnedEvidence(redis, { id: report.id, tracker, cardId: report.cardId }, ids as string[]);
+  const assets = await getOwnedEvidence(redis, { id: report.id, tracker: report.originTrackerSlug || tracker, cardId: report.originCardId || report.cardId }, ids as string[]);
   if (assets.some((asset) => asset.scan.status !== 'clean' || asset.scan.policyVersion !== 1)) {
     throw new EvidenceUploadError('Evidence safety checks have not passed. This report remains pending.', 409);
   }

@@ -34,6 +34,9 @@ function submission(overrides: Partial<DiscoverySubmission> = {}): DiscoverySubm
     sourceType: 'marketplace',
     requestedVerificationStatus: 'source-linked',
     price: 1000,
+    priceKind: 'completed-sale',
+    currency: 'USD',
+    priceDate: '2026-06-30',
     imageUrl: 'https://example.com/card.jpg',
     evidenceImages: [{ url: 'https://example.com/evidence.jpg' }],
     notes: 'Submitted note',
@@ -144,11 +147,11 @@ describe('tracker data helpers', () => {
       pendingReportCount: 0,
       latestDiscovery: null,
     });
-    expect(readKeys).toEqual([
+    expect(readKeys).toEqual(expect.arrayContaining([
       tracker.storage.cardsKey,
       tracker.storage.submissionsKey,
       ...(tracker.storage.legacyCardsKeys || []),
-    ]);
+    ]));
   });
 
   it('returns recent discoveries across trackers without initializing empty trackers', async () => {
@@ -164,6 +167,8 @@ describe('tracker data helpers', () => {
       sourceType: 'marketplace',
       verificationStatus: 'confirmed',
       price: 1000,
+      priceDate: '2026-06-29',
+      priceHistory: [{ price: 1000, date: '2026-06-29', kind: 'completed-sale', currency: 'USD' }],
     };
 
     const posterCards = createInitialTrackerCards(posterTracker).slice(0, 2);
@@ -203,16 +208,16 @@ describe('tracker data helpers', () => {
         price: 1000,
       }),
     ]);
-    expect(readKeys).toEqual([
+    expect(readKeys).toEqual(expect.arrayContaining([
       tracker.storage.cardsKey,
       posterTracker.storage.cardsKey,
-    ]);
+    ]));
   });
 
   it('applies approved submissions to cards with selected evidence and price history', () => {
     const cards = createInitialTrackerCards(tracker);
     const applied = applyApprovedSubmission(tracker, cards, submission(), {
-      imageUrl: 'https://example.com/admin-selected.jpg',
+      imageUrl: 'https://example.com/evidence.jpg',
       verificationStatus: 'confirmed',
       reviewNotes: 'Admin verified.',
     });
@@ -225,17 +230,12 @@ describe('tracker data helpers', () => {
       link: 'https://example.com/source',
       sourceType: 'marketplace',
       verificationStatus: 'confirmed',
-      notes: 'Submitted note\n\nAdmin verified.',
-      image: 'https://example.com/admin-selected.jpg',
+      notes: 'Submitted note',
+      image: 'https://example.com/evidence.jpg',
       price: 1000,
       priceDate: '2026-06-30',
     });
     expect(cards[6].evidenceImages).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        url: 'https://example.com/admin-selected.jpg',
-        caption: 'Admin selected primary image',
-        sourceSubmissionId: 'submission-1',
-      }),
       expect.objectContaining({
         url: 'https://example.com/card.jpg',
         caption: 'Approved report primary image',
@@ -247,11 +247,13 @@ describe('tracker data helpers', () => {
         sourceSubmissionId: 'submission-1',
       }),
     ]));
-    expect(cards[6].priceHistory[0]).toEqual({
+    expect(cards[6].priceHistory[0]).toMatchObject({
       price: 1000,
       date: '2026-06-30',
-      soldBy: 'Collector',
+      kind: 'completed-sale',
+      currency: 'USD',
     });
+    expect(cards[6].priceHistory[0].soldBy).toBeUndefined();
   });
 
   it('merges evidence from related submissions during approval', () => {

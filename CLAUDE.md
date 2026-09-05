@@ -28,7 +28,8 @@ Read `TODO.md` for the current priority queue, `ARCHITECTURE.md` for invariants,
 - Mutation callbacks may retry. Keep them synchronous with no uploads, notifications, or external side effects.
 - Approval must commit card changes and report statuses together.
 - Public reports never directly change canonical discoveries. Images are not proof merely because reference artwork exists.
-- Preserve tracker-local slot IDs and launched card-definition order. One Ring currently overlaps the poster collection; identity unification needs an explicit migration.
+- Preserve printing-based copy IDs, tracker-local slot IDs, and launched card-definition order. One Ring/poster routes share owner facts and report queues through related-record CAS. Historical alias facts require explicit, archived reconciliation; see docs/DATA_MODEL.md.
+- Append events for discoveries, corrections, pricing, grading, image selection, and retraction. Do not directly overwrite journal-derived facts. Keep asking prices separate from completed sales and do not infer owners/sellers from reporters. Preserve original evidence ownership when projecting reports between routes.
 - Preserve existing data and legacy keys. Never run destructive reset/import/restore tests against production.
 - Require admin authentication for privileged routes. Missing production credentials must fail closed.
 - Do not commit credentials, cookies, local environment files, database dumps, or private evidence.

@@ -5,13 +5,13 @@ import { getTracker, type TrackerSummary } from '@/lib/trackers';
 import { validBackupCard, validBackupSubmission } from '@/lib/backup-validation';
 import { DiscoverySubmission, SerializedRingCard, SubmissionStatus } from '@/lib/types';
 import { getTrackerTotalSlots, normalizeTrackerCard } from '@/lib/tracker-data';
-import { restoreTrackerState } from '@/lib/tracker-store';
+import { restoreTrackerState, TrackerStoreError } from '@/lib/tracker-store';
 import { readJsonBody } from '@/lib/request-json';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const BACKUP_SCHEMA_VERSION = 1;
+const BACKUP_SCHEMA_VERSION = 2;
 const RESTORE_CONFIRMATION = 'RESTORE_TRACKER_BACKUP';
 const SUBMISSION_STATUSES: SubmissionStatus[] = [
   'pending',
@@ -20,6 +20,7 @@ const SUBMISSION_STATUSES: SubmissionStatus[] = [
   'needs-more-info',
   'duplicate',
   'cannot-verify',
+  'revoked',
 ];
 
 type RouteContext = {
@@ -37,7 +38,7 @@ type RestoreBackup = {
 
 function validateBackup(backup: RestoreBackup, tracker: TrackerSummary) {
   const trackerTotal = getTrackerTotalSlots(tracker);
-  if (backup.schemaVersion !== BACKUP_SCHEMA_VERSION) {
+  if (backup.schemaVersion !== BACKUP_SCHEMA_VERSION && backup.schemaVersion !== 1) {
     return 'Unsupported backup schema version';
   }
 
@@ -134,6 +135,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       },
     });
   } catch (error) {
+    if (error instanceof TrackerStoreError) return NextResponse.json({ message: error.message }, { status: error.status });
     console.error('Error importing tracker backup:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }

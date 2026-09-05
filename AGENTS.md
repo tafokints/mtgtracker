@@ -40,6 +40,7 @@ Read the closest files and these docs when relevant:
 - Prefer config-driven tracker behavior in `src/lib/trackers.ts`.
 - Use `src/lib/tracker-data.ts` for pure card/serial helpers and `src/lib/tracker-store.ts` for atomic card/submission persistence. Mutation callbacks may retry and must not perform external side effects.
 - Use `getTrackerTotalSlots` for whole-tracker validation; `tracker.total` is a per-card default on multi-card trackers.
+- Read docs/DATA_MODEL.md before changing identity, reports, pricing, grading, or restore. Routes are views of printing-based copy IDs; changes append journal events. Shared-copy mutations/restore must include related records atomically and preserve original report/asset ownership.
 - Do not duplicate One Ring-specific logic into new trackers.
 - Keep public endpoints conservative and admin endpoints authenticated.
 - Keep evidence private until server-side safety checks and canonical approval. Do not restore arbitrary image-URL intake, public Blob uploads, scanner bypasses, or unscanned admin overrides. Read docs/EVIDENCE_SECURITY.md before changing this pipeline.

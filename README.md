@@ -161,8 +161,8 @@ Admin backups are tracker-scoped:
 
 - `GET /api/trackers/[slug]/export` downloads a JSON backup with `schemaVersion`, tracker metadata, counts, cards, and submissions.
 - `POST /api/trackers/[slug]/import` restores one exported backup for the same tracker slug.
-- Restore requests must include `confirm: "RESTORE_TRACKER_BACKUP"` and overwrite only that tracker's `cardsKey` and `submissionsKey`.
-- Export reads cards and submissions together. Restore replaces both atomically and validates every slot, including all 2,000 LOTR Poster Cards slots.
+- Restore requests must include `confirm: "RESTORE_TRACKER_BACKUP"`. Restoring a shared copy updates every page showing that copy, while retaining unrelated cards/reports in the other view.
+- Schema-v2 exports include journals and report origins; import accepts v1/v2 and validates nested history and every slot. Shared views commit all affected arrays atomically. These JSON backups still exclude private image files and asset metadata.
 - The hidden admin panel includes `Export Backup` and `Restore Backup` controls after login.
 
 ## Admin And Review Workflows
@@ -175,6 +175,8 @@ Admin backups are tracker-scoped:
 - Admin panel: press `Ctrl + Alt + A` on `/trackers/one-ring`.
 - Production authentication requires both `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET`; neither may fall back to a development credential. Login allows ten attempts per IP per fifteen minutes and requires Redis for rate limiting.
 - Review queue: use the admin panel `Review` tab to approve or reject pending reports.
+- Copies and history: exact-printing copy IDs link reports, evidence, price observations and grading events. The One Ring and poster-set view now share facts/queues. Later sightings preserve the original discovery; corrections require explicit confirmation. Asking prices and completed sales are separate, and USD statistics include only completed USD sales.
+- Follow-up: successful submissions return a private 90-day receipt link. Needs Info replies preserve original facts and return the report to pending. Admins can retract/reopen approvals with reasons; journal history is retained. See `docs/DATA_MODEL.md` for the data model, privacy rules, and explicit legacy reconciliation process.
 - Pending reports show evidence-strength summaries and are prioritized by review signal count.
 - Affiliate stats: use the admin panel `Affiliate` tab to compare tracker, merchant, and placement click totals, review quick-read performance insights, then export CSV for outside analysis.
 - Affiliate coverage: use the admin panel `Affiliate` tab to confirm every tracker is promotion-ready before you send traffic.
@@ -233,13 +235,15 @@ uv run --with 'fakeredis[lua]' python scripts/redis-test-server.py
 npm run test:redis
 ```
 
-Stop the fixture with Ctrl+C afterward. The checker only targets its hard-coded loopback fixture and never reads production credentials. It tests the actual Lua scripts through the Upstash SDK, including conflicts, restore, index membership, and no partial writes on a wrong-type index. It does not reproduce every Upstash service limit.
+Stop the fixture with Ctrl+C afterward. The checker only targets its hard-coded loopback fixture and never reads production credentials. It tests actual Lua through the Upstash SDK, including default pipelining/encoding, shared-copy conflicts, archived reconciliation, restore, index membership, and no partial writes on a wrong-type index. It does not reproduce every Upstash service limit.
+
+With a clean local preview on port 3102 and Playwright available, `node scripts/check-workflow-ui.mjs [path-to-playwright-package]` checks mobile/desktop report fields, correction review, private replies, and layout. All API data is intercepted inside the browser; this is UI verification, not a hosted cloud lifecycle test.
 
 With a local production preview running, `node scripts/check-catalog-pages.mjs http://127.0.0.1:3101` checks every set, printing, and generated tracker/report/stats page. This broad sweep is intentionally restricted to loopback to avoid production load. It verifies rendered HTML, not authenticated admin operations.
 
 ### Production Upload Gate
 
-The live upload endpoint returned 503 `Image uploads are not configured` on 2026-09-05. Connect a **public Vercel Blob store** to this project for the intended deployment environments, ensure it injects `BLOB_READ_WRITE_TOKEN`, and redeploy. Test a non-private image in an isolated preview, confirm its public URL renders, then delete that test blob from storage. Do not approve fixture discoveries into production. Unit/route tests mock Blob and are not proof that cloud credentials, storage, or deletion work.
+The live upload endpoint returned 503 `Image uploads are not configured` at the earlier 2026-09-05 checkpoint. New evidence requires a **private Vercel Blob store**, Turnstile, both image scanners, and source screening; earlier public-store guidance is superseded. Follow `docs/EVIDENCE_SECURITY.md`, then verify upload, review, public access after approval, retraction, and file deletion in an isolated hosted environment. Do not approve fixture discoveries into production. Local tests are not proof that hosted credentials, providers, storage, retention, or complete image backups work.
 
 ## Promotion Checks
 

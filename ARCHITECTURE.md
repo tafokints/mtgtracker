@@ -10,17 +10,17 @@ The registry in `src/lib/trackers.ts` drives dynamic tracker pages, statistics, 
 
 ## Identity And Storage
 
-Each tracker has separate `cardsKey` and `submissionsKey` JSON arrays. Use `getTrackerTotalSlots`, not `tracker.total`, when validating a whole tracker; individual card definitions can have different quantities. A slot's numeric ID is tracker-local; its card slug plus printed serial identifies it within a treatment. Do not reorder launched card definitions without a migration: numeric IDs currently depend on their order.
+Trackers retain `cardsKey` and `submissionsKey` JSON arrays, but physical copies have printing-based `copyId` values independent of routes. The dedicated One Ring tracker owns its copies; poster-set aliases project those same facts and reports. Use `getTrackerTotalSlots`, not `tracker.total`, for whole-tracker validation. Numeric slot IDs remain tracker-local and launched definitions must not be reordered. Read docs/DATA_MODEL.md for relationships, journals, and rollout requirements.
 
 `src/lib/tracker-data.ts` contains shared formatting, slot lookup, normalization, evidence merging, and read helpers. Client components also import its pure helpers.
 
 `src/lib/tracker-store.ts` owns server-side writes. A Lua snapshot reads both raw arrays atomically, and a compare-and-set script commits both only if neither stored value changed. Conflicts reread current data and retry up to five times, then return a retryable 409. Mutation callbacks are synchronous and must have no external side effects. All report, review, price, image, and grading mutations use this path. Initialization uses SET NX and retains legacy source keys.
 
-Backup export reads a consistent pair. Explicit admin restore validates all slots and replaces the pair with atomic MSET, including when existing data is damaged. Restore intentionally overwrites the target tracker; it does not merge reports received before the restore.
+Backup export reads a consistent snapshot. Explicit admin restore validates all slots, journal entries, and report origins. Independent trackers replace their pair atomically, including when existing data is damaged; shared views use related-record CAS and retain unrelated copies/reports. Restore intentionally replaces the requested view's records; all pages showing its shared copies reflect that restoration.
 
 Generated printing keys use `printing:{scryfallId}:cards` and `printing:{scryfallId}:submissions`. A single printing has at most 513 slots; large sets are not stored as one giant array. Generated mutations/restores also atomically SADD their slug to `mtgtrackers:active-printing-trackers`. Public discovery feeds read featured trackers plus that index, avoiding hundreds of empty reads. Backups validate numeric IDs, slot identity, nested evidence/prices/grading, and unique submission IDs before replacement. Generated restore rebuilds its own index membership.
 
-Known identity gap: One Ring is present in both its standalone tracker and LOTR Poster Cards, with independent storage. Unifying those records and deduplicating platform counts is a top priority in TODO.md. Do not silently migrate live data.
+Shared tracker writes use a multi-record Lua CAS over both views' card/report arrays. Evidence checks retain each report's original tracker/slot, while public feeds deduplicate copy IDs. Historical facts in alias slots block publication/mutation until explicitly reconciled through the authenticated preview/apply endpoint, which archives originals atomically. No production reconciliation was performed by this implementation.
 
 ## Public And Admin Flows
 
@@ -34,7 +34,9 @@ Known identity gap: One Ring is present in both its standalone tracker and LOTR 
 - `/discoveries`, `/discoveries.json`, `/discoveries.xml`: public discovery feeds.
 - `/verification-guide`, `/about`, `/contact`, `/privacy`, `/affiliate-disclosure`: trust and contact pages.
 
-Public reports enter a separate pending queue. Admins can approve, reject, request more info, mark duplicate, or mark cannot verify. Approval merges selected evidence, updates the card, records reviewer metadata, and marks merged reports duplicate in one commit. Follow-up/reopening for needs-more-info reports is still pending.
+Public reports enter a separate pending queue. Approvals append events; later sightings preserve first-discovery facts. Explicitly confirmed corrections replace supplied facts. Pricing and grading are one-to-many histories, with asking/completed/unknown prices, currencies, certificates, regrades, and observed-ungraded events. Only completed USD sales feed USD statistics. Admin metadata edits cannot create a discovery. Revoke/reopen actions retain the journal and review history; public projections omit withdrawn events and private baselines.
+
+Needs-info receipts use private, 90-day fragment-token links with noindex/no-referrer and no site analytics. A holder can add bounded replies and owned evidence when information is requested; the report returns to pending. Original submission retries compare payload hashes. All approvals and merges rerun safety checks; no new route bypasses scanning. Current reviewer identity is the authenticated shared `admin`, not an asserted client name.
 
 Uploaded JPEG/PNG/WebP evidence (maximum 4 MB per file, 25 million decoded pixels) is decoded, oriented, resized to at most 3,000 pixels per side, and re-encoded as WebP without private metadata. Malformed, mismatched, animated, or oversized inputs are rejected before Blob storage. Multipart stream bytes are bounded even without Content-Length. Uploads have a cross-tracker 10/IP/hour limit and 500/site/day budget. Files receive UUID paths, not user filenames.
 

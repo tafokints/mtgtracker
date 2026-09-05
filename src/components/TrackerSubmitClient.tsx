@@ -14,7 +14,7 @@ import {
   getTrackerSlotIdFromDeepLinkParams,
   getTrackerTotalSlots,
 } from '@/lib/tracker-data';
-import { SourceType, VerificationStatus } from '@/lib/types';
+import { ReportKind, SourceType, VerificationStatus } from '@/lib/types';
 
 const MAX_EVIDENCE_IMAGES = 8;
 
@@ -39,6 +39,15 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
   const [sourceType, setSourceType] = useState<SourceType>('marketplace');
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>('source-linked');
   const [price, setPrice] = useState('');
+  const [kind, setKind] = useState<ReportKind>('discovery');
+  const [priceKind, setPriceKind] = useState('unknown');
+  const [currency, setCurrency] = useState('USD');
+  const [priceDate, setPriceDate] = useState('');
+  const [gradingService, setGradingService] = useState('');
+  const [grade, setGrade] = useState('');
+  const [dateGraded, setDateGraded] = useState('');
+  const [certificateNumber, setCertificateNumber] = useState('');
+  const [followUpPath, setFollowUpPath] = useState('');
   const [uploadedEvidence, setUploadedEvidence] = useState<Array<{ id: string; preview: string; status: string }>>([]);
   const previews = useRef(new Set<string>());
   const session = useRef<{ token: string; expiresAt: number; cardId: number }>();
@@ -185,12 +194,16 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
         sourceType,
         verificationStatus,
         price,
+        kind, priceKind, currency: price ? currency : undefined, priceDate,
+        grading: gradingService ? { service: gradingService, grade: Number(grade), dateGraded: dateGraded || undefined, certificateNumber: certificateNumber || undefined } : undefined,
         evidenceAssetIds: uploadedEvidence.map((asset) => asset.id),
         notes,
       }),
       });
 
     if (response.ok) {
+      const receipt = await response.json();
+      setFollowUpPath(receipt.followUpPath || '');
       setMessage('Submission queued for review. Thank you!');
       setIsError(false);
       setCardId('');
@@ -200,6 +213,11 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
       setDateFound('');
       setLink('');
       setPrice('');
+      setPriceDate('');
+      setGradingService('');
+      setGrade('');
+      setDateGraded('');
+      setCertificateNumber('');
       setUploadedEvidence([]);
       session.current = undefined;
       setUploadMessage('');
@@ -300,6 +318,11 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
           </Link>
         </div>
         <form onSubmit={handleSubmit} className="w-full max-w-2xl bg-ring-dark p-4 sm:p-8 rounded-lg border border-ring-gold">
+          <label className="mb-4 block text-sm text-ring-gold">Report type
+            <select value={kind} onChange={(event) => setKind(event.target.value as ReportKind)} className="mt-2 block w-full rounded p-3 text-ring-dark bg-ring-light">
+              <option value="discovery">New discovery</option><option value="sighting">Later sighting or update</option><option value="correction">Correction to recorded facts</option>
+            </select>
+          </label>
           {selectedSerialSummary && (
             <div className="mb-6 rounded border border-ring-gold/30 bg-black/20 px-4 py-3 text-sm text-ring-light">
               <p className="text-xs font-bold uppercase text-ring-gold">Reporting selected serial</p>
@@ -415,7 +438,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
             )}
             <div>
               <label className="block uppercase tracking-wide text-ring-gold text-xs font-bold mb-2" htmlFor="found-by">
-                Found By
+                Discoverer (optional)
               </label>
               <input
                 className="appearance-none block w-full bg-ring-light text-ring-dark border border-ring-gold rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white"
@@ -439,17 +462,32 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
             </div>
             <div>
               <label className="block uppercase tracking-wide text-ring-gold text-xs font-bold mb-2" htmlFor="price">
-                Sale Price
+                Price observation (optional)
               </label>
               <input
                 className="appearance-none block w-full bg-ring-light text-ring-dark border border-ring-gold rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white"
                 id="price"
                 type="number"
                 min="0"
+                step="0.01"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
               />
             </div>
+            {price !== '' && <fieldset className="grid min-w-0 gap-3 sm:grid-cols-3">
+              <label className="text-sm text-ring-gold">Price type<select value={priceKind} onChange={(event) => setPriceKind(event.target.value)} className="mt-1 block w-full rounded p-2 text-ring-dark bg-ring-light"><option value="unknown">Unclassified</option><option value="asking-price">Asking price</option><option value="completed-sale">Completed sale</option></select></label>
+              <label className="text-sm text-ring-gold">Currency<select value={currency} onChange={(event) => setCurrency(event.target.value)} className="mt-1 block w-full rounded p-2 text-ring-dark bg-ring-light">{['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY'].map((code) => <option key={code}>{code}</option>)}</select></label>
+              <label className="min-w-0 text-sm text-ring-gold">Price date<input type="date" value={priceDate} required={priceKind !== 'unknown'} onChange={(event) => setPriceDate(event.target.value)} className="mt-1 block min-w-0 w-full rounded p-2 text-ring-dark bg-ring-light" /></label>
+            </fieldset>}
+            <details className="text-sm text-ring-gold">
+              <summary className="cursor-pointer py-2">Grading observation (optional)</summary>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <label>Grading service<input value={gradingService} maxLength={80} onChange={(event) => setGradingService(event.target.value)} className="mt-1 block w-full rounded p-2 text-ring-dark bg-ring-light" /></label>
+                <label>Grade<input type="number" min="0" max="10" step="0.5" required={Boolean(gradingService)} value={grade} onChange={(event) => setGrade(event.target.value)} className="mt-1 block w-full rounded p-2 text-ring-dark bg-ring-light" /></label>
+                <label>Grading date<input type="date" value={dateGraded} onChange={(event) => setDateGraded(event.target.value)} className="mt-1 block w-full rounded p-2 text-ring-dark bg-ring-light" /></label>
+                <label>Certificate number<input value={certificateNumber} maxLength={100} onChange={(event) => setCertificateNumber(event.target.value)} className="mt-1 block w-full rounded p-2 text-ring-dark bg-ring-light" /></label>
+              </div>
+            </details>
             <div>
               <label className="block uppercase tracking-wide text-ring-gold text-xs font-bold mb-2" htmlFor="source-type">
                 Source Type
@@ -576,6 +614,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
             {uploading ? 'Uploading...' : submitting ? 'Submitting...' : 'Submit'}
           </button>
           {message && <p className={`mt-4 text-center ${isError ? 'text-red-500' : 'text-green-400'}`}>{message}</p>}
+          {followUpPath && <a href={followUpPath} className="mt-3 block text-center text-ring-gold underline">Private report status and follow-up</a>}
           {errors.length > 0 && (
             <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-red-300">
               {errors.map((error) => (

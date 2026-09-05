@@ -10,8 +10,8 @@ function sign(payload: string) {
   return createHmac('sha256', secret).update(`submission-v1:${payload}`).digest('base64url');
 }
 
-export function createSubmissionSession(tracker: string, cardId: number) {
-  const session: SubmissionSession = { id: randomUUID(), tracker, cardId, exp: Date.now() + 60 * 60 * 1000 };
+export function createSubmissionSession(tracker: string, cardId: number, id: string = randomUUID()) {
+  const session: SubmissionSession = { id, tracker, cardId, exp: Date.now() + 60 * 60 * 1000 };
   const payload = Buffer.from(JSON.stringify(session)).toString('base64url');
   return { token: `${payload}.${sign(payload)}`, expiresAt: session.exp };
 }

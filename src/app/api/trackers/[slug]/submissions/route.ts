@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
+import { retractReportEvents } from '@/lib/card-history';
 import { DiscoverySubmission, SubmissionStatus, VerificationStatus } from '@/lib/types';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
@@ -26,6 +28,8 @@ const REVIEW_ACTION_TO_STATUS = {
   'needs-more-info': 'needs-more-info',
   duplicate: 'duplicate',
   'cannot-verify': 'cannot-verify',
+  reopen: 'pending',
+  revoke: 'revoked',
 } as const satisfies Record<string, SubmissionStatus>;
 
 type ReviewAction = keyof typeof REVIEW_ACTION_TO_STATUS;
@@ -97,8 +101,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       imageUrl?: unknown;
       verificationStatus?: unknown;
       mergeSubmissionIds?: unknown;
+      applyCorrection?: unknown;
     };
     const { submissionId, action } = input;
+    const reviewId = randomUUID();
+    const reviewedAt = new Date().toISOString();
 
     if (typeof submissionId !== 'string' || !submissionId.trim() || submissionId.length > 200 || !isReviewAction(action)) {
       return NextResponse.json({ message: 'Submission id and valid action are required' }, { status: 400 });
@@ -108,6 +115,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       (input.reviewedBy !== undefined && (typeof input.reviewedBy !== 'string' || input.reviewedBy.length > 120)) ||
       (input.reviewNotes !== undefined && (typeof input.reviewNotes !== 'string' || input.reviewNotes.length > 5000)) ||
       (input.imageUrl !== undefined && !evidenceIdFromUrl(input.imageUrl)) ||
+      (input.applyCorrection !== undefined && typeof input.applyCorrection !== 'boolean') ||
       (input.verificationStatus !== undefined && !VERIFICATION_STATUSES.includes(input.verificationStatus as VerificationStatus)) ||
       (input.mergeSubmissionIds !== undefined && (
         !Array.isArray(input.mergeSubmissionIds) || input.mergeSubmissionIds.length > 100 ||
@@ -126,6 +134,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       : [];
 
     const checkedReports = new Map<string, string>();
+    if (['needs-more-info', 'reopen', 'revoke'].includes(action) && (typeof input.reviewNotes !== 'string' || !input.reviewNotes.trim())) return NextResponse.json({ message: 'A reason or information request is required' }, { status: 400 });
     if (action === 'approve') {
       if (mergeSubmissionIds.length > 8) return NextResponse.json({ message: 'Merge no more than eight reports at once' }, { status: 400 });
       const snapshot = await getTrackerState(redis, tracker);
@@ -133,13 +142,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       if (!primary) return NextResponse.json({ message: 'Submission not found' }, { status: 404 });
       if (primary.status !== 'pending') return NextResponse.json({ message: 'Submission has already been reviewed' }, { status: 409 });
       const reports = [primary, ...snapshot.submissions.filter((report) => report.id !== primary.id && mergeSubmissionIds.includes(report.id) && report.cardId === primary.cardId && report.status === 'pending')];
+      if (new Set(mergeSubmissionIds).size !== mergeSubmissionIds.length || reports.length !== mergeSubmissionIds.length + 1) return NextResponse.json({ message: 'Every merged report must still be pending for this copy' }, { status: 409 });
+      if (reports.slice(1).some((report) => report.kind === 'correction')) return NextResponse.json({ message: 'Review corrections separately instead of merging them', }, { status: 409 });
+      if (primary.kind === 'correction' && input.applyCorrection !== true) return NextResponse.json({ message: 'Explicitly confirm replacement of the supplied facts for this correction' }, { status: 400 });
       const allowedImages: string[] = [];
       const checkedLinks = new Set<string>();
       for (const report of reports) {
         allowedImages.push(...await assertReportEvidenceClean(redis, slug, report));
-        if (report.link && !checkedLinks.has(report.link)) {
-          await checkSourceReputation(report.link);
-          checkedLinks.add(report.link);
+        for (const link of [report.link, report.grading?.sourceUrl]) {
+          if (link && !checkedLinks.has(link)) {
+            await checkSourceReputation(link);
+            checkedLinks.add(link);
+          }
         }
         checkedReports.set(report.id, JSON.stringify(report));
       }
@@ -154,12 +168,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
 
       const submission = submissions[submissionIndex];
-      if (submission.status !== 'pending') {
+      if (action === 'reopen' && submission.status === 'duplicate' && submissions.some((report) => report.id === submission.duplicateOf && report.status === 'approved')) throw new TrackerStoreError('Retract the parent approval before reopening its merged report', 409);
+      const reopening = action === 'reopen' && ['needs-more-info', 'rejected', 'cannot-verify', 'revoked', 'duplicate'].includes(submission.status);
+      const revoking = action === 'revoke' && submission.status === 'approved';
+      if ((action === 'reopen' && !reopening) || (action === 'revoke' && !revoking) || (!reopening && !revoking && submission.status !== 'pending')) {
         throw new TrackerStoreError('Submission has already been reviewed', 409);
       }
 
-      const reviewedAt = new Date().toISOString();
-      const reviewedBy = typeof input.reviewedBy === 'string' && input.reviewedBy.trim() ? input.reviewedBy.trim() : 'admin';
+      const reviewedBy = 'admin';
       const reviewNotes = typeof input.reviewNotes === 'string' && input.reviewNotes.trim() ? input.reviewNotes.trim() : undefined;
 
       const reviewedSubmission: DiscoverySubmission = {
@@ -168,9 +184,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         reviewedAt,
         reviewedBy,
         reviewNotes,
+        duplicateOf: reopening ? undefined : submission.duplicateOf,
+        reviewHistory: [...(submission.reviewHistory || []), { id: reviewId, action, at: reviewedAt, actor: 'admin', notes: reviewNotes }],
       };
 
       submissions[submissionIndex] = reviewedSubmission;
+
+      if (revoking) {
+        const card = cards.find((candidate) => candidate.id === submission.cardId);
+        if (!card) throw new TrackerStoreError('Card not found', 404);
+        try { retractReportEvents(card, submission.id, reviewId, reviewedAt); }
+        catch (error) { throw new TrackerStoreError((error as Error).message, 409); }
+      }
 
       if (action === 'approve') {
         const mergedEvidenceSubmissions = submissions.filter((candidate) => (
@@ -179,14 +204,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           candidate.cardId === submission.cardId &&
           candidate.status === 'pending'
         ));
+        if (mergedEvidenceSubmissions.length !== mergeSubmissionIds.length) throw new TrackerStoreError('A merged report changed during review. Please retry.', 409);
         for (const candidate of [submission, ...mergedEvidenceSubmissions]) {
           if (checkedReports.get(candidate.id) !== JSON.stringify(candidate)) throw new TrackerStoreError('Report changed during safety checks. Please retry.', 409);
         }
-        const applied = applyApprovedSubmission(tracker, cards, submission, {
+        const applied = applyApprovedSubmission(tracker, cards, reviewedSubmission, {
           imageUrl: typeof input.imageUrl === 'string' ? input.imageUrl : undefined,
           verificationStatus,
           reviewNotes,
           mergedEvidenceSubmissions,
+          applyCorrection: input.applyCorrection === true,
+          eventId: reviewId,
         });
 
         if (!applied) {
@@ -204,6 +232,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             reviewedAt,
             reviewedBy,
             reviewNotes: [`Merged evidence into ${submission.id}.`, mergedSubmission.reviewNotes].filter(Boolean).join('\n\n'),
+            reviewHistory: [...(mergedSubmission.reviewHistory || []), { id: `${reviewId}:${mergedSubmission.id}`, action: 'merge', at: reviewedAt, actor: 'admin', notes: `Merged into ${submission.id}` }],
           };
         }
 

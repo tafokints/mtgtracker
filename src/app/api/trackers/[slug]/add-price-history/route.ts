@@ -1,84 +1,47 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PriceHistoryEntry } from '@/lib/types';
+import { randomUUID } from 'node:crypto';
+import { NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
 import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
-import { isDateOnly, parseCardId } from '@/lib/admin-validation';
+import { parseCardId } from '@/lib/admin-validation';
+import { parsePriceObservation } from '@/lib/history-validation';
+import { appendCardEvent } from '@/lib/card-history';
+import { checkSourceReputation } from '@/lib/evidence-scanning';
+import { EvidenceUploadError } from '@/lib/evidence-upload';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-type RouteContext = {
-  params: Promise<{ slug: string }>;
-};
-
-export async function POST(request: NextRequest, { params }: RouteContext) {
+export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
-
   const { slug } = await params;
   const tracker = getTracker(slug);
-  if (!tracker || tracker.status !== 'live') {
-    return NextResponse.json({ error: 'Tracker not found' }, { status: 404 });
-  }
-
+  if (!tracker || tracker.status !== 'live') return NextResponse.json({ error: 'Tracker not found' }, { status: 404 });
   try {
-    const redis = getRedis();
     const body = await readJsonBody(request);
     if (!body.ok) return body.response;
-
-    const { cardId, entry } = body.value as { cardId?: unknown; entry?: Partial<PriceHistoryEntry> };
-    const numericCardId = parseCardId(cardId);
-
-    if (!numericCardId || !entry || entry.price === undefined || !entry.date) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    if (typeof entry.price !== 'number' || !Number.isFinite(entry.price) || entry.price < 0) {
-      return NextResponse.json({ error: 'Invalid price value' }, { status: 400 });
-    }
-
-    if (!isDateOnly(entry.date)) {
-      return NextResponse.json({ error: 'Invalid sale date' }, { status: 400 });
-    }
-    if ([entry.soldBy, entry.soldTo].some((value) => value !== undefined && (typeof value !== 'string' || value.length > 120))) {
-      return NextResponse.json({ error: 'Sale parties must be 120 characters or fewer' }, { status: 400 });
-    }
-
-    const historyEntry: PriceHistoryEntry = {
-      price: entry.price,
-      date: entry.date,
-      soldBy: typeof entry.soldBy === 'string' && entry.soldBy.trim() ? entry.soldBy.trim() : undefined,
-      soldTo: typeof entry.soldTo === 'string' && entry.soldTo.trim() ? entry.soldTo.trim() : undefined,
-    };
-
-    const card = await mutateTrackerState(redis, tracker, ({ cards }) => {
-      const cardIndex = cards.findIndex((card) => card.id === numericCardId);
-
-      if (cardIndex === -1) {
-        throw new TrackerStoreError('Card not found', 404);
-      }
-
-      cards[cardIndex].priceHistory = [
-        historyEntry,
-        ...(cards[cardIndex].priceHistory || []),
-      ].sort((a: PriceHistoryEntry, b: PriceHistoryEntry) =>
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-
-      const latestEntry = cards[cardIndex].priceHistory[0];
-      cards[cardIndex].price = latestEntry.price;
-      cards[cardIndex].priceDate = latestEntry.date;
-
-      return cards[cardIndex];
+    const cardId = parseCardId(body.value.cardId);
+    if (!cardId || !body.value.entry || typeof body.value.entry !== 'object' || Array.isArray(body.value.entry)) return NextResponse.json({ error: 'Card and price observation are required' }, { status: 400 });
+    let entry;
+    try { entry = parsePriceObservation(body.value.entry as Record<string, unknown>); }
+    catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+    if (entry.sourceUrl) await checkSourceReputation(entry.sourceUrl);
+    const id = randomUUID();
+    const recordedAt = new Date().toISOString();
+    const price = { ...entry, id, recordedAt };
+    const card = await mutateTrackerState(getRedis(), tracker, ({ cards }) => {
+      const card = cards.find((item) => item.id === cardId);
+      if (!card) throw new TrackerStoreError('Card not found', 404);
+      if (!card.found) throw new TrackerStoreError('Approve a discovery before adding market history', 409);
+      appendCardEvent(card, { id, kind: 'price', recordedAt, price });
+      return card;
     });
-
     return NextResponse.json({ success: true, card });
   } catch (error) {
-    if (error instanceof TrackerStoreError) return NextResponse.json({ error: error.message }, { status: error.status });
-    console.error('Error adding price history:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    if (error instanceof TrackerStoreError || error instanceof EvidenceUploadError) return NextResponse.json({ error: error.message }, { status: error.status });
+    return NextResponse.json({ error: 'Unable to record price history' }, { status: 500 });
   }
 }

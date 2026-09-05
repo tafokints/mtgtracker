@@ -1,6 +1,12 @@
 export interface PriceHistoryEntry {
+  id?: string;
   price: number;
   date: string;
+  kind?: 'asking-price' | 'completed-sale' | 'unknown';
+  currency?: string;
+  sourceUrl?: string;
+  sourceSubmissionId?: string;
+  recordedAt?: string;
   soldBy?: string;
   soldTo?: string;
 }
@@ -9,13 +15,46 @@ export interface GradingInfo {
   service: string;
   grade: number;
   dateGraded?: string;
+  certificateNumber?: string;
+  sourceUrl?: string;
+}
+
+export interface GradingHistoryEntry {
+  id: string;
+  status: 'graded' | 'ungraded';
+  grading?: GradingInfo;
+  occurredOn?: string;
+  recordedAt: string;
+  sourceSubmissionId?: string;
+}
+
+export type ReportKind = 'discovery' | 'sighting' | 'correction';
+export type CardFacts = Pick<SerializedRingCard, 'found' | 'foundBy' | 'dateFound' | 'link' | 'sourceType' | 'verificationStatus' | 'notes' | 'image' | 'evidenceImages' | 'price' | 'priceDate' | 'priceHistory' | 'grading'>;
+
+export interface CardHistoryEvent {
+  id: string;
+  kind: ReportKind | 'price' | 'grading' | 'image' | 'retraction';
+  recordedAt: string;
+  sourceSubmissionId?: string;
+  facts?: Partial<CardFacts>;
+  price?: PriceHistoryEntry;
+  grading?: GradingHistoryEntry;
+  retracts?: string[];
+}
+
+export interface ReportReviewEvent {
+  id: string;
+  action: string;
+  at: string;
+  actor: 'admin' | 'submitter';
+  notes?: string;
 }
 
 export type VerificationStatus = 'unverified' | 'source-linked' | 'confirmed';
 
 export type SourceType = 'marketplace' | 'grading-pop' | 'social' | 'article' | 'private-sale' | 'other';
 
-export type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'needs-more-info' | 'duplicate' | 'cannot-verify';
+export type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'needs-more-info' | 'duplicate' | 'cannot-verify' | 'revoked';
 
 export interface EvidenceImage {
   url: string;
@@ -28,6 +67,17 @@ export interface EvidenceImage {
 
 export interface DiscoverySubmission {
   id: string;
+  copyId?: string;
+  originTrackerSlug?: string;
+  originCardId?: number;
+  kind?: ReportKind;
+  priceKind?: PriceHistoryEntry['kind'];
+  currency?: string;
+  priceDate?: string;
+  grading?: GradingInfo;
+  reviewHistory?: ReportReviewEvent[];
+  followUps?: Array<{ id: string; at: string; notes: string; evidenceAssetIds?: string[] }>;
+  payloadHash?: string;
   cardId: number;
   cardSlug?: string;
   cardTitle?: string;
@@ -55,6 +105,11 @@ export interface DiscoverySubmission {
 
 export interface SerializedRingCard {
   id: number;
+  printingId?: string;
+  copyId?: string;
+  historyBaseline?: CardFacts;
+  history?: CardHistoryEvent[];
+  gradingHistory?: GradingHistoryEntry[];
   cardSlug?: string;
   cardTitle?: string;
   serialTotal?: number;

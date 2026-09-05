@@ -28,6 +28,19 @@ const redisFixture = vi.hoisted(() => {
         return 'OK';
       },
       async eval(script: string, keys: string[], args: string[]) {
+        if (script.includes('-- reconcile legacy shared copies')) {
+          const n = keys.length - 1;
+          if (store.has(keys[n]) || keys.slice(0, n).some((key, i) => (store.has(key) ? JSON.stringify(store.get(key)) : '') !== args[i])) return 0;
+          keys.slice(0, n).forEach((key, i) => store.set(key, JSON.parse(args[n + i])));
+          store.set(keys[n], JSON.parse(args[n * 2]));
+          return 1;
+        }
+        if (script.includes('-- read related tracker')) return keys.map((key) => store.has(key) ? JSON.stringify(store.get(key)) : '');
+        if (script.includes('-- commit related tracker')) {
+          if (keys.some((key, i) => (store.has(key) ? JSON.stringify(store.get(key)) : '') !== args[i])) return 0;
+          keys.forEach((key, i) => store.set(key, JSON.parse(args[keys.length + i])));
+          return 1;
+        }
         if (script.includes('-- bounded rate limit')) {
           const count = (counters.get(keys[0]) || 0) + 1;
           counters.set(keys[0], count);
@@ -126,6 +139,9 @@ import { createInitialTrackerCards } from '@/lib/tracker-data';
 import { GET as readEvidence, POST as retryEvidence } from '@/app/api/evidence/[id]/route';
 import { POST as startSubmissionSession } from '@/app/api/trackers/[slug]/submission-session/route';
 import { POST as checkReportSource } from '@/app/api/trackers/[slug]/submissions/[id]/source/route';
+import { GET as readReportReceipt, POST as replyToReport } from '@/app/api/reports/[slug]/[id]/route';
+import { GET as previewReconciliation, POST as commitReconciliation } from '@/app/api/admin/reconcile-copies/route';
+import { getTrackerSlotId } from '@/lib/tracker-data';
 
 const tracker = getTracker('one-ring');
 
@@ -264,6 +280,7 @@ async function submitValidDiscovery(cardId = 7, ip = '203.0.113.7', overrides: R
     sourceType: 'marketplace',
     verificationStatus: 'source-linked',
     price: '1200',
+    priceKind: 'completed-sale', currency: 'USD', priceDate: '2026-06-30',
     notes: 'Looks real.',
     ...overrides,
   }, ip, token), routeContext());
@@ -293,6 +310,110 @@ describe('tracker API routes', () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ message: 'Request body must be valid JSON' });
+  });
+
+  it('shares card facts, report queues and evidence authorization across alias pages', async () => {
+    const poster = getTracker('lotr-poster-cards')!;
+    const slot = getTrackerSlotId(poster, 'the-one-ring', 7)!;
+    const session = createSubmissionSession(poster.slug, slot);
+    const upload = await uploadEvidenceImage(uploadRequest(await realImage(), '203.0.113.8', session.token), routeContext(poster.slug));
+    const asset = await upload.json();
+    expect(upload.status).toBe(200);
+    const submitted = await submitDiscovery(submitRequest({ cardId: slot, notes: 'Alias page report', evidenceAssetIds: [asset.assetId] }, '203.0.113.8', session.token, poster.slug), routeContext(poster.slug));
+    const receipt = await submitted.json();
+    expect(submitted.status).toBe(202);
+    const queue = await (await readSubmissions(exportRequest(), routeContext())).json();
+    expect(queue[0]).toMatchObject({ cardId: 7, originTrackerSlug: poster.slug, originCardId: slot });
+    expect((await reviewSubmission(reviewRequest({ submissionId: receipt.submissionId, action: 'approve', verificationStatus: 'confirmed' }), routeContext())).status).toBe(200);
+    const standalone = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
+    const collection = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext(poster.slug))).json();
+    expect(standalone[6].copyId).toBe(collection[slot - 1].copyId);
+    expect(standalone[6].found).toBe(true);
+    expect(collection[slot - 1].found).toBe(true);
+    expect((await readEvidence(new Request('https://mtgtrackers.com' + evidenceUrl(asset.assetId)), { params: Promise.resolve({ id: asset.assetId }) })).status).toBe(200);
+  });
+
+  it('requires private access and completes needs-info -> reply -> pending -> approval', async () => {
+    const { body } = await submitValidDiscovery();
+    const id = String(body.submissionId);
+    const token = String(body.followUpPath).split('#')[1];
+    const context = { params: Promise.resolve({ slug: 'one-ring', id }) };
+    const follow = (payload?: unknown, access = token) => new Request('https://mtgtrackers.com/api/reports/one-ring/' + id, { method: payload ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', 'x-report-token': access }, body: payload ? JSON.stringify(payload) : undefined });
+    expect((await readReportReceipt(follow(undefined, 'wrong'), context)).status).toBe(403);
+    expect((await reviewSubmission(reviewRequest({ submissionId: id, action: 'needs-more-info', reviewNotes: 'Please provide a readable serial photo' }), routeContext())).status).toBe(200);
+    expect((await (await readReportReceipt(follow(), context)).json()).request).toContain('readable serial');
+    const uploadSession = await (await replyToReport(follow({ action: 'upload-session' }), context)).json();
+    const uploaded = await (await uploadEvidenceImage(uploadRequest(await realImage(), '203.0.113.9', uploadSession.token), routeContext())).json();
+    const reply = { replyId: 'a3a73494-e902-487b-8e10-301a920a5bc8', notes: 'Here is the serial photo', evidenceAssetIds: [uploaded.assetId] };
+    expect((await replyToReport(follow(reply), context)).status).toBe(200);
+    expect((await replyToReport(follow(reply), context)).status).toBe(200);
+    expect((await replyToReport(follow({ ...reply, evidenceAssetIds: [] }), context)).status).toBe(409);
+    const updated = await (await readReportReceipt(follow(), context)).json();
+    expect(updated.status).toBe('pending');
+    expect(updated.followUps).toHaveLength(1);
+    expect((await reviewSubmission(reviewRequest({ submissionId: id, action: 'approve', reviewNotes: 'Private moderator note' }), routeContext())).status).toBe(200);
+    expect(JSON.stringify(await (await readReportReceipt(follow(), context)).json())).not.toContain('Private moderator note');
+  });
+
+  it('retracts and reopens approvals without deleting history or disclosing withdrawn facts', async () => {
+    const { body } = await submitValidDiscovery();
+    const id = body.submissionId;
+    expect((await reviewSubmission(reviewRequest({ submissionId: id, action: 'approve' }), routeContext())).status).toBe(200);
+    expect((await reviewSubmission(reviewRequest({ submissionId: id, action: 'revoke', reviewNotes: 'Incorrect serial attribution' }), routeContext())).status).toBe(200);
+    const cards = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
+    expect(cards[6].found).toBe(false);
+    expect(cards[6].historyBaseline).toBeUndefined();
+    expect(cards[6].history).toHaveLength(0);
+    expect((await reviewSubmission(reviewRequest({ submissionId: id, action: 'reopen', reviewNotes: 'New evidence available' }), routeContext())).status).toBe(200);
+    expect((await reviewSubmission(reviewRequest({ submissionId: id, action: 'approve' }), routeContext())).status).toBe(200);
+    const saved = redisFixture.store.get(tracker.storage.cardsKey) as Array<{ history: unknown[]; found: boolean }>;
+    expect(saved[6].history).toHaveLength(3);
+    expect(saved[6].found).toBe(true);
+  });
+
+  it('does not silently accept a changed retry of a submitted report', async () => {
+    const session = createSubmissionSession('one-ring', 7);
+    expect((await submitValidDiscovery(7, '203.0.113.7', {}, session.token)).response.status).toBe(202);
+    expect((await submitValidDiscovery(7, '203.0.113.7', { notes: 'Different facts' }, session.token)).response.status).toBe(409);
+  });
+
+  it('requires explicit correction approval and a prior discovery for admin grading', async () => {
+    expect((await updateGrading(reviewRequest({ cardId: 7, grading: { service: 'PSA', grade: 10 } }), routeContext())).status).toBe(409);
+    const { body } = await submitValidDiscovery(7, '203.0.113.7', { kind: 'correction' });
+    expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext())).status).toBe(400);
+    expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve', applyCorrection: true }), routeContext())).status).toBe(200);
+  });
+
+  it('rejects a stale merge when another moderator reviews its evidence report', async () => {
+    const first = await submitValidDiscovery(7, '203.0.113.7');
+    const second = await submitValidDiscovery(7, '203.0.113.8');
+    let changed = false;
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      if (!changed) { changed = true; await reviewSubmission(reviewRequest({ submissionId: second.body.submissionId, action: 'reject' }), routeContext()); }
+      return new Response('{}');
+    }));
+    expect((await reviewSubmission(reviewRequest({ submissionId: first.body.submissionId, action: 'approve', mergeSubmissionIds: [second.body.submissionId] }), routeContext())).status).toBe(409);
+    const cards = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
+    expect(cards[6].found).toBe(false);
+  });
+
+  it('requires a reviewed reconciliation and archives original conflicting records atomically', async () => {
+    const poster = getTracker('lotr-poster-cards')!;
+    const slot = getTrackerSlotId(poster, 'the-one-ring', 7)!;
+    const cards = createInitialTrackerCards(poster);
+    cards[slot - 1] = { ...cards[slot - 1], found: true, notes: 'Legacy discovery' };
+    redisFixture.store.set(poster.storage.cardsKey, cards);
+    expect((await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).status).toBe(409);
+    const preview = await (await previewReconciliation(exportRequest())).json();
+    expect(preview.candidates).toHaveLength(1);
+    const decisions = [{ copyId: cards[slot - 1].copyId, choice: 'adopt-legacy' }];
+    expect((await commitReconciliation(reviewRequest({ confirm: 'RECONCILE_SHARED_COPIES', revision: 'stale', decisions }))).status).toBe(409);
+    const result = await commitReconciliation(reviewRequest({ confirm: 'RECONCILE_SHARED_COPIES', revision: preview.revision, decisions }));
+    expect(result.status).toBe(200);
+    const archive = await result.json();
+    expect(redisFixture.store.has(archive.archiveKey)).toBe(true);
+    const shared = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
+    expect(shared[6]).toMatchObject({ found: true, notes: 'Legacy discovery' });
   });
 
   it('queues a valid public submission for review', async () => {
@@ -478,7 +599,7 @@ describe('tracker API routes', () => {
     const { body } = await submitValidDiscovery(7, undefined, { evidenceAssetIds: [uploaded.assetId] }, token);
     expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext())).status).toBe(200);
     const responses = await Promise.all([
-      updatePrice(reviewRequest({ cardId: 7, price: 1800 }), routeContext()),
+      updatePrice(reviewRequest({ cardId: 7, price: 1800, kind: 'completed-sale', currency: 'USD', date: '2026-09-05' }), routeContext()),
       updateImage(reviewRequest({ cardId: 7, imageUrl: url }), routeContext()),
     ]);
     expect(responses.map((response) => response.status)).toEqual([200, 200]);
@@ -641,8 +762,8 @@ describe('tracker API routes', () => {
     expect(publicImage.headers.get('cache-control')).toContain('no-store');
     expect(publicImage.headers.get('content-type')).toBe('image/webp');
     expect((await updateGrading(reviewRequest({ cardId: 7, grading: { service: 'PSA', grade: 9, dateGraded: '2026-08-01' } }), routeContext())).status).toBe(200);
-    expect((await addPriceHistory(reviewRequest({ cardId: 7, entry: { price: 1200, date: '2026-08-02', soldBy: 'Fixture seller' } }), routeContext())).status).toBe(200);
-    expect((await updatePrice(reviewRequest({ cardId: 7, price: '1250.50' }), routeContext())).status).toBe(200);
+    expect((await addPriceHistory(reviewRequest({ cardId: 7, entry: { price: 1200, date: '2026-08-02', kind: 'completed-sale', currency: 'USD', soldBy: 'Fixture seller' } }), routeContext())).status).toBe(200);
+    expect((await updatePrice(reviewRequest({ cardId: 7, price: '1250.50', kind: 'completed-sale', currency: 'USD', date: '2026-09-05' }), routeContext())).status).toBe(200);
     expect((await updateImage(reviewRequest({ cardId: 7, imageUrl: uploaded.url }), routeContext())).status).toBe(200);
     const after = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
     expect(after[6]).toMatchObject({ found: true, pendingReports: 0, image: uploaded.url, price: 1250.50, grading: { service: 'PSA', grade: 9 } });
@@ -652,8 +773,7 @@ describe('tracker API routes', () => {
     expect((await importTrackerBackup(importRequest({ confirm: 'RESTORE_TRACKER_BACKUP', backup }), routeContext())).status).toBe(200);
     const restored = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
     expect(restored).toEqual(after);
-    const storedCards = redisFixture.store.get(tracker.storage.cardsKey) as Array<{ evidenceImages: unknown[] }>;
-    storedCards[6].evidenceImages = [];
+    expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'revoke', reviewNotes: 'Withdraw fixture evidence' }), routeContext())).status).toBe(200);
     expect((await readEvidence(new Request('https://mtgtrackers.com' + uploaded.url), assetContext)).status).toBe(404);
   });
 
@@ -723,7 +843,7 @@ describe('tracker API routes', () => {
     expect((await updatePrice(reviewRequest({ cardId: 101, price: 100 }), routeContext())).status).toBe(404);
     for (const action of ['reject', 'needs-more-info', 'duplicate', 'cannot-verify']) {
       const { body } = await submitValidDiscovery(7, `203.0.113.${action.length}`);
-      expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action }), routeContext())).status).toBe(200);
+      expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action, reviewNotes: 'Please supply a readable serial photo' }), routeContext())).status).toBe(200);
       expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext())).status).toBe(409);
     }
     const cards = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
@@ -1846,7 +1966,7 @@ describe('tracker API routes', () => {
     expect(response.headers.get('content-type')).toContain('application/json');
     expect(response.headers.get('content-disposition')).toContain('one-ring-backup-');
     expect(backup).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       tracker: {
         slug: 'one-ring',
         total: 100,

@@ -9,6 +9,7 @@ import { buildDiscoveryShareLinks, buildDiscoveryShareText, buildDiscoveryShareT
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 import ExternalImage from '@/components/ExternalImage';
+import { normalizeSourceUrl } from '@/lib/evidence-policy';
 
 interface CardDetailsProps {
   card: SerializedRingCard;
@@ -351,9 +352,9 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
           </div>
 
           <div>
-            <h3 className="text-lg font-bold text-ring-gold mb-2">Current Price</h3>
+            <h3 className="text-lg font-bold text-ring-gold mb-2">Latest Recorded Sale (USD)</h3>
             <div className="bg-ring-light bg-opacity-20 p-4 rounded">
-              {card.price ? (
+              {card.price !== undefined ? (
                 <>
                 <p className="text-green-400 text-xl font-bold">
                   ${card.price.toLocaleString()}
@@ -363,7 +364,7 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
                 )}
                 </>
               ) : (
-                <p className="text-ring-light text-sm">No sale price has been recorded for this serial yet.</p>
+                <p className="text-ring-light text-sm">No completed USD sale is documented.</p>
               )}
             </div>
           </div>
@@ -405,6 +406,21 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
             </div>
           )}
 
+          {!!card.gradingHistory?.length && (
+            <section>
+              <h3 className="text-lg font-bold text-ring-gold mb-2">Grading History</h3>
+              <ol className="max-h-60 overflow-y-auto divide-y divide-ring-gold/30 text-sm text-ring-light">
+                {card.gradingHistory.map((entry) => (
+                  <li key={entry.id} className="py-3 break-words">
+                    <p className="font-bold">{entry.status === 'graded' ? `${entry.grading?.service} ${entry.grading?.grade}` : 'Observed ungraded'}</p>
+                    <p>{entry.occurredOn || 'Date unknown'}</p>
+                    {entry.grading?.certificateNumber && <p>Certificate: {entry.grading.certificateNumber}</p>}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
           <div>
             <h3 className="text-lg font-bold text-ring-gold mb-2">Price History</h3>
             <div className="bg-ring-light bg-opacity-20 p-4 rounded max-h-60 overflow-y-auto">
@@ -415,9 +431,9 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
                       <div className="flex justify-between items-start gap-4">
                         <div>
                           <p className="text-green-400 font-bold">
-                            ${entry.price.toLocaleString()}
+                            {entry.currency || 'Currency unknown'} {entry.price.toLocaleString()}
                           </p>
-                          <p className="text-ring-light text-sm">{entry.date}</p>
+                          <p className="text-ring-light text-sm">{entry.date || 'Date unknown'} - {entry.kind === 'completed-sale' ? 'Completed sale' : entry.kind === 'asking-price' ? 'Asking price' : 'Unclassified price'}</p>
                         </div>
                         <div className="text-right text-xs text-ring-light">
                           {entry.soldBy && <p>From: {entry.soldBy}</p>}
@@ -446,6 +462,18 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
               </div>
             </div>
           )}
+
+          {!!card.history?.length && <section>
+            <h3 className="text-lg font-bold text-ring-gold mb-2">Record History</h3>
+            <ol className="max-h-72 overflow-y-auto divide-y divide-ring-gold/30 text-sm text-ring-light">
+              {[...card.history].reverse().map((event) => <li key={event.id} className="py-3 break-words">
+                <p className="font-bold capitalize">{event.kind} - reviewed {event.recordedAt.slice(0, 10)}</p>
+                {event.facts?.dateFound && <p>Observed: {event.facts.dateFound}</p>}
+                {event.facts?.notes && <p className="whitespace-pre-wrap">{event.facts.notes}</p>}
+                {normalizeSourceUrl(event.facts?.link) && <a href={normalizeSourceUrl(event.facts?.link)} rel="noopener noreferrer" target="_blank" className="text-ring-gold underline">Source</a>}
+              </li>)}
+            </ol>
+          </section>}
 
           {card.evidenceImages && card.evidenceImages.length > 0 && (
             <div>

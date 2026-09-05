@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Cinzel } from "next/font/google";
 import "./globals.css";
 import React from "react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
-import { Analytics } from "@vercel/analytics/next";
+import SiteTelemetry from '@/components/SiteTelemetry';
 import { getTracker } from "@/lib/trackers";
 import SiteFooter from "@/components/SiteFooter";
 
@@ -103,8 +102,7 @@ export default function RootLayout({
       <body className={cinzel.className}>
         {children}
         <SiteFooter />
-        <SpeedInsights />
-        <Analytics />
+        <SiteTelemetry />
       </body>
     </html>
   );

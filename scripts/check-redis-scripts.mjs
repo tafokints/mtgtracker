@@ -8,8 +8,9 @@ import { Redis } from '@upstash/redis';
 const url = 'http://127.0.0.1:8079';
 assert.equal((await (await fetch(url)).json()).fixture, 'mtgtrackers-isolated-redis');
 const redis = new Redis({ url, token: 'fixture-only', enableAutoPipelining: false, responseEncoding: false });
+const productionDefaults = new Redis({ url, token: 'fixture-only' });
 const scripts = {};
-for (const file of ['tracker-store.ts', 'evidence-store.ts', 'rate-limit.ts']) {
+for (const file of ['tracker-store.ts', 'copy-reconciliation.ts', 'evidence-store.ts', 'rate-limit.ts']) {
 const source = ts.createSourceFile(file, readFileSync(new URL(`../src/lib/${file}`, import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
 for (const statement of source.statements) {
   if (!ts.isVariableStatement(statement)) continue;
@@ -24,12 +25,28 @@ const prefix = `fixture:${randomUUID()}`;
 const keys = [`${prefix}:cards`, `${prefix}:submissions`, `${prefix}:active`];
 const evidenceKey = `${prefix}:evidence`;
 const rateKey = `${prefix}:rate`;
+const relatedKeys = ['owner-cards', 'owner-reports', 'alias-cards', 'alias-reports'].map((key) => `${prefix}:${key}`);
+const archiveKey = `${prefix}:archive`;
 const slug = 'card-brr-98z';
 const oldCards = JSON.stringify([{ id: 1, found: false }]);
 const newCards = JSON.stringify([{ id: 1, found: true }]);
 const reports = JSON.stringify([{ id: 'fixture-report', cardId: 1 }]);
 
 try {
+  assert.deepEqual(await redis.eval(scripts.READ_RELATED_STATE, relatedKeys, []), ['', '', '', '']);
+  const oldRelated = [oldCards, '[]', oldCards, '[]'];
+  const newRelated = [newCards, reports, oldCards, '[]'];
+  await redis.mset(Object.fromEntries(relatedKeys.map((key, index) => [key, oldRelated[index]])));
+  const relatedCommit = () => redis.eval(scripts.COMMIT_RELATED_STATE, relatedKeys, [...oldRelated, ...newRelated]);
+  assert.deepEqual((await Promise.all([relatedCommit(), relatedCommit()])).sort(), [0, 1]);
+  assert.deepEqual(await redis.eval(scripts.READ_RELATED_STATE, relatedKeys, []), newRelated);
+  assert.deepEqual(await productionDefaults.eval(scripts.READ_RELATED_STATE, relatedKeys, []), newRelated);
+  assert.deepEqual(await Promise.all([productionDefaults.get(relatedKeys[0]), productionDefaults.get(relatedKeys[1])]), [JSON.parse(newCards), JSON.parse(reports)]);
+  const archive = JSON.stringify({ originals: newRelated });
+  assert.equal(await redis.eval(scripts.COMMIT_COPY_RECONCILIATION, [...relatedKeys, archiveKey], [...oldRelated, ...oldRelated, archive]), 0);
+  assert.equal(await redis.get(archiveKey), null);
+  assert.equal(await redis.eval(scripts.COMMIT_COPY_RECONCILIATION, [...relatedKeys, archiveKey], [...newRelated, ...oldRelated, archive]), 1);
+  assert.deepEqual(await redis.get(archiveKey), { originals: newRelated });
   assert.deepEqual(await redis.eval(scripts.READ_TRACKER_STATE, keys.slice(0, 2), []), { cards: '', submissions: '' });
   await redis.set(keys[0], oldCards);
   const raw = await redis.eval(scripts.READ_TRACKER_STATE, keys.slice(0, 2), []);
@@ -66,7 +83,7 @@ try {
   await redis.persist(rateKey);
   assert.equal(await redis.eval(scripts.BOUNDED_RATE_LIMIT, [rateKey], [3600]), 4);
   assert.ok(await redis.ttl(rateKey) > 0);
-  console.log('PASS: actual Upstash SDK + Lua read/CAS/restore/activity index, immutable evidence scan results, and atomic rate-limit expiry; isolated local data only.');
+  console.log('PASS: actual Upstash SDK + Lua shared-copy CAS and archived reconciliation, read/restore/activity index, immutable evidence scans, and atomic rate-limit expiry; isolated local data only.');
 } finally {
-  await redis.del(...keys, evidenceKey, rateKey);
+  await redis.del(...keys, ...relatedKeys, archiveKey, evidenceKey, rateKey);
 }

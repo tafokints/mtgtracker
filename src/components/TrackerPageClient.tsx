@@ -361,22 +361,20 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     };
   }, [cards, tracker]);
 
-  const handlePriceUpdate = async (cardId: number, price: number) => {
+  const handlePriceUpdate = async (cardId: number, entry: PriceHistoryEntry) => {
     try {
       const response = await fetch(`${trackerApiBase}/update-price`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ cardId, price }),
+        body: JSON.stringify({ cardId, ...entry }),
       });
 
-      if (response.ok) {
-        // Refresh the cards data
-        fetchCards();
-      }
+      if (!response.ok) { const data = await response.json(); throw new Error(data.error || data.message || 'Price update failed'); }
+      await fetchCards();
     } catch (error) {
-      console.error('Error updating price:', error);
+      throw error instanceof Error ? error : new Error('Price update failed');
     }
   };
 
@@ -400,22 +398,20 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     }
   };
 
-  const handleGradingUpdate = async (cardId: number, grading: GradingInfo) => {
+  const handleGradingUpdate = async (cardId: number, grading: GradingInfo | undefined, status: 'graded' | 'ungraded' = 'graded', occurredOn?: string) => {
     try {
       const response = await fetch(`${trackerApiBase}/update-grading`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ cardId, grading }),
+        body: JSON.stringify({ cardId, grading, status, occurredOn }),
       });
 
-      if (response.ok) {
-        // Refresh the cards data
-        fetchCards();
-      }
+      if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Grading update failed'); }
+      await fetchCards();
     } catch (error) {
-      console.error('Error updating grading:', error);
+      throw error instanceof Error ? error : new Error('Grading update failed');
     }
   };
 
@@ -429,12 +425,10 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
         body: JSON.stringify({ cardId, entry }),
       });
 
-      if (response.ok) {
-        // Refresh the cards data
-        fetchCards();
-      }
+      if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Price history update failed'); }
+      await fetchCards();
     } catch (error) {
-      console.error('Error adding price history:', error);
+      throw error instanceof Error ? error : new Error('Price history update failed');
     }
   };
 
