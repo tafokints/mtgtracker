@@ -1,3 +1,4 @@
+import { boundedContext, incrementTelemetry, limitTelemetry, TELEMETRY_RETENTION_SECONDS } from '@/lib/telemetry-policy';
 import { NextResponse } from 'next/server';
 import { isAffiliatePlacement } from '@/lib/affiliate-placements';
 import { getRedis } from '@/lib/redis';
@@ -131,7 +132,7 @@ function sanitizeViewContext(value: unknown) {
 }
 
 export async function POST(request: Request) {
-  const body = await readJsonBody(request);
+  const body = await readJsonBody(request, 8192);
   if (!body.ok) return body.response;
 
   const input = body.value as {
@@ -151,7 +152,8 @@ export async function POST(request: Request) {
   const label = typeof input.label === 'string' ? input.label.slice(0, 120) : undefined;
   const placement = typeof input.placement === 'string' ? input.placement.slice(0, 80) : '';
   const sourcePath = sanitizeInternalPath(input.sourcePath, 200);
-  const viewContext = sanitizeViewContext(input.viewContext);
+  const rawContext = sanitizeViewContext(input.viewContext);
+  const viewContext = rawContext ? boundedContext(trackerSlug, rawContext) : undefined;
 
   if (!trackerSlug || !isKnownTrackerSlug(trackerSlug)) {
     return NextResponse.json({ message: 'Unknown tracker' }, { status: 400 });
@@ -172,6 +174,7 @@ export async function POST(request: Request) {
 
   try {
     const redis = getRedis();
+    const limited = await limitTelemetry(redis, request); if (limited) return limited;
     const date = new Date().toISOString().slice(0, 10);
     const keyParts = [trackerSlug, merchant, placement].map(safeKeyPart);
     const contextCounterIncrements: Array<Promise<unknown>> = [];
@@ -181,8 +184,8 @@ export async function POST(request: Request) {
 
       const contextKeyParts = [trackerSlug, field, value].map(safeKeyPart);
       contextCounterIncrements.push(
-        redis.incr(`affiliate:context:${date}:${contextKeyParts.join(':')}`),
-        redis.incr(`affiliate:context:total:${contextKeyParts.join(':')}`)
+        incrementTelemetry(redis, `affiliate:context:${date}:${contextKeyParts.join(':')}`),
+        incrementTelemetry(redis, `affiliate:context:total:${contextKeyParts.join(':')}`)
       );
     };
 
@@ -193,11 +196,11 @@ export async function POST(request: Request) {
     addContextCounter('serial', viewContext?.serial);
 
     await Promise.all([
-      redis.incr(`affiliate:clicks:${date}:${keyParts.join(':')}`),
-      redis.incr(`affiliate:clicks:total:${keyParts.join(':')}`),
+      incrementTelemetry(redis, `affiliate:clicks:${date}:${keyParts.join(':')}`),
+      incrementTelemetry(redis, `affiliate:clicks:total:${keyParts.join(':')}`),
       ...(promotionSource ? [
-        redis.incr(`affiliate:promotion-source:${date}:${safeKeyPart(promotionSource)}`),
-        redis.incr(`affiliate:promotion-source:total:${safeKeyPart(promotionSource)}`),
+        incrementTelemetry(redis, `affiliate:promotion-source:${date}:${safeKeyPart(promotionSource)}`),
+        incrementTelemetry(redis, `affiliate:promotion-source:total:${safeKeyPart(promotionSource)}`),
       ] : []),
       redis.set(`affiliate:last-click:${keyParts.join(':')}`, {
         tracker: trackerSlug,
@@ -209,7 +212,7 @@ export async function POST(request: Request) {
         sourcePath,
         viewContext,
         clickedAt: new Date().toISOString(),
-      }),
+      }, { ex: TELEMETRY_RETENTION_SECONDS }),
       ...contextCounterIncrements,
     ]);
 

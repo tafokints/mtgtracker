@@ -29,10 +29,15 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env
+.env.*
+!.env.example
+/recovery-output/
+/backups/
 
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts 
+next-env.d.ts

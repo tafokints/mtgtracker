@@ -20,7 +20,8 @@ Use separate Redis/Blob stores and credentials for isolated testing and producti
 | Variable | Value/source |
 | --- | --- |
 | `BLOB_READ_WRITE_TOKEN` | Token for a **private** Vercel Blob store. An existing public store cannot simply be switched to private; create a separate private store. |
-| `ADMIN_SESSION_SECRET` | Existing strong server-side session secret, also used with a separate signing context for report permissions. |
+| `ADMIN_SESSION_SECRET` | Strong server-side secret; owner credential rotation invalidates sessions. Also used with a separate signing context for report permissions. |
+| `ADMIN_OWNER_ID` / `ADMIN_TOTP_SECRET` | Owner identifier and enrolled authenticator seed; production owner login requires both. See docs/SECURITY_OPERATIONS.md. |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Public Cloudflare Turnstile site key. Configure before building the frontend. |
 | `TURNSTILE_SECRET_KEY` | Matching server-side Turnstile secret. |
 | `TURNSTILE_ALLOWED_HOSTNAMES` | Exact comma-separated domains expected in server verification, e.g. `mtgtrackers.com,www.mtgtrackers.com`. Use separate explicit test hostnames in isolated environments. |
@@ -45,8 +46,8 @@ The server never fetches submitted sites, follows their redirects, or embeds unt
 - Upload budgets: 8 attempts/session, 10/IP/hour, 500/site/day. Reports: 5/IP/tracker/hour, 10/IP/site/hour, 1,000/site/day. Rate-limit increment/expiry is atomic. Trust forwarded IP headers only behind the deployment's trusted proxy; do not expose an unprotected origin.
 - Scanning is currently bounded synchronous request work (60-second route budget), with authenticated, rate-limited retry for pending/error assets. Durable jobs, backoff, and automated reconciliation remain TODO.
 - Attachment removal only detaches an unsent form entry; it is not physical deletion. Retention, orphan cleanup, audited removal, and takedown tooling remain TODO.
-- Existing tracker export/import backs up cards and submissions, NOT Blob bytes or `evidence:v1:*`. New asset records and private files must be included in the upcoming automated backup/restore drill. Missing asset metadata fails closed on read, rather than silently trusting an imported URL.
-- Current admin login is still shared-password based. Additional named moderators, MFA, trusted audit identities, and a paginated all-tracker inbox are the next moderation milestone.
+- Existing tracker export/import backs up cards and submissions, NOT Blob bytes or `evidence:v1:*`. The separate encrypted recovery runner now includes records/files and reconciliation archives; activation and a hosted restore drill remain required. See docs/SECURITY_OPERATIONS.md. Missing asset metadata fails closed on read, rather than silently trusting an imported URL.
+- Owner login now uses revocable server-side sessions, server-derived owner attribution and mandatory production TOTP. Separate moderators, comprehensive auditing and a paginated all-tracker inbox remain future work. See docs/SECURITY_OPERATIONS.md.
 - Previously approved external images are not automatically migrated or deleted. Pending legacy external evidence must be re-uploaded before approval. Review/import historical data deliberately; do not silently rewrite production records.
 
 ## Verification

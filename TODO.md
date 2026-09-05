@@ -10,6 +10,15 @@ Standing affiliate requirement: preserve a clear top-of-page disclosure before t
 
 ### Now: Audit And Reliability
 
+- [x] Add revocable owner sessions, idle/absolute expiry, credential-rotation invalidation, strict cookies/origin checks and production TOTP with replay protection; record server-derived owner IDs on reviews.
+- [x] Add encrypted recovery archives for shared tracker snapshots, journals, asset metadata/files and reconciliation archives, with integrity verification and isolated empty-target restore; add a disabled-until-configured nightly workflow.
+- [x] Rate-limit telemetry and image reads, bound analytics context and retention, make public health read-only, and remove production CSP unsafe-eval.
+- [ ] Enroll owner MFA and configure `ADMIN_OWNER_ID`/`ADMIN_TOTP_SECRET` before deployment. Production login fails closed without these; see docs/SECURITY_OPERATIONS.md.
+- [ ] Activate the protected backup environment/failure notifications and perform a real hosted restore drill; retain the encryption key offline.
+- [ ] Add idempotency IDs to admin price/grading/image writes to avoid repeated history after lost responses.
+- [ ] Include active generated trackers in efficient whole-site affiliate rollups; unscoped reports currently default to featured trackers.
+- [ ] Configure platform WAF/bandwidth/spend controls, validate trusted forwarded-IP handling, and review untouched legacy analytics keys with a dry-run cleanup.
+
 - [x] Prevent concurrent submissions, reviews, and admin edits from overwriting each other; commit approved cards and review status together.
 - [x] Fix multi-card backup round trips and export a consistent cards/submissions snapshot.
 - [x] Fail closed when production admin credentials are missing; rate-limit login attempts.
@@ -46,7 +55,7 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 - [ ] Verify real private upload/read/scan/approve/revoke/delete in an isolated hosted environment before enabling intake broadly; never seed production with QA discoveries.
 - [ ] Add durable scanning jobs with authenticated delivery, retry/backoff, and reconciliation for interrupted requests. Current scanning is synchronous and supports admin retry only.
 - [ ] Add a paginated, indexed all-tracker moderation inbox and independent submission/event records; preserve printing-based copy IDs and journal rules. Current review remains per tracker and arrays still grow.
-- [ ] Add named moderator/admin roles, MFA, server-derived reviewer identity, and append-only audit history before inviting more moderators.
+- [ ] Add separate moderator accounts/roles, invitations and a comprehensive protected audit log before inviting reviewers. Owner identity, production MFA and revocable owner sessions are implemented; this is not yet a multi-user identity system.
 - [ ] Add safe review/escalation for content-filter false positives, malicious-content reporting/takedown, and later source rechecks. No manual scanner override exists; legitimate MTG artwork may be held.
 
 ### Next: Infrastructure Readiness
@@ -59,8 +68,8 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 - [ ] Preview any production shared-copy conflicts and review reconciliation decisions after taking complete backups; do not silently choose a legacy record.
 - [ ] Complete the protected-intake service setup and hosted lifecycle gate above. Earlier public Blob setup advice is superseded: use a private store.
 - [ ] Add orphan-upload cleanup, a retention policy, and audited admin removal. Detaching a form attachment is not physical deletion; report hard-delete is not implemented.
-- [ ] Bound/rate-limit public telemetry and add retention so analytics cannot create unlimited Redis keys.
-- [ ] Add automated backups covering tracker data, `evidence:v1:*` asset records, and private Blob files; perform an isolated restore drill. Existing tracker exports alone do not restore evidence storage.
+- [x] Bound/rate-limit new public telemetry and add retention; arbitrary dimensions no longer create unlimited persistent keys. Historic untouched keys still need reviewed cleanup.
+- [ ] Enable the implemented encrypted recovery backup workflow and perform an isolated hosted restore drill. New recovery archives include asset metadata/files; tracker JSON exports alone still do not.
 - [ ] Validate the existing tracker scaffold across single-card and multi-card sets, different serialized quantities, shared identities, themes, and relevant affiliate defaults/fallbacks.
 - [ ] Add mobile/browser regression checks for empty trackers and isolated populated fixtures: serial selection, submission, image preview, review, and filters; improve the 2,000-slot browsing experience.
 - [ ] Locate primary distribution documentation for the two Secret Lair serialized promos; their pages currently disclose the source limitation. Refresh the printing snapshot for new releases and manually review newly encountered sets.
@@ -69,7 +78,7 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 
 Infrastructure acceptance: reports remain pending until authenticated review; overlapping views agree on card identity and discovery counts; image ingestion and telemetry have abuse/cost limits; backups can be restored in isolation; new trackers reuse validated configuration; affiliate destinations, attribution parameters, fallbacks, and disclosures pass checks. No minimum production discovery count is required.
 
-Backend relationship/workflow details and reconciliation instructions are in docs/DATA_MODEL.md. The current local checkpoint has 307 passing tests across 23 files, successful actual-SDK/Lua shared-copy CAS and archived-reconciliation checks against a disposable emulator, and Playwright checks at 320/390/1440px with intercepted UI fixtures, including price/ungraded submissions and public grading history. Hosted provider/Blob verification remains outstanding. The parent tracker and affiliate configuration/disclosures were not changed.
+Backend relationship/workflow details and reconciliation instructions are in docs/DATA_MODEL.md. The security checkpoint has 325 passing tests across 25 files, successful lint/build and zero known dependency vulnerabilities. Actual-SDK/Lua checks cover owner revocation/expiry, telemetry retention, recovery snapshots, shared-copy CAS and reconciliation. Playwright checks at 320/390/1440px cover owner MFA login and existing report/review/history/private-reply flows with intercepted APIs. Production-mode route fixtures also verify MFA login/logout/replay and server-derived identity. See docs/SECURITY_OPERATIONS.md for enrollment, recovery and deployment gates. Hosted provider/Blob verification remains outstanding. The parent tracker and affiliate configuration/disclosures were not changed.
 
 ### Later: Content And Growth
 

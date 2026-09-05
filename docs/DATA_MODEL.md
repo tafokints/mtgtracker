@@ -49,7 +49,7 @@ These are logical one-to-many relationships, still persisted inside the existing
 7. Receipt pages are noindex/no-referrer and do not load site analytics. Replies are rate-limited. There are no accounts, automatic email notifications, or contact-address collection in this milestone.
 8. Admins can reopen needs-info/rejected/cannot-verify/revoked reports with a reason. Merged duplicates can be reopened after their parent approval is retracted. Approved reports require retraction first. Reapproval reruns safety checks and creates a new event ID, even if its timestamp matches an earlier approval.
 
-Reviewer identity is now server-derived `admin`, not a caller-supplied name. Shared-password authentication remains; this is not named-moderator attribution or MFA.
+Reviewer identity is now the configured owner ID from the authenticated server-side session, not a caller-supplied name. Owner login requires production TOTP and supports revocation/idle expiry. This is one owner account, not named multi-moderator access; see docs/SECURITY_OPERATIONS.md.
 
 ## Legacy Reconciliation
 
@@ -62,13 +62,13 @@ An authenticated administrator can:
 3. POST the returned `revision`, `confirm: "RECONCILE_SHARED_COPIES"`, and the `decisions` array to the same endpoint. Each decision is `{copyId, choice}`. This is a deliberately privileged data selection, not an automatic evidence merge.
 4. A single CAS transaction archives the original raw records at `copy-reconciliation:v1:{uuid}`, writes the chosen owner facts, and clears alias facts. A stale revision aborts without writing. Original reports remain associated with their original tracker/slot. The unselected historical snapshot is retained in the private archive for further review.
 
-No reconciliation has been run against production. Include reconciliation archives in the upcoming automated backup system.
+No reconciliation has been run against production. Reconciliation archives are included in the encrypted recovery runner; its hosted workflow still needs activation and verification.
 
 ## Backups And Release Gates
 
 Schema-v2 tracker exports contain canonical view data, journals, grading/price history, and report origin/review metadata. Import accepts v1 and v2, validates nested history and origin identities, and retains concurrent changes outside the restored view. Restoring a shared copy intentionally affects every page showing that copy; do not treat an alias export as an independent database.
 
-These exports still do NOT back up private Blob bytes or `evidence:v1:*` metadata. Complete evidence-aware backups, isolated hosted provider testing, cleanup/retention, durable scanners, false-positive escalation, and named moderator roles before broad intake. No production credentials, discoveries, or affiliate settings were changed by this work.
+These per-tracker exports still do NOT back up private Blob bytes or `evidence:v1:*` metadata. The separate encrypted recovery runner includes both plus reconciliation archives; see docs/SECURITY_OPERATIONS.md. Its hosted activation and restore drill remain unverified. Complete evidence-aware backups, isolated hosted provider testing, cleanup/retention, durable scanners, false-positive escalation, and named moderator roles before broad intake. No production credentials, discoveries, or affiliate settings were changed by this work.
 
 ## Local Verification
 

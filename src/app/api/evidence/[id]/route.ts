@@ -19,9 +19,10 @@ export async function GET(request: Request, { params }: Context) {
   if (!EVIDENCE_ID.test(id)) return new NextResponse(null, { status: 404, headers });
   try {
     const redis = getRedis();
+    if (!(await checkRateLimit(redis, { key: `rate-limit:evidence-read:${getClientIp(request)}`, limit: 300, windowSeconds: 60 })).allowed) return new NextResponse(null, { status: 429, headers: { ...headers, 'Retry-After': '60' } });
     const asset = await redis.get<EvidenceAsset>(evidenceKey(id));
     if (!asset || asset.id !== id || asset.scan.status !== 'clean' || asset.scan.policyVersion !== 1) return new NextResponse(null, { status: 404, headers });
-    if (!isAdminRequest(request)) {
+    if (!await isAdminRequest(request)) {
       const tracker = getTracker(asset.tracker);
       if (!tracker || tracker.status !== 'live') return new NextResponse(null, { status: 404, headers });
       const { cards, submissions } = await getTrackerState(redis, tracker);
@@ -37,7 +38,7 @@ export async function GET(request: Request, { params }: Context) {
 
 // Retry interrupted/unavailable checks only. Clean results are immutable for this asset.
 export async function POST(request: Request, { params }: Context) {
-  const unauthorized = requireAdmin(request);
+  const unauthorized = await requireAdmin(request);
   if (unauthorized) return unauthorized;
   const { id } = await params;
   if (!EVIDENCE_ID.test(id)) return NextResponse.json({ message: 'Evidence not found' }, { status: 404, headers });

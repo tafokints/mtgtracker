@@ -1,3 +1,4 @@
+import { boundedContext, incrementTelemetry, limitTelemetry, TELEMETRY_RETENTION_SECONDS } from '@/lib/telemetry-policy';
 import { NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
 import { readJsonBody } from '@/lib/request-json';
@@ -22,7 +23,7 @@ function sanitizeInternalPath(value: unknown) {
 }
 
 export async function POST(request: Request) {
-  const body = await readJsonBody(request);
+  const body = await readJsonBody(request, 8192);
   if (!body.ok) return body.response;
 
   const input = body.value as {
@@ -38,8 +39,7 @@ export async function POST(request: Request) {
   const source = typeof input.source === 'string' ? input.source : '';
   const campaign = typeof input.campaign === 'string' ? input.campaign : '';
   const content = typeof input.content === 'string' ? input.content.slice(0, 120) : undefined;
-  const card = typeof input.card === 'string' ? input.card.slice(0, 80) : undefined;
-  const serial = typeof input.serial === 'string' ? input.serial.slice(0, 24) : undefined;
+  const { card, serial } = boundedContext(trackerSlug, { card: input.card, serial: input.serial });
   const path = sanitizeInternalPath(input.path);
   const tracker = getTracker(trackerSlug);
 
@@ -57,6 +57,7 @@ export async function POST(request: Request) {
 
   try {
     const redis = getRedis();
+    const limited = await limitTelemetry(redis, request); if (limited) return limited;
     const now = new Date().toISOString();
     const date = now.slice(0, 10);
     const keyParts = [trackerSlug, source].map(safeKeyPart);
@@ -66,18 +67,18 @@ export async function POST(request: Request) {
 
       const contextKeyParts = [trackerSlug, field, value].map(safeKeyPart);
       contextIncrements.push(
-        redis.incr(`promotion:visit-context:${date}:${contextKeyParts.join(':')}`),
-        redis.incr(`promotion:visit-context:total:${contextKeyParts.join(':')}`),
+        incrementTelemetry(redis, `promotion:visit-context:${date}:${contextKeyParts.join(':')}`),
+        incrementTelemetry(redis, `promotion:visit-context:total:${contextKeyParts.join(':')}`),
       );
     };
 
     addContextCounter('card', card);
     addContextCounter('serial', serial);
-    addContextCounter('content', content);
+    if (card && serial && content === `${trackerSlug}-${card}-${serial}`) addContextCounter('content', content);
 
     await Promise.all([
-      redis.incr(`promotion:visits:${date}:${keyParts.join(':')}`),
-      redis.incr(`promotion:visits:total:${keyParts.join(':')}`),
+      incrementTelemetry(redis, `promotion:visits:${date}:${keyParts.join(':')}`),
+      incrementTelemetry(redis, `promotion:visits:total:${keyParts.join(':')}`),
       redis.set(`promotion:last-visit:${keyParts.join(':')}`, {
         tracker: trackerSlug,
         trackerTitle: tracker.title,
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
         serial,
         path,
         visitedAt: now,
-      }),
+      }, { ex: TELEMETRY_RETENTION_SECONDS }),
       ...contextIncrements,
     ]);
 

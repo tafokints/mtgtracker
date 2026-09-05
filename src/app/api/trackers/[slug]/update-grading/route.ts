@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
-  const unauthorized = requireAdmin(request);
+  const unauthorized = await requireAdmin(request);
   if (unauthorized) return unauthorized;
   const { slug } = await params;
   const tracker = getTracker(slug);

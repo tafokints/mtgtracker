@@ -1,76 +1,85 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  ADMIN_COOKIE_NAME,
-  createAdminSession,
-  getAdminSessionFromRequest,
-  requireAdmin,
-  verifyAdminSession,
-} from '@/lib/admin-auth';
+import { TOTP } from 'otpauth';
+import { ADMIN_COOKIE_NAME, adminCookieOptions, adminSessionKey, createAdminSession, getAdminSessionFromRequest, isAdminConfigured,
+  requireAdmin, revokeAdminSession, verifyAdminSession, verifyAdminTotp } from '@/lib/admin-auth';
 
-const originalPassword = process.env.ADMIN_PASSWORD;
-const originalSecret = process.env.ADMIN_SESSION_SECRET;
+const fixture = vi.hoisted(() => ({ store: new Map<string, Record<string, unknown> | string>(), unavailable: false }));
+vi.mock('@/lib/redis', () => ({ getRedis: () => ({
+  async set(key: string, value: Record<string, unknown>, options: { nx?: boolean }) {
+    if (fixture.unavailable) throw new Error('unavailable');
+    if (options.nx && fixture.store.has(key)) return null;
+    fixture.store.set(key, structuredClone(value)); return 'OK';
+  },
+  async del(key: string) { if (fixture.unavailable) throw new Error('unavailable'); fixture.store.delete(key); },
+  async eval(_script: string, keys: string[], args: string[]) {
+    if (fixture.unavailable) throw new Error('unavailable');
+    const session = fixture.store.get(keys[0]) as Record<string, unknown> | undefined;
+    const now = Number(args[0]);
+    if (!session || session.fingerprint !== args[1] || Number(session.expiresAt) <= now || Number(session.lastSeenAt) + Number(args[2]) <= now) { fixture.store.delete(keys[0]); return ''; }
+    session.lastSeenAt = now; return session.principal;
+  },
+}) }));
 
-describe('admin auth helpers', () => {
+function request(token: string, method = 'GET', origin = 'https://mtgtrackers.com') {
+  return new Request('https://mtgtrackers.com/admin', { method, headers: { cookie: `${ADMIN_COOKIE_NAME}=${token}`, origin } });
+}
+
+describe('revocable owner authentication', () => {
   beforeEach(() => {
-    process.env.ADMIN_PASSWORD = 'test-admin-password';
-    process.env.ADMIN_SESSION_SECRET = 'test-admin-secret';
+    fixture.store.clear(); fixture.unavailable = false;
+    vi.stubEnv('ADMIN_PASSWORD', 'fixture-owner-password-strong');
+    vi.stubEnv('ADMIN_SESSION_SECRET', 'fixture-only-session-secret-32-characters');
+    vi.stubEnv('ADMIN_OWNER_ID', 'fixture-owner');
+    vi.stubEnv('ADMIN_TOTP_SECRET', 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP');
   });
+  afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
 
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.useRealTimers();
-    if (originalPassword === undefined) delete process.env.ADMIN_PASSWORD;
-    else process.env.ADMIN_PASSWORD = originalPassword;
-    if (originalSecret === undefined) delete process.env.ADMIN_SESSION_SECRET;
-    else process.env.ADMIN_SESSION_SECRET = originalSecret;
+  it('stores only hashed opaque session tokens and derives the owner on the server', async () => {
+    const token = await createAdminSession();
+    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(fixture.store.has(adminSessionKey(token))).toBe(true);
+    expect(JSON.stringify([...fixture.store])).not.toContain(token);
+    expect(await verifyAdminSession(token)).toEqual({ id: 'fixture-owner', role: 'owner' });
+    expect(await verifyAdminSession(`${token}.extra`)).toBeNull();
+    expect(getAdminSessionFromRequest(request(token))).toBe(token);
   });
-
-  it('creates and verifies signed admin sessions', () => {
-    const session = createAdminSession();
-
-    expect(verifyAdminSession(session)).toBe(true);
-    expect(verifyAdminSession(`${session.slice(0, -1)}x`)).toBe(false);
+  it('revokes a copied cookie on logout', async () => {
+    const token = await createAdminSession(); await revokeAdminSession(request(token, 'DELETE'));
+    expect(await verifyAdminSession(token)).toBeNull();
   });
-
-  it('extracts admin session cookies from requests', () => {
-    const session = createAdminSession();
-    const request = new Request('https://mtgtrackers.com/admin', {
-      headers: {
-        cookie: `other=value; ${ADMIN_COOKIE_NAME}=${session}`,
-      },
-    });
-
-    expect(getAdminSessionFromRequest(request)).toBe(session);
+  it.each(['ADMIN_PASSWORD', 'ADMIN_SESSION_SECRET', 'ADMIN_OWNER_ID', 'ADMIN_TOTP_SECRET'])('invalidates sessions when %s changes', async (name) => {
+    const token = await createAdminSession(); vi.stubEnv(name, `${process.env[name]}A`);
+    expect(await verifyAdminSession(token)).toBeNull();
   });
-
-  it('rejects expired sessions and extra token segments', () => {
-    vi.useFakeTimers();
-    const session = createAdminSession();
-    expect(verifyAdminSession(`${session}.extra`)).toBe(false);
-    vi.advanceTimersByTime(8 * 60 * 60 * 1000);
-    expect(verifyAdminSession(session)).toBe(false);
+  it('enforces idle and absolute expiry despite repeated requests', async () => {
+    vi.useFakeTimers(); const idle = await createAdminSession();
+    vi.advanceTimersByTime(30 * 60000); expect(await verifyAdminSession(idle)).toBeNull();
+    const active = await createAdminSession();
+    for (let i = 0; i < 47; i++) { vi.advanceTimersByTime(10 * 60000); expect(await verifyAdminSession(active)).not.toBeNull(); }
+    vi.advanceTimersByTime(10 * 60000); expect(await verifyAdminSession(active)).toBeNull();
   });
-
-  it.each(['ADMIN_PASSWORD', 'ADMIN_SESSION_SECRET'] as const)('fails closed in production without %s', (name) => {
-    const session = createAdminSession();
-    vi.stubEnv('NODE_ENV', 'production');
-    delete process.env[name];
-    expect(verifyAdminSession(session)).toBe(false);
-    expect(() => createAdminSession()).toThrow('Admin authentication is not configured');
+  it.each(['ADMIN_PASSWORD', 'ADMIN_SESSION_SECRET', 'ADMIN_OWNER_ID', 'ADMIN_TOTP_SECRET'])('requires %s in production', async (name) => {
+    vi.stubEnv('NODE_ENV', 'production'); vi.stubEnv(name, ''); expect(isAdminConfigured()).toBe(false);
+    await expect(createAdminSession()).rejects.toThrow('not configured');
   });
-
-  it('rejects sessions signed with the development fallback in production', () => {
-    delete process.env.ADMIN_SESSION_SECRET;
-    const session = createAdminSession();
-    vi.stubEnv('NODE_ENV', 'production');
-    delete process.env.ADMIN_PASSWORD;
-    expect(verifyAdminSession(session)).toBe(false);
+  it('rejects weak production credentials and has no development password fallback', () => {
+    vi.stubEnv('NODE_ENV', 'production'); vi.stubEnv('ADMIN_PASSWORD', 'short'); expect(isAdminConfigured()).toBe(false);
+    vi.stubEnv('NODE_ENV', 'development'); vi.stubEnv('ADMIN_PASSWORD', ''); expect(isAdminConfigured()).toBe(false);
   });
-
-  it('returns a 401 response for unauthenticated admin requests', async () => {
-    const response = requireAdmin(new Request('https://mtgtrackers.com/admin'));
-
-    expect(response?.status).toBe(401);
-    await expect(response?.json()).resolves.toEqual({ message: 'Unauthorized' });
+  it('validates TOTP and rejects repeated and stale codes', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-05T12:00:00Z'));
+    const code = new TOTP({ secret: process.env.ADMIN_TOTP_SECRET! }).generate();
+    expect(await verifyAdminTotp('invalid')).toBe(false); expect(await verifyAdminTotp(code)).toBe(true);
+    expect(await verifyAdminTotp(code)).toBe(false); vi.advanceTimersByTime(120000); expect(await verifyAdminTotp(code)).toBe(false);
+  });
+  it('fails closed during an outage and rejects cross-origin or originless changes', async () => {
+    const token = await createAdminSession();
+    expect((await requireAdmin(request(token, 'POST', 'https://attacker.example')))?.status).toBe(403);
+    const missing = request(token, 'POST'); missing.headers.delete('origin'); expect((await requireAdmin(missing))?.status).toBe(403);
+    fixture.unavailable = true; expect((await requireAdmin(request(token)))?.status).toBe(503);
+    await expect(revokeAdminSession(request(token))).rejects.toThrow(); expect((await requireAdmin(request('invalid')))?.status).toBe(401);
+  });
+  it('sets secure, HTTP-only, strict same-site cookies in production', () => {
+    vi.stubEnv('NODE_ENV', 'production'); expect(adminCookieOptions()).toMatchObject({ secure: true, httpOnly: true, sameSite: 'strict' });
   });
 });

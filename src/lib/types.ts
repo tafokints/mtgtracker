@@ -43,6 +43,7 @@ export interface CardHistoryEvent {
 }
 
 export interface ReportReviewEvent {
+  actorId?: string;
   id: string;
   action: string;
   at: string;

@@ -10,7 +10,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string; id: string }> }) {
-  const unauthorized = requireAdmin(request);
+  const unauthorized = await requireAdmin(request);
   if (unauthorized) return unauthorized;
   const { slug, id } = await params;
   const tracker = getTracker(slug);

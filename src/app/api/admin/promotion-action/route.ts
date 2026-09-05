@@ -14,7 +14,7 @@ function safeKeyPart(value: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const unauthorized = requireAdmin(request);
+  const unauthorized = await requireAdmin(request);
   if (unauthorized) return unauthorized;
 
   const body = await readJsonBody(request);

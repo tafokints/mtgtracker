@@ -1,3 +1,4 @@
+import { incrementTelemetry, limitTelemetry, TELEMETRY_RETENTION_SECONDS } from '@/lib/telemetry-policy';
 import { NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
 import { sanitizeInternalPath } from '@/lib/internal-path';
@@ -14,7 +15,7 @@ function safeKeyPart(value: string) {
 }
 
 export async function POST(request: Request) {
-  const body = await readJsonBody(request);
+  const body = await readJsonBody(request, 8192);
   if (!body.ok) return body.response;
 
   const input = body.value as {
@@ -40,12 +41,13 @@ export async function POST(request: Request) {
 
   try {
     const redis = getRedis();
+    const limited = await limitTelemetry(redis, request); if (limited) return limited;
     const date = new Date().toISOString().slice(0, 10);
     const keySuffix = [tracker.slug, action].map(safeKeyPart).join(':');
 
     await Promise.all([
-      redis.incr(`directory:clicks:${date}:${keySuffix}`),
-      redis.incr(`directory:clicks:total:${keySuffix}`),
+      incrementTelemetry(redis, `directory:clicks:${date}:${keySuffix}`),
+      incrementTelemetry(redis, `directory:clicks:total:${keySuffix}`),
       redis.set(`directory:last-click:${keySuffix}`, {
         tracker: tracker.slug,
         trackerTitle: tracker.title,
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
         href,
         sourcePath,
         clickedAt: new Date().toISOString(),
-      }),
+      }, { ex: TELEMETRY_RETENTION_SECONDS }),
     ]);
 
     return NextResponse.json({ ok: true });

@@ -6,7 +6,9 @@ import { loadProjectModule } from './lib/load-project-module.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.argv[2] || 'playwright');
-const base = 'http://127.0.0.1:3102';
+const port = Number(process.env.WORKFLOW_UI_PORT || 3102);
+assert.ok(Number.isInteger(port) && port >= 1024 && port <= 65535);
+const base = `http://127.0.0.1:${port}`;
 const { getTracker } = loadProjectModule(path.resolve('src/lib/trackers.ts'));
 const { createInitialTrackerCards } = loadProjectModule(path.resolve('src/lib/tracker-data.ts'));
 const tracker = getTracker('one-ring');

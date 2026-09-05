@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import ts from 'typescript';
 import { Redis } from '@upstash/redis';
+import { SNAPSHOT_KEYS } from './recovery.mjs';
 
 // Intentionally not configurable: these mutations must never target cloud data.
 const url = 'http://127.0.0.1:8079';
@@ -10,7 +11,7 @@ assert.equal((await (await fetch(url)).json()).fixture, 'mtgtrackers-isolated-re
 const redis = new Redis({ url, token: 'fixture-only', enableAutoPipelining: false, responseEncoding: false });
 const productionDefaults = new Redis({ url, token: 'fixture-only' });
 const scripts = {};
-for (const file of ['tracker-store.ts', 'copy-reconciliation.ts', 'evidence-store.ts', 'rate-limit.ts']) {
+for (const file of ['tracker-store.ts', 'copy-reconciliation.ts', 'evidence-store.ts', 'rate-limit.ts', 'admin-auth.ts', 'telemetry-policy.ts']) {
 const source = ts.createSourceFile(file, readFileSync(new URL(`../src/lib/${file}`, import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
 for (const statement of source.statements) {
   if (!ts.isVariableStatement(statement)) continue;
@@ -25,6 +26,8 @@ const prefix = `fixture:${randomUUID()}`;
 const keys = [`${prefix}:cards`, `${prefix}:submissions`, `${prefix}:active`];
 const evidenceKey = `${prefix}:evidence`;
 const rateKey = `${prefix}:rate`;
+const sessionKey = `${prefix}:session`;
+const dailyKey = `${prefix}:daily`;
 const relatedKeys = ['owner-cards', 'owner-reports', 'alias-cards', 'alias-reports'].map((key) => `${prefix}:${key}`);
 const archiveKey = `${prefix}:archive`;
 const slug = 'card-brr-98z';
@@ -33,6 +36,21 @@ const newCards = JSON.stringify([{ id: 1, found: true }]);
 const reports = JSON.stringify([{ id: 'fixture-report', cardId: 1 }]);
 
 try {
+  const now = Math.floor(Date.now() / 1000);
+  const session = { principal: { id: 'fixture-owner', role: 'owner' }, fingerprint: 'fixture', lastSeenAt: now, expiresAt: now + 3600 };
+  await redis.set(sessionKey, session, { ex: 1800 });
+  assert.deepEqual(await productionDefaults.eval(scripts.CHECK_ADMIN_SESSION, [sessionKey], [String(now), 'fixture', '1800']), session.principal);
+  assert.ok(await redis.ttl(sessionKey) > 0);
+  assert.equal(await productionDefaults.eval(scripts.CHECK_ADMIN_SESSION, [sessionKey], [String(now), 'rotated', '1800']), '');
+  assert.equal(await redis.get(sessionKey), null);
+  await redis.set(sessionKey, { ...session, lastSeenAt: now - 1800 });
+  assert.equal(await productionDefaults.eval(scripts.CHECK_ADMIN_SESSION, [sessionKey], [String(now), 'fixture', '1800']), '');
+  await redis.set(sessionKey, session);
+  await redis.del(sessionKey);
+  assert.equal(await productionDefaults.eval(scripts.CHECK_ADMIN_SESSION, [sessionKey], [String(now), 'fixture', '1800']), '');
+  await redis.eval(scripts.INCREMENT_TELEMETRY, [dailyKey], ['7776000']);
+  assert.ok(await redis.ttl(dailyKey) > 0);
+  assert.deepEqual(await productionDefaults.eval(SNAPSHOT_KEYS, [sessionKey, dailyKey], []), [false, '1']);
   assert.deepEqual(await redis.eval(scripts.READ_RELATED_STATE, relatedKeys, []), ['', '', '', '']);
   const oldRelated = [oldCards, '[]', oldCards, '[]'];
   const newRelated = [newCards, reports, oldCards, '[]'];
@@ -83,7 +101,7 @@ try {
   await redis.persist(rateKey);
   assert.equal(await redis.eval(scripts.BOUNDED_RATE_LIMIT, [rateKey], [3600]), 4);
   assert.ok(await redis.ttl(rateKey) > 0);
-  console.log('PASS: actual Upstash SDK + Lua shared-copy CAS and archived reconciliation, read/restore/activity index, immutable evidence scans, and atomic rate-limit expiry; isolated local data only.');
+  console.log('PASS: actual Upstash SDK + Lua owner session revocation/expiry, bounded telemetry, recovery snapshots, shared-copy CAS, archived reconciliation, immutable scans and rate limits; isolated local data only.');
 } finally {
-  await redis.del(...keys, ...relatedKeys, archiveKey, evidenceKey, rateKey);
+  await redis.del(...keys, ...relatedKeys, archiveKey, evidenceKey, rateKey, sessionKey, dailyKey);
 }

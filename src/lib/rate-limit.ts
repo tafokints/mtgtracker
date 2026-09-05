@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis';
+import { isIP } from 'node:net';
 
 interface RateLimitOptions {
   key: string;
@@ -16,12 +17,15 @@ export const BOUNDED_RATE_LIMIT = `
 export function getClientIp(request: Request) {
   const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
 
-  return (
+  const candidate = (
     forwardedFor ||
     request.headers.get('x-real-ip') ||
     request.headers.get('cf-connecting-ip') ||
     'unknown'
   );
+  if (!isIP(candidate)) return 'unknown';
+  try { return isIP(candidate) === 6 ? new URL(`http://[${candidate}]`).hostname : candidate; }
+  catch { return 'unknown'; }
 }
 
 export async function checkRateLimit(redis: Redis, options: RateLimitOptions) {

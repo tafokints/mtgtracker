@@ -1,66 +1,45 @@
 import { NextResponse } from 'next/server';
-import {
-  ADMIN_COOKIE_NAME,
-  adminCookieOptions,
-  createAdminSession,
-  isAdminConfigured,
-  isAdminRequest,
-  verifyAdminPassword,
-} from '@/lib/admin-auth';
+import { ADMIN_COOKIE_NAME, adminCookieOptions, createAdminSession, getAdminPrincipal, isAdminConfigured,
+  rejectCrossOrigin, revokeAdminSession, verifyAdminPassword, verifyAdminTotp } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
 import { getRedis } from '@/lib/redis';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+const headers = { 'Cache-Control': 'private, no-store' };
 
 export async function GET(request: Request) {
-  return NextResponse.json({ authenticated: isAdminRequest(request) });
+  try {
+    const principal = await getAdminPrincipal(request);
+    return NextResponse.json({ authenticated: Boolean(principal), principal, mfaRequired: process.env.NODE_ENV === 'production' || Boolean(process.env.ADMIN_TOTP_SECRET) }, { headers });
+  } catch { return NextResponse.json({ message: 'Admin authentication is temporarily unavailable' }, { status: 503, headers }); }
 }
 
 export async function POST(request: Request) {
-  if (!isAdminConfigured()) {
-    return NextResponse.json({ message: 'Admin authentication is not configured' }, { status: 503 });
-  }
-
-  const body = await readJsonBody(request);
-  if (!body.ok) return body.response;
-
-  const { password } = body.value as { password?: unknown };
-
+  const crossOrigin = rejectCrossOrigin(request); if (crossOrigin) return crossOrigin;
+  if (!isAdminConfigured()) return NextResponse.json({ message: 'Owner login is not configured' }, { status: 503, headers });
+  const body = await readJsonBody(request, 4096); if (!body.ok) return body.response;
   try {
-    const rateLimit = await checkRateLimit(getRedis(), {
-      key: `rate-limit:admin:login:${getClientIp(request)}`,
-      limit: 10,
-      windowSeconds: 15 * 60,
-    });
-    if (!rateLimit.allowed) {
-      return NextResponse.json({ message: 'Too many login attempts. Please try again later.' }, {
-        status: 429,
-        headers: { 'Retry-After': '900' },
-      });
+    const redis = getRedis();
+    for (const [key, limit] of [[`rate-limit:admin:login:${getClientIp(request)}`, 10], ['rate-limit:admin:login:site', 100]] as const) {
+      if (!(await checkRateLimit(redis, { key, limit, windowSeconds: 900 })).allowed) return NextResponse.json({ message: 'Too many login attempts. Please try later.' }, { status: 429, headers: { ...headers, 'Retry-After': '900' } });
     }
-  } catch (error) {
-    console.error('Admin login rate limit unavailable:', error);
-    return NextResponse.json({ message: 'Admin login is temporarily unavailable' }, { status: 503 });
-  }
-
-  if (!verifyAdminPassword(password)) {
-    return NextResponse.json({ message: 'Invalid password' }, { status: 401 });
-  }
-
-  const response = NextResponse.json({ authenticated: true });
-  response.cookies.set(ADMIN_COOKIE_NAME, createAdminSession(), adminCookieOptions());
-
-  return response;
+    if (!verifyAdminPassword(body.value.password) || !await verifyAdminTotp(body.value.code)) return NextResponse.json({ message: 'Invalid password or authenticator code' }, { status: 401, headers });
+    await revokeAdminSession(request);
+    const token = await createAdminSession();
+    const response = NextResponse.json({ authenticated: true }, { headers });
+    response.cookies.set(ADMIN_COOKIE_NAME, token, adminCookieOptions());
+    return response;
+  } catch { return NextResponse.json({ message: 'Admin authentication is temporarily unavailable' }, { status: 503, headers }); }
 }
 
-export async function DELETE() {
-  const response = NextResponse.json({ authenticated: false });
-  response.cookies.set(ADMIN_COOKIE_NAME, '', {
-    ...adminCookieOptions(),
-    maxAge: 0,
-  });
-
-  return response;
+export async function DELETE(request: Request) {
+  const crossOrigin = rejectCrossOrigin(request); if (crossOrigin) return crossOrigin;
+  try {
+    await revokeAdminSession(request);
+    const response = NextResponse.json({ authenticated: false }, { headers });
+    response.cookies.set(ADMIN_COOKIE_NAME, '', { ...adminCookieOptions(), maxAge: 0 });
+    return response;
+  } catch { return NextResponse.json({ message: 'Could not revoke session. Please retry logout.' }, { status: 503, headers }); }
 }

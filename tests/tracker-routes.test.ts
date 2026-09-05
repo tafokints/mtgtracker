@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, createAdminSession } from '@/lib/admin-auth';
 import { buildAmazonSearchUrl, buildTrackerEbaySearchUrl, getSerialAffiliateLinks, getTracker } from '@/lib/trackers';
 import sharp from 'sharp';
+import { TOTP } from 'otpauth';
 import { ACTIVE_PRINTING_TRACKERS_KEY } from '@/lib/tracker-store';
 import { createSubmissionSession } from '@/lib/submission-session';
 import { evidenceUrl } from '@/lib/evidence-policy';
@@ -28,6 +29,14 @@ const redisFixture = vi.hoisted(() => {
         return 'OK';
       },
       async eval(script: string, keys: string[], args: string[]) {
+        if (script.includes('-- validate and touch revocable owner session')) {
+          const session = store.get(keys[0]) as { fingerprint: string; expiresAt: number; lastSeenAt: number; principal: unknown } | undefined;
+          const now = Number(args[0]);
+          if (!session || session.fingerprint !== args[1] || session.expiresAt <= now || session.lastSeenAt + Number(args[2]) <= now) { store.delete(keys[0]); return ''; }
+          session.lastSeenAt = now;
+          return structuredClone(session.principal);
+        }
+        if (script.includes('-- increment daily telemetry')) { const count = (counters.get(keys[0]) || 0) + 1; counters.set(keys[0], count); return count; }
         if (script.includes('-- reconcile legacy shared copies')) {
           const n = keys.length - 1;
           if (store.has(keys[n]) || keys.slice(0, n).some((key, i) => (store.has(key) ? JSON.stringify(store.get(key)) : '') !== args[i])) return 0;
@@ -143,6 +152,7 @@ import { GET as readReportReceipt, POST as replyToReport } from '@/app/api/repor
 import { GET as previewReconciliation, POST as commitReconciliation } from '@/app/api/admin/reconcile-copies/route';
 import { getTrackerSlotId } from '@/lib/tracker-data';
 
+let adminSession = '';
 const tracker = getTracker('one-ring');
 
 if (!tracker) {
@@ -160,6 +170,7 @@ function submitRequest(body: unknown, ip = '203.0.113.7', token?: string, slug =
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      origin: 'https://mtgtrackers.com',
       'x-forwarded-for': ip,
       'x-submission-token': token ?? (process.env.ADMIN_SESSION_SECRET ? createSubmissionSession(slug, Number((body as { cardId?: unknown })?.cardId) || 7).token : ''),
     },
@@ -191,6 +202,7 @@ function affiliateClickRequest(body: unknown) {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      origin: 'https://mtgtrackers.com',
     },
     body: JSON.stringify(body),
   });
@@ -201,12 +213,13 @@ function directoryClickRequest(body: unknown) {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      origin: 'https://mtgtrackers.com',
     },
     body: JSON.stringify(body),
   });
 }
 
-function affiliateStatsRequest(session = createAdminSession(), days = 30) {
+function affiliateStatsRequest(session = adminSession, days = 30) {
   return new NextRequest(`https://mtgtrackers.com/api/admin/affiliate-stats?days=${days}`, {
     method: 'GET',
     headers: {
@@ -215,11 +228,12 @@ function affiliateStatsRequest(session = createAdminSession(), days = 30) {
   });
 }
 
-function promotionActionRequest(body: unknown, session = createAdminSession()) {
+function promotionActionRequest(body: unknown, session = adminSession) {
   return new NextRequest('https://mtgtrackers.com/api/admin/promotion-action', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      origin: 'https://mtgtrackers.com',
       cookie: `${ADMIN_COOKIE_NAME}=${session}`,
     },
     body: JSON.stringify(body),
@@ -231,23 +245,25 @@ function promotionVisitRequest(body: unknown) {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      origin: 'https://mtgtrackers.com',
     },
     body: JSON.stringify(body),
   });
 }
 
-function reviewRequest(body: unknown, session = createAdminSession()) {
+function reviewRequest(body: unknown, session = adminSession) {
   return new NextRequest('https://mtgtrackers.com/api/trackers/one-ring/submissions', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      origin: 'https://mtgtrackers.com',
       cookie: `${ADMIN_COOKIE_NAME}=${session}`,
     },
     body: JSON.stringify(body),
   });
 }
 
-function exportRequest(session = createAdminSession()) {
+function exportRequest(session = adminSession) {
   return new NextRequest('https://mtgtrackers.com/api/trackers/one-ring/export', {
     method: 'GET',
     headers: {
@@ -256,11 +272,12 @@ function exportRequest(session = createAdminSession()) {
   });
 }
 
-function importRequest(body: unknown, session = createAdminSession()) {
+function importRequest(body: unknown, session = adminSession) {
   return new NextRequest('https://mtgtrackers.com/api/trackers/one-ring/import', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      origin: 'https://mtgtrackers.com',
       cookie: `${ADMIN_COOKIE_NAME}=${session}`,
     },
     body: JSON.stringify(body),
@@ -290,8 +307,8 @@ async function submitValidDiscovery(cardId = 7, ip = '203.0.113.7', overrides: R
 }
 
 describe('tracker API routes', () => {
-  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-  beforeEach(() => {
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+  beforeEach(async () => {
     redisFixture.store.clear();
     redisFixture.counters.clear();
     blobFixture.put.mockClear();
@@ -303,6 +320,9 @@ describe('tracker API routes', () => {
     process.env.ADMIN_PASSWORD = 'test-admin-password';
     process.env.ADMIN_SESSION_SECRET = 'test-admin-secret';
     process.env.BLOB_READ_WRITE_TOKEN = 'test-blob-token';
+    delete process.env.ADMIN_TOTP_SECRET;
+    delete process.env.ADMIN_OWNER_ID;
+    adminSession = await createAdminSession();
   });
 
   it('returns 400 for malformed public submission JSON', async () => {
@@ -338,7 +358,7 @@ describe('tracker API routes', () => {
     const id = String(body.submissionId);
     const token = String(body.followUpPath).split('#')[1];
     const context = { params: Promise.resolve({ slug: 'one-ring', id }) };
-    const follow = (payload?: unknown, access = token) => new Request('https://mtgtrackers.com/api/reports/one-ring/' + id, { method: payload ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', 'x-report-token': access }, body: payload ? JSON.stringify(payload) : undefined });
+    const follow = (payload?: unknown, access = token) => new Request('https://mtgtrackers.com/api/reports/one-ring/' + id, { method: payload ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', origin: 'https://mtgtrackers.com', 'x-report-token': access }, body: payload ? JSON.stringify(payload) : undefined });
     expect((await readReportReceipt(follow(undefined, 'wrong'), context)).status).toBe(403);
     expect((await reviewSubmission(reviewRequest({ submissionId: id, action: 'needs-more-info', reviewNotes: 'Please provide a readable serial photo' }), routeContext())).status).toBe(200);
     expect((await (await readReportReceipt(follow(), context)).json()).request).toContain('readable serial');
@@ -439,7 +459,7 @@ describe('tracker API routes', () => {
     expect((await submitDiscovery(report, routeContext())).status).toBe(403);
     expect((await uploadEvidenceImage(uploadRequest(await realImage(), undefined, ''), routeContext())).status).toBe(403);
     expect(blobFixture.put).not.toHaveBeenCalled();
-    expect(redisFixture.store.size).toBe(0);
+    expect([...redisFixture.store.keys()].filter((key) => !key.startsWith('auth:'))).toHaveLength(0);
   });
 
   it('issues report permissions only after server verification and explicit consent', async () => {
@@ -477,7 +497,7 @@ describe('tracker API routes', () => {
     for (const fields of [{ imageUrl: 'https://example.com/a.jpg' }, { evidenceImageUrls: ['https://example.com/b.jpg'] }, { evidenceImages: [{ url: 'https://example.com/c.jpg' }] }]) {
       expect((await submitValidDiscovery(7, undefined, fields)).response.status).toBe(400);
     }
-    expect(redisFixture.store.size).toBe(0);
+    expect([...redisFixture.store.keys()].filter((key) => !key.startsWith('auth:'))).toHaveLength(0);
   });
 
   it('does not let another report claim an uploaded attachment', async () => {
@@ -567,7 +587,7 @@ describe('tracker API routes', () => {
   it.each([null, [], 'text', 1])('rejects non-object JSON bodies: %j', async (value) => {
     const response = await submitDiscovery(submitRequest(JSON.stringify(value)), routeContext());
     expect(response.status).toBe(400);
-    expect(redisFixture.store.size).toBe(0);
+    expect([...redisFixture.store.keys()].filter((key) => !key.startsWith('auth:'))).toHaveLength(0);
   });
 
   it('preserves simultaneous reports and duplicate candidates', async () => {
@@ -752,7 +772,7 @@ describe('tracker API routes', () => {
     expect((await readEvidence(exportRequest(), assetContext)).status).toBe(200);
     const before = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
     expect(before[6]).toMatchObject({ found: false, pendingReports: 1 });
-    const queueRequest = new NextRequest('https://mtgtrackers.com/submissions?status=pending', { headers: { cookie: `${ADMIN_COOKIE_NAME}=${createAdminSession()}` } });
+    const queueRequest = new NextRequest('https://mtgtrackers.com/submissions?status=pending', { headers: { cookie: `${ADMIN_COOKIE_NAME}=${adminSession}` } });
     const queue = await (await readSubmissions(queueRequest, routeContext())).json();
     expect(queue).toHaveLength(1);
     expect(queue[0].id).toBe(body.submissionId);
@@ -811,7 +831,7 @@ describe('tracker API routes', () => {
   it.each([updatePrice, updateImage, updateGrading, addPriceHistory, reviewSubmission, importTrackerBackup])('protects every privileged mutation from anonymous requests', async (handler) => {
     const request = new NextRequest('https://mtgtrackers.com/admin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
     expect((await handler(request, routeContext())).status).toBe(401);
-    expect(redisFixture.store.size).toBe(0);
+    expect([...redisFixture.store.keys()].filter((key) => !key.startsWith('auth:'))).toHaveLength(0);
   });
 
   it.each(['7junk', '7.5', 7.5, true, null])('rejects malformed IDs in all card edits: %j', async (cardId) => {
@@ -820,7 +840,7 @@ describe('tracker API routes', () => {
       [updateGrading, { cardId, grading: { service: 'PSA', grade: 9 } }], [addPriceHistory, { cardId, entry: { price: 100, date: '2026-08-01' } }],
     ] as const;
     for (const [handler, body] of requests) expect((await handler(reviewRequest(body), routeContext())).status).toBe(400);
-    expect(redisFixture.store.size).toBe(0);
+    expect([...redisFixture.store.keys()].filter((key) => !key.startsWith('auth:'))).toHaveLength(0);
   });
 
   it.each([null, false, '', '9junk', 'Infinity', -1])('rejects invalid admin prices: %j', async (price) => {
@@ -888,10 +908,33 @@ describe('tracker API routes', () => {
   });
 
   it('logs out by deleting the browser session cookie', async () => {
-    expect(await (await readSession(reviewRequest({}))).json()).toEqual({ authenticated: true });
-    const response = await logoutAdmin();
+    expect(await (await readSession(reviewRequest({}))).json()).toMatchObject({ authenticated: true, principal: { id: 'owner', role: 'owner' } });
+    const response = await logoutAdmin(new Request('https://mtgtrackers.com/api/admin/login', { method: 'DELETE', headers: { origin: 'https://mtgtrackers.com', cookie: `${ADMIN_COOKIE_NAME}=${adminSession}` } }));
     expect(await response.json()).toEqual({ authenticated: false });
     expect(response.headers.get('set-cookie')).toContain('Max-Age=0');
+    expect(await (await readSession(reviewRequest({}))).json()).toMatchObject({ authenticated: false });
+  });
+
+  it('requires production MFA end-to-end and rejects reused codes and cross-site login/logout', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('ADMIN_OWNER_ID', 'test-owner');
+    vi.stubEnv('ADMIN_PASSWORD', 'fixture-password-at-least-16');
+    vi.stubEnv('ADMIN_SESSION_SECRET', 'fixture-only-strong-session-secret-at-least-32');
+    vi.stubEnv('ADMIN_TOTP_SECRET', 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP');
+    const code = new TOTP({ secret: process.env.ADMIN_TOTP_SECRET! }).generate();
+    const login = (value?: string, origin = 'https://mtgtrackers.com') => new Request('https://mtgtrackers.com/api/admin/login', {
+      method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify({ password: process.env.ADMIN_PASSWORD, code: value }),
+    });
+    expect((await loginAdmin(login())).status).toBe(401);
+    expect((await loginAdmin(login(code, 'https://attacker.example'))).status).toBe(403);
+    const response = await loginAdmin(login(code)); expect(response.status).toBe(200);
+    const cookie = response.headers.get('set-cookie')!.split(';')[0];
+    expect(response.headers.get('set-cookie')).toContain('Secure');
+    expect(await (await readSession(new Request('https://mtgtrackers.com/api/admin/login', { headers: { cookie } }))).json()).toMatchObject({ authenticated: true, principal: { id: 'test-owner', role: 'owner' } });
+    expect((await loginAdmin(login(code))).status).toBe(401);
+    expect((await logoutAdmin(new Request('https://mtgtrackers.com/api/admin/login', { method: 'DELETE', headers: { cookie, origin: 'https://attacker.example' } }))).status).toBe(403);
+    expect((await logoutAdmin(new Request('https://mtgtrackers.com/api/admin/login', { method: 'DELETE', headers: { cookie, origin: 'https://mtgtrackers.com' } }))).status).toBe(200);
+    expect(await (await readSession(new Request('https://mtgtrackers.com/api/admin/login', { headers: { cookie } }))).json()).toMatchObject({ authenticated: false });
   });
 
   it('rejects unsupported evidence upload file types', async () => {
@@ -1164,8 +1207,6 @@ describe('tracker API routes', () => {
         filter: 'source-marketplace',
         sort: 'date-desc',
         cardFilter: 'the-one-ring',
-        serial: '123456789012345678901234',
-        slot: '123456789012345678901234',
       },
     });
   });
@@ -2056,7 +2097,7 @@ describe('tracker API routes', () => {
     const response = await reviewSubmission(reviewRequest({
       submissionId: body.submissionId,
       action: 'approve',
-      reviewedBy: 'admin',
+      reviewedBy: 'owner',
       reviewNotes: 'Verified against source.',
       verificationStatus: 'confirmed',
       imageUrl: url,
@@ -2075,7 +2116,7 @@ describe('tracker API routes', () => {
     expect(submissions[0]).toMatchObject({
       id: body.submissionId,
       status: 'approved',
-      reviewedBy: 'admin',
+      reviewedBy: 'owner',
     });
   });
 
@@ -2095,7 +2136,7 @@ describe('tracker API routes', () => {
     const response = await reviewSubmission(reviewRequest({
       submissionId: primary.body.submissionId,
       action: 'approve',
-      reviewedBy: 'admin',
+      reviewedBy: 'owner',
       mergeSubmissionIds: [duplicate.body.submissionId],
     }), routeContext());
     const cards = redisFixture.store.get(tracker.storage.cardsKey) as Array<{
@@ -2142,7 +2183,7 @@ describe('tracker API routes', () => {
     const response = await reviewSubmission(reviewRequest({
       submissionId: body.submissionId,
       action: 'reject',
-      reviewedBy: 'admin',
+      reviewedBy: 'owner',
       reviewNotes: 'Could not verify.',
     }), routeContext());
     const afterCards = redisFixture.store.get(tracker.storage.cardsKey) as Array<{ id: number; found: boolean; verificationStatus: string }>;
@@ -2164,7 +2205,7 @@ describe('tracker API routes', () => {
     const response = await reviewSubmission(reviewRequest({
       submissionId: body.submissionId,
       action: 'needs-more-info',
-      reviewedBy: 'admin',
+      reviewedBy: 'owner',
       reviewNotes: 'Need a clearer serial photo.',
     }), routeContext());
     const afterCards = redisFixture.store.get(tracker.storage.cardsKey) as Array<{ id: number; found: boolean; verificationStatus: string }>;

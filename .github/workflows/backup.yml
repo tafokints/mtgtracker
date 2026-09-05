@@ -1,0 +1,38 @@
+name: Encrypted recovery backup
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 10 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: recovery-backup
+  cancel-in-progress: false
+jobs:
+  backup:
+    if: vars.BACKUPS_ENABLED == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: recovery-backup
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Export and verify encrypted database and evidence
+        run: node scripts/recovery.mjs backup recovery-output
+        env:
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: encrypted-recovery-${{ github.run_id }}
+          path: recovery-output/*.enc
+          if-no-files-found: error
+          retention-days: 30

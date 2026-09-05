@@ -4,7 +4,7 @@ import { retractReportEvents } from '@/lib/card-history';
 import { DiscoverySubmission, SubmissionStatus, VerificationStatus } from '@/lib/types';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
-import { requireAdmin } from '@/lib/admin-auth';
+import { getAdminPrincipal, requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
 import { evidenceIdFromUrl } from '@/lib/evidence-policy';
 import { assertReportEvidenceClean, evidenceKey, type EvidenceAsset } from '@/lib/evidence-store';
@@ -43,7 +43,7 @@ type RouteContext = {
 };
 
 export async function GET(request: NextRequest, { params }: RouteContext) {
-  const unauthorized = requireAdmin(request);
+  const unauthorized = await requireAdmin(request);
   if (unauthorized) return unauthorized;
 
   const { slug } = await params;
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 }
 
 export async function POST(request: NextRequest, { params }: RouteContext) {
-  const unauthorized = requireAdmin(request);
+  const unauthorized = await requireAdmin(request);
   if (unauthorized) return unauthorized;
 
   const { slug } = await params;
@@ -105,6 +105,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     };
     const { submissionId, action } = input;
     const reviewId = randomUUID();
+    const actorId = (await getAdminPrincipal(request))!.id;
     const reviewedAt = new Date().toISOString();
 
     if (typeof submissionId !== 'string' || !submissionId.trim() || submissionId.length > 200 || !isReviewAction(action)) {
@@ -175,7 +176,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         throw new TrackerStoreError('Submission has already been reviewed', 409);
       }
 
-      const reviewedBy = 'admin';
+      const reviewedBy = actorId;
       const reviewNotes = typeof input.reviewNotes === 'string' && input.reviewNotes.trim() ? input.reviewNotes.trim() : undefined;
 
       const reviewedSubmission: DiscoverySubmission = {
@@ -185,7 +186,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         reviewedBy,
         reviewNotes,
         duplicateOf: reopening ? undefined : submission.duplicateOf,
-        reviewHistory: [...(submission.reviewHistory || []), { id: reviewId, action, at: reviewedAt, actor: 'admin', notes: reviewNotes }],
+        reviewHistory: [...(submission.reviewHistory || []), { id: reviewId, action, at: reviewedAt, actor: 'admin', actorId, notes: reviewNotes }],
       };
 
       submissions[submissionIndex] = reviewedSubmission;
@@ -232,7 +233,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             reviewedAt,
             reviewedBy,
             reviewNotes: [`Merged evidence into ${submission.id}.`, mergedSubmission.reviewNotes].filter(Boolean).join('\n\n'),
-            reviewHistory: [...(mergedSubmission.reviewHistory || []), { id: `${reviewId}:${mergedSubmission.id}`, action: 'merge', at: reviewedAt, actor: 'admin', notes: `Merged into ${submission.id}` }],
+            reviewHistory: [...(mergedSubmission.reviewHistory || []), { id: `${reviewId}:${mergedSubmission.id}`, action: 'merge', at: reviewedAt, actor: 'admin', actorId, notes: `Merged into ${submission.id}` }],
           };
         }
 

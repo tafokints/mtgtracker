@@ -17,7 +17,7 @@ type RouteContext = {
 };
 
 export async function POST(request: Request, { params }: RouteContext) {
-  const unauthorized = requireAdmin(request);
+  const unauthorized = await requireAdmin(request);
   if (unauthorized) return unauthorized;
 
   const { slug } = await params;

@@ -552,6 +552,9 @@ export default function AdminPanel({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
+  const [adminCode, setAdminCode] = useState('');
+  const [mfaRequired, setMfaRequired] = useState(true);
+  const [loggingIn, setLoggingIn] = useState(false);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
   const [price, setPrice] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -775,6 +778,9 @@ export default function AdminPanel({
       if (response.ok) {
         const data = await response.json();
         setIsAuthenticated(Boolean(data.authenticated));
+        setMfaRequired(Boolean(data.mfaRequired));
+      } else {
+        setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('Error checking admin auth:', error);
@@ -786,6 +792,8 @@ export default function AdminPanel({
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (loggingIn) return;
+    setLoggingIn(true);
     setMessage('');
 
     try {
@@ -794,23 +802,30 @@ export default function AdminPanel({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ password: adminPassword }),
+        body: JSON.stringify({ password: adminPassword, code: adminCode }),
       });
 
       if (response.ok) {
         setIsAuthenticated(true);
         setAdminPassword('');
+        setAdminCode('');
       } else {
-        setMessage('Invalid admin password');
+        const data = await response.json();
+        setMessage(data.message || 'Login failed');
       }
     } catch (error) {
       console.error('Error logging in:', error);
       setMessage('Admin login failed');
+    } finally {
+      setLoggingIn(false);
     }
   };
 
   const handleLogout = async () => {
-    await fetch('/api/admin/login', { method: 'DELETE' });
+    try {
+      const response = await fetch('/api/admin/login', { method: 'DELETE' });
+      if (!response.ok) { setMessage('Could not revoke session. Please retry logout.'); return; }
+    } catch { setMessage('Could not revoke session. Please retry logout.'); return; }
     setIsAuthenticated(false);
     setSubmissions([]);
   };
@@ -1113,29 +1128,34 @@ export default function AdminPanel({
         {authChecked && !isAuthenticated && (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-ring-gold text-sm font-bold mb-2">
-                Admin Password
+              <label htmlFor="owner-password" className="block text-ring-gold text-sm font-bold mb-2">
+                Owner password
               </label>
               <input
                 type="password"
+                id="owner-password"
+                autoComplete="current-password"
+                required
                 value={adminPassword}
                 onChange={(event) => setAdminPassword(event.target.value)}
                 className="w-full bg-ring-light text-ring-dark border border-ring-gold rounded py-2 px-3"
                 autoFocus
               />
             </div>
+            {mfaRequired && <div>
+              <label htmlFor="admin-code" className="block text-ring-gold text-sm font-bold mb-2">Authenticator code</label>
+              <input id="admin-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6}
+                required value={adminCode} onChange={(event) => setAdminCode(event.target.value.replace(/\D/g, ''))}
+                className="w-full bg-ring-light text-ring-dark border border-ring-gold rounded py-2 px-3" />
+            </div>}
             <button
               type="submit"
+              disabled={loggingIn}
               className="w-full bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-4 rounded"
             >
-              Login
+              {loggingIn ? 'Signing in...' : 'Login'}
             </button>
             {message && <p className="text-center text-red-300 text-sm">{message}</p>}
-            {process.env.NODE_ENV !== 'production' && (
-              <p className="text-xs text-ring-light text-center">
-                Local default: dev-admin
-              </p>
-            )}
           </form>
         )}
 
@@ -1590,7 +1610,7 @@ export default function AdminPanel({
                       {submission.reviewNotes && (
                         <p className="mt-2 text-xs text-ring-light">Notes: {submission.reviewNotes}</p>
                       )}
-                      <details className="mt-2 text-xs text-ring-light"><summary>Review history</summary>{submission.reviewHistory?.map((event) => <p key={event.id} className="mt-2 break-words">{event.at} - {event.actor}: {event.action}{event.notes ? ` - ${event.notes}` : ''}</p>)}</details>
+                      <details className="mt-2 text-xs text-ring-light"><summary>Review history</summary>{submission.reviewHistory?.map((event) => <p key={event.id} className="mt-2 break-words">{event.at} - {event.actorId || event.actor}: {event.action}{event.notes ? ` - ${event.notes}` : ''}</p>)}</details>
                       {(submission.status === 'approved' || ['needs-more-info', 'rejected', 'cannot-verify', 'revoked', 'duplicate'].includes(submission.status)) && <div className="mt-3 space-y-2">
                         <label className="block text-xs text-ring-light">Reason<textarea rows={2} value={reviewNotes[submission.id] || ''} onChange={(event) => setReviewNotes({ ...reviewNotes, [submission.id]: event.target.value })} className="mt-1 block w-full rounded bg-ring-light p-2 text-ring-dark" /></label>
                         <button type="button" disabled={mutating} onClick={() => runMutation(() => reviewSubmission(submission, submission.status === 'approved' ? 'revoke' : 'reopen'))} className="rounded border border-ring-gold px-3 py-2 text-sm text-ring-gold">{submission.status === 'approved' ? 'Retract approval' : 'Reopen report'}</button>

@@ -517,7 +517,7 @@ async function readDirectoryCtaStats(redis: RedisCounterReader, trackerEntries: 
 }
 
 export async function GET(request: NextRequest) {
-  const unauthorized = requireAdmin(request);
+  const unauthorized = await requireAdmin(request);
   if (unauthorized) return unauthorized;
 
   const requestedDays = Number(request.nextUrl.searchParams.get('days') || DEFAULT_DAYS);
