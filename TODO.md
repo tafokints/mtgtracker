@@ -10,10 +10,11 @@ Standing affiliate requirement: preserve a clear top-of-page disclosure before t
 
 ### Now: Audit And Reliability
 
+- [x] Add owner-only `/admin` with a cross-tracker paginated inbox, focused in-page review, safe source rechecks, configuration indicators, session-loss handling and no analytics/indexing/private caching. Reuse existing review APIs and scan gates.
 - [x] Add revocable owner sessions, idle/absolute expiry, credential-rotation invalidation, strict cookies/origin checks and production TOTP with replay protection; record server-derived owner IDs on reviews.
 - [x] Add encrypted recovery archives for shared tracker snapshots, journals, asset metadata/files and reconciliation archives, with integrity verification and isolated empty-target restore; add a disabled-until-configured nightly workflow.
 - [x] Rate-limit telemetry and image reads, bound analytics context and retention, make public health read-only, and remove production CSP unsafe-eval.
-- [ ] Enroll owner MFA and configure `ADMIN_OWNER_ID`/`ADMIN_TOTP_SECRET` before deployment. Production login fails closed without these; see docs/SECURITY_OPERATIONS.md.
+- [ ] Verify owner MFA enrollment before deployment. Owner reports adding `ADMIN_OWNER_ID`/`ADMIN_TOTP_SECRET` in Vercel; actual seed format, matching authenticator enrollment, environment scope and hosted login are not verified. Production login fails closed without these; see docs/SECURITY_OPERATIONS.md.
 - [ ] Activate the protected backup environment/failure notifications and perform a real hosted restore drill; retain the encryption key offline.
 - [ ] Add idempotency IDs to admin price/grading/image writes to avoid repeated history after lost responses.
 - [ ] Include active generated trackers in efficient whole-site affiliate rollups; unscoped reports currently default to featured trackers.
@@ -54,7 +55,8 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 - [ ] Configure private Blob, Turnstile, both image scanners, and Web Risk in isolated Preview/Development, then Production. No real scanner credentials or external moderation calls were used for the local tests. See docs/EVIDENCE_SECURITY.md.
 - [ ] Verify real private upload/read/scan/approve/revoke/delete in an isolated hosted environment before enabling intake broadly; never seed production with QA discoveries.
 - [ ] Add durable scanning jobs with authenticated delivery, retry/backoff, and reconciliation for interrupted requests. Current scanning is synchronous and supports admin retry only.
-- [ ] Add a paginated, indexed all-tracker moderation inbox and independent submission/event records; preserve printing-based copy IDs and journal rules. Current review remains per tracker and arrays still grow.
+- [x] Add an all-tracker owner inbox with status/tracker filters and bounded cursor pages. Featured trackers plus active generated printings are read without initializing empty card arrays; original report storage avoids shared-view duplicates.
+- [ ] Move reports/events into independently indexed records. Inbox pages still decode up to eight existing report arrays and review detail loads the selected tracker's full queue; arrays still grow. Preserve printing-based copy IDs, journals, origin ownership and active-index integrity.
 - [ ] Add separate moderator accounts/roles, invitations and a comprehensive protected audit log before inviting reviewers. Owner identity, production MFA and revocable owner sessions are implemented; this is not yet a multi-user identity system.
 - [ ] Add safe review/escalation for content-filter false positives, malicious-content reporting/takedown, and later source rechecks. No manual scanner override exists; legitimate MTG artwork may be held.
 
@@ -78,7 +80,7 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 
 Infrastructure acceptance: reports remain pending until authenticated review; overlapping views agree on card identity and discovery counts; image ingestion and telemetry have abuse/cost limits; backups can be restored in isolation; new trackers reuse validated configuration; affiliate destinations, attribution parameters, fallbacks, and disclosures pass checks. No minimum production discovery count is required.
 
-Backend relationship/workflow details and reconciliation instructions are in docs/DATA_MODEL.md. The security checkpoint has 325 passing tests across 25 files, successful lint/build and zero known dependency vulnerabilities. Actual-SDK/Lua checks cover owner revocation/expiry, telemetry retention, recovery snapshots, shared-copy CAS and reconciliation. Playwright checks at 320/390/1440px cover owner MFA login and existing report/review/history/private-reply flows with intercepted APIs. Production-mode route fixtures also verify MFA login/logout/replay and server-derived identity. See docs/SECURITY_OPERATIONS.md for enrollment, recovery and deployment gates. Hosted provider/Blob verification remains outstanding. The parent tracker and affiliate configuration/disclosures were not changed.
+Backend relationship/workflow details and reconciliation instructions are in docs/DATA_MODEL.md. The owner-dashboard checkpoint has 335 passing tests across 26 files and successful lint/build. The preceding security checkpoint also passed dependency audit and actual-SDK/Lua checks for revocation/expiry, telemetry retention, recovery snapshots, shared-copy CAS and reconciliation. Dashboard Playwright checks at 320/390/1440px verify login, in-page review, held-image denial, status filtering, outages, setup indicators and logout with intercepted APIs. Route fixtures use the real session guard to verify inbox/configuration access, approval and denial after logout. See docs/SECURITY_OPERATIONS.md for enrollment, recovery and deployment gates. Hosted provider/Blob verification remains outstanding. The parent tracker and affiliate configuration/disclosures were not changed.
 
 ### Later: Content And Growth
 

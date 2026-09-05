@@ -22,7 +22,7 @@ Tracker routes are views, not physical-copy identities. A One Ring /100 copy is 
 
 `tracker-store.ts` atomically reads and compare-and-sets all related card/report arrays for shared views. Concurrent review, correction, price, grading, and restore operations retry a complete snapshot. Unrelated poster cards/reports are retained when a dedicated One Ring backup is restored. Generated independent printing trackers retain their existing CAS and activity-index behavior. Public discovery feeds deduplicate by copy ID.
 
-These are logical one-to-many relationships, still persisted inside the existing Redis JSON arrays. This milestone does not claim unlimited physical storage or pagination. Indexed independent report/event records and an all-tracker inbox remain the next scaling step; keep these IDs and invariants when moving them.
+These are logical one-to-many relationships, still persisted inside the existing Redis JSON arrays. The `/admin` inbox now offers cursor pages over original tracker report storage, avoiding duplicates from alias projections. It selects featured plus active generated trackers, returns at most 20 summaries and reads at most eight report arrays per request. Selected-report review still reads the selected tracker's projected queue. This does not claim bounded per-record physical storage or global snapshot pagination. Indexed independent report/event records remain the next scaling step; keep these IDs and invariants when moving them.
 
 ## Historical Facts
 

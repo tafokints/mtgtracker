@@ -47,7 +47,7 @@ The server never fetches submitted sites, follows their redirects, or embeds unt
 - Scanning is currently bounded synchronous request work (60-second route budget), with authenticated, rate-limited retry for pending/error assets. Durable jobs, backoff, and automated reconciliation remain TODO.
 - Attachment removal only detaches an unsent form entry; it is not physical deletion. Retention, orphan cleanup, audited removal, and takedown tooling remain TODO.
 - Existing tracker export/import backs up cards and submissions, NOT Blob bytes or `evidence:v1:*`. The separate encrypted recovery runner now includes records/files and reconciliation archives; activation and a hosted restore drill remain required. See docs/SECURITY_OPERATIONS.md. Missing asset metadata fails closed on read, rather than silently trusting an imported URL.
-- Owner login now uses revocable server-side sessions, server-derived owner attribution and mandatory production TOTP. Separate moderators, comprehensive auditing and a paginated all-tracker inbox remain future work. See docs/SECURITY_OPERATIONS.md.
+- Owner login uses revocable server-side sessions, server-derived owner attribution and mandatory production TOTP. `/admin` now provides an all-tracker owner inbox with in-page review through the existing safety-gated APIs. Separate moderators, independent report storage and comprehensive auditing remain future work. See docs/SECURITY_OPERATIONS.md.
 - Previously approved external images are not automatically migrated or deleted. Pending legacy external evidence must be re-uploaded before approval. Review/import historical data deliberately; do not silently rewrite production records.
 
 ## Verification

@@ -24,6 +24,7 @@ Shared tracker writes use a multi-record Lua CAS over both views' card/report ar
 
 ## Public And Admin Flows
 
+- `/admin`: owner sign-in, cross-tracker inbox, focused safety-gated review and configuration-only service indicators. It is noindex/no-referrer/no-store with no site analytics. Private records are loaded only by authenticated APIs. Cursor pages use original report storage and active generated-printing membership, not shared-view projections; see docs/SECURITY_OPERATIONS.md for ordering and array-storage limits.
 - `/`, `/trackers`: umbrella directory and recent discoveries.
 - `/trackers/[slug]`: serial grid, filters, details, evidence, and marketplace links.
 - `/trackers/[slug]/stats`: discovery and market summaries.

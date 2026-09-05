@@ -23,6 +23,18 @@ Cookies are HTTP-only, Secure in production, SameSite=Strict, and no-store respo
 
 If a device or password is compromised, rotate the owner password to invalidate sessions. If the authenticator is lost, rotate the seed through your secured Vercel account and enroll it again. A password rotation does not break collector receipt links; rotating `ADMIN_SESSION_SECRET` does. Enable MFA on Vercel, GitHub, Upstash and all provider accounts, and protect the main branch. There is no self-service owner reset or recovery-code endpoint to attack.
 
+## Owner Dashboard
+
+`/admin` is the dedicated owner workspace. Its initial HTML contains no report records, evidence, configuration values or authenticated identity. Inbox and configuration APIs authenticate every request. The page/API responses are private/no-store, the page is noindex/no-referrer, and site analytics are excluded. Login uses the existing password/TOTP flow, and session checks on returning to the tab remove private state after revocation/expiry. A failed logout does not pretend the server session was removed.
+
+The Reports view supports status/tracker filters, cursor navigation and focused review inside the page. Approve, merge, reject, needs-info, cannot-verify, reopen and retract actions reuse the tracker review implementation and its atomic writes, original evidence ownership and scanner gates. Reviewed source links also require the existing reputation check before opening. No public evidence links or scanner overrides were introduced. Card metadata editing, per-tracker export/import and affiliate analytics remain in the existing tracker admin tools.
+
+The inbox reads original storage, not projected alias queues, and selects featured trackers plus the existing active-printing index. A page returns at most 20 summaries and reads at most eight report arrays. It is grouped by tracker slug, then oldest submission timestamp/report ID, not globally chronological. Cursors bind to filters and use a stable last-report key, so approving an earlier row does not shift subsequent offsets. New/changed records before the cursor appear on refresh; this is not an immutable snapshot. Empty batches may have a continuation. No total-count or completeness claim is made from a partial page. Independent report/event records, index audits and fully bounded per-report reads remain the scaling milestone.
+
+Service setup returns only presence/configuration booleans, never credentials. Configured does not prove private-store access, valid provider credentials, scan quality or successful cloud tests. Scheduled backup/restore verification cannot be inferred from the application environment and is explicitly not verified in this view.
+
+The owner reports adding `ADMIN_OWNER_ID` and `ADMIN_TOTP_SECRET` to Vercel. Confirm a randomly generated base32 seed, matching time-based authenticator enrollment, Sensitive storage, and correct environment scope before deployment; variable presence alone is not enrollment. The current changes are local, not live. Local dashboard checks use intercepted browser APIs and benign synthetic reports; no production reports were created.
+
 ## Public Request Budgets
 
 - Login: 10 attempts/IP/15 minutes, 100/site/15 minutes.
@@ -70,7 +82,7 @@ After restore, verify shared-copy counts/history, owner login, private pending-i
 - Activate and validate hosted backups, test actual restoration, and configure spend/failure alerts.
 - Complete actual private Blob, Turnstile, malware/sexual-content scanners and Web Risk setup/tests. Known-threat link screening is not adult-content classification or authenticity verification.
 - Add durable scan jobs, cleanup/retention and false-positive/takedown handling; keep scans fail-closed.
-- Add paginated independent report/event storage, a unified moderation inbox and opt-in owner notifications.
+- Add independent paginated report/event storage and opt-in owner notifications. The unified owner inbox exists, but its backing tracker arrays and selected-tracker detail queries still need the independent-record migration.
 - Add request IDs for retried admin price/grading/image edits; current public-report retries are protected but these admin writes can still repeat after a lost response.
 - Correct whole-site affiliate rollups to include active generated trackers efficiently. Click telemetry is not proof of merchant commission credit.
 - Add multi-user moderator roles and a comprehensive protected audit trail before inviting other reviewers. Current review history records the configured owner, but this is not a general-purpose identity provider.

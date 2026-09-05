@@ -119,6 +119,7 @@ vi.mock('@/lib/evidence-scanning', async (importOriginal) => ({
 
 vi.mock('@/lib/redis', () => ({
   getRedis: () => redisFixture.redis,
+  getRedisEnvStatus: () => ({ provider: 'missing' }),
 }));
 
 vi.mock('@vercel/blob', () => ({
@@ -144,6 +145,8 @@ import { POST as addPriceHistory } from '@/app/api/trackers/[slug]/add-price-his
 import { GET as readCards } from '@/app/api/trackers/[slug]/cards/route';
 import { GET as readSubmissions } from '@/app/api/trackers/[slug]/submissions/route';
 import { GET as readSession, DELETE as logoutAdmin } from '@/app/api/admin/login/route';
+import { GET as readOwnerInbox } from '@/app/api/admin/inbox/route';
+import { GET as readOwnerConfiguration } from '@/app/api/admin/configuration/route';
 import { createInitialTrackerCards } from '@/lib/tracker-data';
 import { GET as readEvidence, POST as retryEvidence } from '@/app/api/evidence/[id]/route';
 import { POST as startSubmissionSession } from '@/app/api/trackers/[slug]/submission-session/route';
@@ -323,6 +326,21 @@ describe('tracker API routes', () => {
     delete process.env.ADMIN_TOTP_SECRET;
     delete process.env.ADMIN_OWNER_ID;
     adminSession = await createAdminSession();
+  });
+
+  it('uses revocable owner sessions for the dashboard and existing review actions', async () => {
+    const { body } = await submitValidDiscovery();
+    const request = (cookie = adminSession) => new Request('https://mtgtrackers.com/api/admin/inbox?tracker=one-ring', { headers: { cookie: `${ADMIN_COOKIE_NAME}=${cookie}` } });
+    expect((await readOwnerInbox(request(''))).status).toBe(401);
+    const response = await readOwnerInbox(request());
+    expect(response.status).toBe(200);
+    expect((await response.json()).rows[0]).toMatchObject({ id: body.submissionId, tracker: 'one-ring', status: 'pending' });
+    expect((await readOwnerConfiguration(request())).status).toBe(200);
+    expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext())).status).toBe(200);
+    expect((await (await readOwnerInbox(request())).json()).rows).toEqual([]);
+    await logoutAdmin(new Request('https://mtgtrackers.com/api/admin/login', { method: 'DELETE', headers: { origin: 'https://mtgtrackers.com', cookie: `${ADMIN_COOKIE_NAME}=${adminSession}` } }));
+    expect((await readOwnerInbox(request())).status).toBe(401);
+    expect((await readOwnerConfiguration(request())).status).toBe(401);
   });
 
   it('returns 400 for malformed public submission JSON', async () => {

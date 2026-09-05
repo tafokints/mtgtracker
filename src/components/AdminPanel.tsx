@@ -13,6 +13,8 @@ import { getMarketplaceCtaRecommendations } from '@/lib/marketplace-cta-recommen
 import ExternalImage from '@/components/ExternalImage';
 import { evidenceIdFromUrl, normalizeSourceUrl } from '@/lib/evidence-policy';
 import ReviewSourceLink from '@/components/ReviewSourceLink';
+import Link from 'next/link';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface AdminPanelProps {
   tracker: TrackerSummary;
@@ -22,6 +24,7 @@ interface AdminPanelProps {
   onGradingUpdate: (cardId: number, grading: GradingInfo | undefined, status?: 'graded' | 'ungraded', occurredOn?: string) => Promise<void>;
   onPriceHistoryAdd: (cardId: number, entry: PriceHistoryEntry) => Promise<void>;
   onRefresh: () => void;
+  workspace?: { reportId: string; onClose: () => void; onSessionLost: () => void };
 }
 
 type ReviewAction = 'approve' | 'reject' | 'needs-more-info' | 'duplicate' | 'cannot-verify' | 'reopen' | 'revoke';
@@ -499,6 +502,7 @@ export default function AdminPanel({
   onGradingUpdate, 
   onPriceHistoryAdd,
   onRefresh,
+  workspace,
 }: AdminPanelProps) {
   const trackerApiBase = `/api/trackers/${tracker.slug}`;
   const serialLabel = (serialNumber: string | number, serialTotal = tracker.total) => `${serialNumber}/${serialTotal}`;
@@ -548,7 +552,7 @@ export default function AdminPanel({
   };
   const backupInputRef = useRef<HTMLInputElement>(null);
 
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(Boolean(workspace));
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
@@ -562,6 +566,8 @@ export default function AdminPanel({
   const [activeTab, setActiveTab] = useState<AdminTab>('review');
   const [submissions, setSubmissions] = useState<DiscoverySubmission[]>([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  const [submissionsError, setSubmissionsError] = useState('');
+  const [submissionsFetched, setSubmissionsFetched] = useState(false);
   const [retryingEvidence, setRetryingEvidence] = useState<string>();
   const [affiliateStats, setAffiliateStats] = useState<AffiliateStatsResponse | null>(null);
   const [affiliateStatsLoading, setAffiliateStatsLoading] = useState(false);
@@ -615,6 +621,7 @@ export default function AdminPanel({
     [affiliateStats],
   );
   const matchesReviewCardFilter = (submission: DiscoverySubmission) => {
+    if (workspace) return submission.id === workspace.reportId;
     if (reviewCardFilter === 'all') {
       return true;
     }
@@ -656,15 +663,23 @@ export default function AdminPanel({
 
   const fetchSubmissions = useCallback(async () => {
     setSubmissionsLoading(true);
+    setSubmissionsError('');
     try {
       const response = await fetch(`${trackerApiBase}/submissions`);
       if (response.ok) {
         setSubmissions(await response.json());
+        setSubmissionsFetched(true);
       } else if (response.status === 401) {
         setIsAuthenticated(false);
+        setSubmissions([]);
+      } else {
+        setSubmissions([]);
+        setSubmissionsError('Reports could not be loaded. Please retry.');
       }
     } catch (error) {
       console.error('Error fetching submissions:', error);
+      setSubmissions([]);
+      setSubmissionsError('Reports could not be loaded. Please retry.');
     } finally {
       setSubmissionsLoading(false);
     }
@@ -742,6 +757,7 @@ export default function AdminPanel({
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
+      if (workspace) return;
       // Secret code: Ctrl + Alt + A
       if (event.ctrlKey && event.altKey && event.key === 'a') {
         event.preventDefault();
@@ -751,7 +767,7 @@ export default function AdminPanel({
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [isVisible]);
+  }, [isVisible, workspace]);
 
   useEffect(() => {
     if (isVisible) {
@@ -766,10 +782,14 @@ export default function AdminPanel({
   }, [isVisible, isAuthenticated, activeTab, fetchSubmissions]);
 
   useEffect(() => {
-    if (isVisible && isAuthenticated && (activeTab === 'affiliate' || activeTab === 'review')) {
+    if (!workspace && isVisible && isAuthenticated && (activeTab === 'affiliate' || activeTab === 'review')) {
       fetchAffiliateStats();
     }
-  }, [isVisible, isAuthenticated, activeTab, fetchAffiliateStats]);
+  }, [isVisible, isAuthenticated, activeTab, fetchAffiliateStats, workspace]);
+
+  useEffect(() => {
+    if (workspace && authChecked && !isAuthenticated) workspace.onSessionLost();
+  }, [workspace, authChecked, isAuthenticated]);
 
   const checkAuth = async () => {
     setAuthChecked(false);
@@ -1078,13 +1098,14 @@ export default function AdminPanel({
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
-      <div className="bg-ring-dark border border-ring-gold rounded-lg p-4 sm:p-6 w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+    <div className={workspace ? 'min-w-0' : 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4'}>
+      <div className={workspace ? 'owner-review min-w-0 space-y-4' : 'bg-ring-dark border border-ring-gold rounded-lg p-4 sm:p-6 w-full max-w-2xl max-h-[92vh] overflow-y-auto'}>
         <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
-          <h2 className="text-xl font-bold text-ring-gold">Admin Panel</h2>
+          <h2 className="text-xl font-bold text-ring-gold">{workspace ? 'Report review' : 'Admin Panel'}</h2>
           <div className="flex flex-wrap items-center justify-end gap-3">
-            {isAuthenticated && (
+            {isAuthenticated && !workspace && (
               <>
+                <Link href="/admin" className="text-xs text-ring-light hover:text-ring-gold">Owner dashboard</Link>
                 <button
                   onClick={handleExportBackup}
                   className="text-xs text-ring-light hover:text-ring-gold"
@@ -1113,10 +1134,12 @@ export default function AdminPanel({
               </>
             )}
             <button
-              onClick={() => setIsVisible(false)}
-              className="text-ring-gold hover:text-yellow-400"
+              onClick={() => workspace ? workspace.onClose() : setIsVisible(false)}
+              aria-label="Close report review"
+              title="Close report review"
+              className="inline-flex h-10 w-10 items-center justify-center text-ring-gold hover:text-yellow-400"
             >
-              x
+              <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -1161,7 +1184,7 @@ export default function AdminPanel({
 
         {authChecked && isAuthenticated && (
         <div className="space-y-4">
-          <div>
+          {!workspace && <div>
             <label htmlFor="admin-copy-select" className="block text-ring-gold text-sm font-bold mb-2">
               Select Card
             </label>
@@ -1178,10 +1201,10 @@ export default function AdminPanel({
                 </option>
               ))}
             </select>
-          </div>
+          </div>}
 
           {/* Tab Navigation */}
-          <div className="flex border-b border-ring-gold overflow-x-auto">
+          {!workspace && <div className="flex border-b border-ring-gold overflow-x-auto">
             <button
               onClick={() => setActiveTab('review')}
               className={`flex-none px-2 py-2 text-xs font-bold ${
@@ -1242,11 +1265,13 @@ export default function AdminPanel({
             >
               Affiliate
             </button>
-          </div>
+          </div>}
 
           {activeTab === 'review' && (
             <div className="space-y-4">
-              {reviewCardOptions.length > 1 && (
+              {submissionsError && <div role="alert" className="text-sm text-red-300">{submissionsError} <button onClick={fetchSubmissions} className="underline">Retry</button></div>}
+              {workspace && submissionsFetched && !submissionsLoading && !submissionsError && !submissions.some((report) => report.id === workspace.reportId) && <p role="status" className="text-sm text-ring-light">This report is no longer in the queue. Close it and refresh the inbox.</p>}
+              {!workspace && reviewCardOptions.length > 1 && (
                 <div className="rounded border border-ring-gold/30 bg-black/20 p-3">
                   <label className="block text-ring-gold text-xs font-bold mb-2" htmlFor="review-card-filter">
                     Filter reports by card
@@ -1269,7 +1294,7 @@ export default function AdminPanel({
               {submissionsLoading && (
                 <p className="text-sm text-ring-light">Loading reports...</p>
               )}
-              {!submissionsLoading && pendingSubmissions.length === 0 && (
+              {!workspace && !submissionsLoading && pendingSubmissions.length === 0 && (
                 <div className="rounded border border-ring-gold/30 bg-black/20 p-4">
                   <p className="text-sm font-bold text-ring-gold">No pending reports</p>
                   <p className="mt-1 text-xs text-ring-light">
@@ -1277,7 +1302,7 @@ export default function AdminPanel({
                   </p>
                 </div>
               )}
-              {!submissionsLoading && pendingSubmissions.length > 0 && filteredPendingSubmissions.length === 0 && (
+              {!workspace && !submissionsLoading && pendingSubmissions.length > 0 && filteredPendingSubmissions.length === 0 && (
                 <div className="rounded border border-ring-gold/30 bg-black/20 p-4">
                   <p className="text-sm font-bold text-ring-gold">No pending reports for this card</p>
                   <p className="mt-1 text-xs text-ring-light">
@@ -1475,7 +1500,7 @@ export default function AdminPanel({
                 );
               })}
 
-              {promotionCandidates.length > 0 && (
+              {!workspace && promotionCandidates.length > 0 && (
                 <div className="space-y-3 rounded border border-ring-teal/35 bg-ring-teal/10 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -1603,9 +1628,7 @@ export default function AdminPanel({
                         </span>
                       </div>
                       {submission.status === 'approved' && normalizeSourceUrl(submission.link) && (
-                        <a href={normalizeSourceUrl(submission.link)} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-ring-gold hover:underline">
-                          Open source
-                        </a>
+                        <ReviewSourceLink tracker={tracker.slug} reportId={submission.id} url={submission.link!} />
                       )}
                       {submission.reviewNotes && (
                         <p className="mt-2 text-xs text-ring-light">Notes: {submission.reviewNotes}</p>
@@ -2099,9 +2122,9 @@ export default function AdminPanel({
             <p className="text-center text-green-400 text-sm">{message}</p>
           )}
 
-          <p className="text-xs text-ring-light text-center">
+          {!workspace && <p className="text-xs text-ring-light text-center">
             Press Ctrl + Alt + A to toggle this panel
-          </p>
+          </p>}
         </div>
         )}
       </div>

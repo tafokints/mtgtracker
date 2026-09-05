@@ -6,6 +6,6 @@ import { Analytics } from '@vercel/analytics/next';
 
 export default function SiteTelemetry() {
   const pathname = usePathname();
-  if (pathname.startsWith('/reports/')) return null;
+  if (pathname.startsWith('/reports/') || pathname === '/admin' || pathname.startsWith('/admin/')) return null;
   return <><SpeedInsights /><Analytics /></>;
 }
