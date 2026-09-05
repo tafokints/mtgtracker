@@ -98,6 +98,19 @@ async function checkHealth() {
   return { path: '/api/health', ok: true };
 }
 
+async function checkTrackerData(tracker) {
+  const pathname = `/api/trackers/${tracker.slug}/cards`;
+  const { text } = await fetchText(pathname);
+  const cards = JSON.parse(text);
+  const expected = tracker.cardDefinitions?.length
+    ? tracker.cardDefinitions.reduce((sum, card) => sum + (card.total || tracker.total), 0)
+    : tracker.total;
+  if (!Array.isArray(cards) || cards.length !== expected || cards.some((card, index) => card.id !== index + 1 || typeof card.found !== 'boolean')) {
+    throw new Error(`${pathname} did not return its ${expected} numbered slots`);
+  }
+  return { path: pathname, ok: true };
+}
+
 async function checkSitemap(liveTrackers, catalogEntries, printingModule) {
   const { text } = await fetchText('/sitemap.xml');
   const requiredUrls = [
@@ -203,6 +216,7 @@ async function main() {
     checkPage('/privacy', ['Privacy', 'rate limiting', 'BreadcrumbList']),
     checkPage('/affiliate-disclosure', ['Affiliate Disclosure', 'eBay Partner Network', 'Amazon Associate', 'BreadcrumbList']),
     ...(skipHealth ? [] : [checkHealth()]),
+    ...(skipHealth ? [] : [...liveTrackers, allTrackers.find((tracker) => tracker.slug === 'card-brr-98z')].map(checkTrackerData)),
     checkRobots(),
     checkSitemap(allTrackers.filter((tracker) => tracker.status === 'live'), serializedCatalog, printingModule),
     checkDiscoveryJsonFeed(),

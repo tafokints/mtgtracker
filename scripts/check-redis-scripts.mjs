@@ -26,7 +26,7 @@ const newCards = JSON.stringify([{ id: 1, found: true }]);
 const reports = JSON.stringify([{ id: 'fixture-report', cardId: 1 }]);
 
 try {
-  assert.deepEqual(await redis.eval(scripts.READ_TRACKER_STATE, keys.slice(0, 2), []), { cards: null, submissions: null });
+  assert.deepEqual(await redis.eval(scripts.READ_TRACKER_STATE, keys.slice(0, 2), []), { cards: '', submissions: '' });
   await redis.set(keys[0], oldCards);
   const raw = await redis.eval(scripts.READ_TRACKER_STATE, keys.slice(0, 2), []);
   assert.equal(raw.cards, oldCards);

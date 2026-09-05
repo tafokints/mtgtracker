@@ -54,7 +54,7 @@ Nonserialized headliners, ordinary versions of these card names, and unrelated n
 
 ## Tested Behavior
 
-The expanded suite passed 214 tests across 20 files at this checkpoint:
+The expanded suite passed 218 tests across 20 files at this checkpoint:
 
 | Area | Checks | Environment / Limit |
 | --- | --- | --- |
@@ -72,7 +72,9 @@ The expanded suite passed 214 tests across 20 files at this checkpoint:
 
 Reproduction: `npm test`, `npm run lint`, `npm run build`, `npm run links:validate`. For actual Lua checks, start `scripts/redis-test-server.py` as documented in README, run `npm run test:redis`, then stop the fixture. No production secrets are used. Release build, link, and deployment outcomes are recorded in the task handoff.
 
-Final local checks: 214 tests passed; lint and TypeScript/build passed (357 pre-rendered pages, generated tracker routes rendered on demand); full dependency audit found zero vulnerabilities. `node scripts/check-catalog-pages.mjs` checked all 1,120 set/printing/generated-tracker/report/stats pages for successful HTML and headings. Local smoke passed with only the Redis health probe explicitly skipped because the preview has no database credentials. Feed fallbacks in that preview are not evidence of cloud persistence. The actual Redis SDK/Lua fixture check passed separately. A benign missing TypeScript dependency source-map warning remains in test output.
+Final local checks: 218 tests passed; lint and TypeScript/build passed (357 pre-rendered pages, generated tracker routes rendered on demand); full dependency audit found zero vulnerabilities. `node scripts/check-catalog-pages.mjs` checked all 1,120 set/printing/generated-tracker/report/stats pages for successful HTML and headings. Local smoke skips the Redis health/data probes explicitly because the preview has no database credentials. Feed fallbacks in that preview are not evidence of cloud persistence. The actual Redis SDK/Lua fixture check passed separately. A benign missing TypeScript dependency source-map warning remains in test output.
+
+The first deployed-data probe found a real initialization gap: a brand-new printing returned an empty array even though its page and report form loaded. The store now uses an explicit empty-string Lua sentinel rather than relying on `cjson.null`, recognizes omitted/null/empty fields before initialization, and rejects silently empty stored card arrays. Regression tests cover these missing-value shapes. Production smoke now checks actual slot counts and IDs for featured trackers plus a generated printing, not only page HTML and Redis PING. No fixture discovery is needed for these checks.
 
 URL validation passed for 819 configured links, 1,740 boundary-serial links, 66 treatment links, and 894 printing links. Live destination checks sampled featured/default links: Amazon and TCGplayer passed; five eBay checks returned 403 and remain manual-review.
 

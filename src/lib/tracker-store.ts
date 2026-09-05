@@ -6,8 +6,8 @@ import { getTrackerCards, normalizeTrackerCard } from './tracker-data';
 // Wrap raw values in JSON so the SDK preserves the exact bytes needed for CAS.
 export const READ_TRACKER_STATE = `
 return cjson.encode({
-  cards = redis.call('GET', KEYS[1]) or cjson.null,
-  submissions = redis.call('GET', KEYS[2]) or cjson.null
+  cards = redis.call('GET', KEYS[1]) or '',
+  submissions = redis.call('GET', KEYS[2]) or ''
 })
 `;
 
@@ -17,7 +17,8 @@ if (redis.call('GET', KEYS[1]) or '') ~= ARGV[1]
   return 0
 end
 if KEYS[3] then
-  local kind = redis.call('TYPE', KEYS[3]).ok
+  local kind = redis.call('TYPE', KEYS[3])
+  if type(kind) == 'table' then kind = kind.ok end
   if kind ~= 'none' and kind ~= 'set' then return redis.error_reply('Invalid tracker activity index') end
 end
 redis.call('MSET', KEYS[1], ARGV[3], KEYS[2], ARGV[4])
@@ -28,7 +29,8 @@ return 1
 export const ACTIVE_PRINTING_TRACKERS_KEY = 'mtgtrackers:active-printing-trackers';
 export const RESTORE_PRINTING_STATE = `
 -- restore printing and its derived activity index atomically
-local kind = redis.call('TYPE', KEYS[3]).ok
+local kind = redis.call('TYPE', KEYS[3])
+if type(kind) == 'table' then kind = kind.ok end
 if kind ~= 'none' and kind ~= 'set' then return redis.error_reply('Invalid tracker activity index') end
 redis.call('MSET', KEYS[1], ARGV[1], KEYS[2], ARGV[2])
 redis.call('SADD', KEYS[3], ARGV[3])
@@ -36,8 +38,8 @@ return 1
 `;
 
 interface RawTrackerState {
-  cards: string | null;
-  submissions: string | null;
+  cards?: string | null;
+  submissions?: string | null;
 }
 
 export interface TrackerState {
@@ -58,7 +60,7 @@ function keys(tracker: TrackerSummary) {
 function decodeState(raw: RawTrackerState, tracker: TrackerSummary): TrackerState {
   const cards = JSON.parse(raw.cards || '[]');
   const submissions = JSON.parse(raw.submissions || '[]');
-  if (!Array.isArray(cards) || !Array.isArray(submissions)) {
+  if (!Array.isArray(cards) || cards.length === 0 || !Array.isArray(submissions)) {
     throw new Error('Invalid stored tracker data');
   }
   return { cards: cards.map((card) => normalizeTrackerCard(tracker, card)), submissions };
@@ -71,7 +73,7 @@ export async function getTrackerState(redis: Redis, tracker: TrackerSummary): Pr
 
 async function readInitializedState(redis: Redis, tracker: TrackerSummary) {
   let raw = await redis.eval<[], RawTrackerState>(READ_TRACKER_STATE, keys(tracker), []);
-  if (raw.cards === null) {
+  if (raw.cards === null || raw.cards === undefined || raw.cards === '') {
     await getTrackerCards(redis, tracker);
     raw = await redis.eval<[], RawTrackerState>(READ_TRACKER_STATE, keys(tracker), []);
   }

@@ -483,6 +483,23 @@ describe('tracker API routes', () => {
     expect(redisFixture.store.get(ACTIVE_PRINTING_TRACKERS_KEY)).toEqual([generated.slug]);
   });
 
+  it.each([{}, { cards: null }, { cards: '' }])('initializes untouched printing slots for absent Redis fields: %j', async (raw) => {
+    const generated = getTracker('card-brr-98z')!;
+    vi.spyOn(redisFixture.redis, 'eval').mockResolvedValueOnce(raw as never);
+    const response = await readCards(new Request('https://mtgtrackers.com/cards'), routeContext(generated.slug));
+    expect(response.status).toBe(200);
+    const cards = await response.json();
+    expect(cards).toHaveLength(500);
+    expect(cards[0]).toMatchObject({ id: 1, serialNumber: '001', found: false });
+    expect(cards[499]).toMatchObject({ id: 500, serialNumber: '500', found: false });
+  });
+
+  it('does not silently publish an empty grid if initialized cards are unreadable', async () => {
+    redisFixture.store.set(tracker.storage.cardsKey, []);
+    expect((await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).status).toBe(500);
+    expect(redisFixture.store.get(tracker.storage.cardsKey)).toEqual([]);
+  });
+
   it.each([updatePrice, updateImage, updateGrading, addPriceHistory, reviewSubmission, importTrackerBackup])('protects every privileged mutation from anonymous requests', async (handler) => {
     const request = new NextRequest('https://mtgtrackers.com/admin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
     expect((await handler(request, routeContext())).status).toBe(401);

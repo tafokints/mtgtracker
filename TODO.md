@@ -26,6 +26,7 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 - [x] Enforce upload body limits plus cross-tracker IP and site-wide budgets; show previews and prevent duplicate form sends.
 - [x] Test create/read/review/edit/export/restore routes, admin access, invalid inputs, and concurrency with isolated fixtures; tighten review and backup validation.
 - [x] Verify the actual Upstash SDK and Lua CAS/restore/activity-index scripts against a disposable local emulator.
+- [x] Handle omitted/null/empty Redis snapshot fields when initializing untouched trackers; add production smoke assertions for actual numbered-slot arrays.
 - [x] Research and snapshot 298 serialized printings: 291 English (290 released, one announced) and seven non-English reference variants.
 - [x] Publish the set -> treatment -> printing hierarchy, search/language controls, source links, sitemap entries, and 268 generated single-printing trackers.
 - [x] Reuse existing One Ring, Edgar, and poster trackers; keep Golden Chocobo migration deferred.
