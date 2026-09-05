@@ -1,34 +1,9 @@
-import fs from 'node:fs';
 import path from 'node:path';
-import vm from 'node:vm';
-import ts from 'typescript';
 import { pathToFileURL } from 'node:url';
+import { loadProjectModule as loadModule } from './lib/load-project-module.mjs';
 
 const rootDir = process.cwd();
 const trackerPath = path.join(rootDir, 'src', 'lib', 'trackers.ts');
-
-function loadModule(modulePath) {
-  const source = fs.readFileSync(modulePath, 'utf8');
-  const transpiled = ts.transpileModule(source, {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2020,
-    },
-  }).outputText;
-
-  const sandbox = {
-    URL,
-    URLSearchParams,
-    exports: {},
-    module: { exports: {} },
-  };
-
-  sandbox.exports = sandbox.module.exports;
-  vm.runInNewContext(transpiled, sandbox, { filename: modulePath });
-
-  return sandbox.module.exports;
-}
-
 function collectLinks(trackers, defaultAffiliateLinks) {
   const links = new Map();
 
@@ -181,7 +156,8 @@ async function fetchStatus(link) {
 }
 
 async function main() {
-  const { trackers, defaultAffiliateLinks, getSerialAffiliateLinks, getCatalogAffiliateLinks } = loadModule(trackerPath);
+  const { allTrackers: trackers, trackers: featuredTrackers, defaultAffiliateLinks, getSerialAffiliateLinks, getCatalogAffiliateLinks, getPrintingAffiliateLinks } = loadModule(trackerPath);
+  const { serializedPrintings } = loadModule(path.join(rootDir, 'src', 'lib', 'serialized-printings.ts'));
   const { serializedCatalog } = loadModule(path.join(rootDir, 'src', 'lib', 'serialized-catalog.ts'));
   const links = collectLinks(trackers, defaultAffiliateLinks);
 
@@ -195,16 +171,18 @@ async function main() {
     ))
   ));
   const catalogLinks = serializedCatalog.flatMap((entry) => getCatalogAffiliateLinks(entry).map((link) => ({ tracker: 'default', ...link })));
+  const printingLinks = serializedPrintings.flatMap((printing) => getPrintingAffiliateLinks(printing).map((link) => ({ tracker: 'default', ...link })));
 
-  for (const link of [...links, ...dynamicLinks, ...catalogLinks]) {
+  for (const link of [...links, ...dynamicLinks, ...catalogLinks, ...printingLinks]) {
     assertUrlShape(link);
   }
-  console.log(`URL checks passed for ${links.length} configured, ${dynamicLinks.length} serial-boundary, and ${catalogLinks.length} catalog links.`);
+  console.log(`URL checks passed for ${links.length} configured, ${dynamicLinks.length} serial-boundary, ${catalogLinks.length} catalog, and ${printingLinks.length} printing links.`);
   if (process.argv.includes('--offline')) return;
 
   const results = [];
   const destinationResults = new Map();
-  for (const link of links) {
+  // Avoid hundreds of automated merchant requests; live redirects are sampled on featured links.
+  for (const link of collectLinks(featuredTrackers, defaultAffiliateLinks)) {
     const result = destinationResults.get(link.href) || await fetchStatus(link);
     destinationResults.set(link.href, result);
     results.push({
@@ -223,6 +201,7 @@ async function main() {
   const manualChecks = results.filter((result) => result.outcome === 'manual-review');
   if (manualChecks.length) console.warn(`${manualChecks.length} checks need a browser/merchant-dashboard review. Bot blocks are not verified passes.`);
   console.log('These checks verify URLs, not account approval or earned commissions. Confirm earnings in merchant reports.');
+  console.log('Live destination checks sample featured trackers; all generated links receive URL validation.');
 
   const failures = results.filter((result) => result.outcome === 'failed');
   if (failures.length > 0) {

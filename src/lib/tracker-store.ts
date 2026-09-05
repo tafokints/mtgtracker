@@ -16,7 +16,22 @@ if (redis.call('GET', KEYS[1]) or '') ~= ARGV[1]
   or (redis.call('GET', KEYS[2]) or '') ~= ARGV[2] then
   return 0
 end
+if KEYS[3] then
+  local kind = redis.call('TYPE', KEYS[3]).ok
+  if kind ~= 'none' and kind ~= 'set' then return redis.error_reply('Invalid tracker activity index') end
+end
 redis.call('MSET', KEYS[1], ARGV[3], KEYS[2], ARGV[4])
+if KEYS[3] then redis.call('SADD', KEYS[3], ARGV[5]) end
+return 1
+`;
+
+export const ACTIVE_PRINTING_TRACKERS_KEY = 'mtgtrackers:active-printing-trackers';
+export const RESTORE_PRINTING_STATE = `
+-- restore printing and its derived activity index atomically
+local kind = redis.call('TYPE', KEYS[3]).ok
+if kind ~= 'none' and kind ~= 'set' then return redis.error_reply('Invalid tracker activity index') end
+redis.call('MSET', KEYS[1], ARGV[1], KEYS[2], ARGV[2])
+redis.call('SADD', KEYS[3], ARGV[3])
 return 1
 `;
 
@@ -64,6 +79,10 @@ async function readInitializedState(redis: Redis, tracker: TrackerSummary) {
 }
 
 export async function restoreTrackerState(redis: Redis, tracker: TrackerSummary, state: TrackerState) {
+  if (tracker.catalogGenerated) {
+    await redis.eval(RESTORE_PRINTING_STATE, [...keys(tracker), ACTIVE_PRINTING_TRACKERS_KEY], [JSON.stringify(state.cards), JSON.stringify(state.submissions), tracker.slug]);
+    return;
+  }
   await redis.mset({
     [tracker.storage.cardsKey]: state.cards,
     [tracker.storage.submissionsKey]: state.submissions,
@@ -80,9 +99,10 @@ export async function mutateTrackerState<T>(
     const raw = await readInitializedState(redis, tracker);
     const state = decodeState(raw, tracker);
     const result = update(state);
-    const committed = await redis.eval<string[], number>(COMMIT_TRACKER_STATE, keys(tracker), [
+    const committed = await redis.eval<string[], number>(COMMIT_TRACKER_STATE, [...keys(tracker), ...(tracker.catalogGenerated ? [ACTIVE_PRINTING_TRACKERS_KEY] : [])], [
       raw.cards || '', raw.submissions || '',
       JSON.stringify(state.cards), JSON.stringify(state.submissions),
+      ...(tracker.catalogGenerated ? [tracker.slug] : []),
     ]);
     if (committed === 1) return result;
   }

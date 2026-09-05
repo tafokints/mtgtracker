@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { getRedis } from '@/lib/redis';
 import { getTrackerCardDeepLinkParams, getTrackerCardDefinitions, getTrackerDirectoryStats, getTrackerDirectoryStatsSnapshot, getTrackerTotalSlots } from '@/lib/tracker-data';
-import { trackers } from '@/lib/trackers';
+import { getPrintingTracker, trackers } from '@/lib/trackers';
 import { serializedCatalog } from '@/lib/serialized-catalog';
+import { getCatalogPrintings } from '@/lib/serialized-printings';
 import ReferenceLinks from '@/components/ReferenceLinks';
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
@@ -16,7 +17,8 @@ type DirectoryStats = ReturnType<typeof getTrackerDirectoryStats>;
 
 function getNumberedLabel(entry: (typeof serializedCatalog)[number]) {
   if (entry.serialVariants?.length) {
-    return entry.serialVariants.map((variant) => `${variant.label}: ${variant.total}`).join(', ');
+    const totals = entry.serialVariants.map((variant) => variant.total);
+    return `${Math.min(...totals)}-${Math.max(...totals)} by variant`;
   }
 
   if (entry.numbered) {
@@ -79,11 +81,9 @@ export default async function TrackersPage() {
             <Link href="/" className="text-sm text-ring-gold hover:text-yellow-400">
               &larr; MTG Trackers
             </Link>
-            <h1 className="mt-3 text-4xl font-bold text-ring-gold">Trackers</h1>
+            <h1 className="mt-3 text-4xl font-bold text-ring-gold">Featured Trackers</h1>
           </div>
-          <p className="max-w-xl text-sm leading-6 text-ring-light/75">
-            Each tracker has its own serial range, Redis key, submit flow, stats, and source-quality metadata.
-          </p>
+          <Link href="/sets" className="text-sm font-semibold text-ring-teal hover:underline">Browse all sets and card trackers</Link>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -241,9 +241,9 @@ export default async function TrackersPage() {
         <section className="mt-12 border-t border-ring-gold/30 pt-8">
           <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-ring-gold">Serialized Scaffold Queue</h2>
+              <h2 className="text-2xl font-bold text-ring-gold">All Serialized Treatments</h2>
               <p className="mt-2 text-sm text-ring-light/70">
-                Researched serialized MTG treatments to convert into tracker pages.
+                {serializedCatalog.length} treatments, with individual card pages and numbered trackers.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 text-sm">
@@ -280,7 +280,7 @@ export default async function TrackersPage() {
                 {serializedCatalog.map((entry) => (
                   <tr key={entry.slug} className="align-top transition-colors hover:bg-ring-gold/5">
                     <td className="px-4 py-3">
-                      <div className="font-semibold text-ring-light">{entry.title}</div>
+                      <Link href={`/serialized-mtg-catalog/${entry.slug}`} className="font-semibold text-ring-teal hover:underline">{entry.title}</Link>
                       <div className="mt-1 max-w-md text-xs leading-5 text-ring-light/55">{entry.treatment}</div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs">{getDateLabel(entry)}</td>
@@ -294,7 +294,7 @@ export default async function TrackersPage() {
                     <td className="px-4 py-3">{trackingModeLabels[entry.trackingMode]}</td>
                     <td className="px-4 py-3">
                       <span className="inline-flex rounded border border-ring-gold/30 px-2 py-1 text-xs uppercase text-ring-light/65">
-                        {entry.status}
+                        {getCatalogPrintings(entry.slug).some((printing) => getPrintingTracker(printing)?.status === 'live') ? 'Reporting open' : entry.status === 'announced' ? 'Announced' : 'Reference only'}
                       </span>
                     </td>
                   </tr>

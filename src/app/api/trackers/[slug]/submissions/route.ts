@@ -4,6 +4,7 @@ import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
+import { isSafeImageUrl } from '@/lib/admin-validation';
 import {
   applyApprovedSubmission,
   getTrackerSubmissions,
@@ -85,8 +86,21 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     };
     const { submissionId, action } = input;
 
-    if (typeof submissionId !== 'string' || !isReviewAction(action)) {
+    if (typeof submissionId !== 'string' || !submissionId.trim() || submissionId.length > 200 || !isReviewAction(action)) {
       return NextResponse.json({ message: 'Submission id and valid action are required' }, { status: 400 });
+    }
+
+    if (
+      (input.reviewedBy !== undefined && (typeof input.reviewedBy !== 'string' || input.reviewedBy.length > 120)) ||
+      (input.reviewNotes !== undefined && (typeof input.reviewNotes !== 'string' || input.reviewNotes.length > 5000)) ||
+      (input.imageUrl !== undefined && !isSafeImageUrl(input.imageUrl)) ||
+      (input.verificationStatus !== undefined && !VERIFICATION_STATUSES.includes(input.verificationStatus as VerificationStatus)) ||
+      (input.mergeSubmissionIds !== undefined && (
+        !Array.isArray(input.mergeSubmissionIds) || input.mergeSubmissionIds.length > 100 ||
+        input.mergeSubmissionIds.some((id) => typeof id !== 'string' || !id.trim() || id.length > 200)
+      ))
+    ) {
+      return NextResponse.json({ message: 'Invalid review details' }, { status: 400 });
     }
 
     const verificationStatus =

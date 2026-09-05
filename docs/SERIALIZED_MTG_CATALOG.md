@@ -1,5 +1,7 @@
 # Serialized MTG Catalog
 
+> Historical treatment-scaffolding notes. The current 2026-09-05 inventory, language distinctions, corrected release dates, sources, and implemented page hierarchy are in [QA_AND_CATALOG_2026-09-05.md](QA_AND_CATALOG_2026-09-05.md). The reviewed machine-readable snapshot is `src/data/serialized-printings.json`.
+
 Last researched: 2026-06-30
 
 Primary working query: https://scryfall.com/search?q=is%3Aserialized&unique=prints&order=set

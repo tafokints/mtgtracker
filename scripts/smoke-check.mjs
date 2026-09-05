@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import vm from 'node:vm';
-import ts from 'typescript';
+import { loadProjectModule as loadTsModule } from './lib/load-project-module.mjs';
 
 const rootDir = process.cwd();
 const trackerPath = path.join(rootDir, 'src', 'lib', 'trackers.ts');
@@ -12,27 +11,6 @@ const skipHealth = process.env.SMOKE_SKIP_HEALTH === '1';
 
 function normalizeBaseUrl(value) {
   return value.replace(/\/+$/, '');
-}
-
-function loadTsModule(modulePath) {
-  const source = fs.readFileSync(modulePath, 'utf8');
-  const transpiled = ts.transpileModule(source, {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2020,
-    },
-  }).outputText;
-
-  const sandbox = {
-    URLSearchParams,
-    exports: {},
-    module: { exports: {} },
-  };
-
-  sandbox.exports = sandbox.module.exports;
-  vm.runInNewContext(transpiled, sandbox, { filename: modulePath });
-
-  return sandbox.module.exports;
 }
 
 function loadTrackerModule() {
@@ -69,7 +47,7 @@ async function checkPage(pathname, needles) {
   const { text } = await fetchText(pathname);
 
   for (const needle of needles) {
-    assertIncludes(text, needle, pathname);
+    assertIncludes(text.replaceAll('<!-- -->', ''), needle, pathname);
   }
 
   return { path: pathname, ok: true };
@@ -120,11 +98,12 @@ async function checkHealth() {
   return { path: '/api/health', ok: true };
 }
 
-async function checkSitemap(liveTrackers, catalogEntries) {
+async function checkSitemap(liveTrackers, catalogEntries, printingModule) {
   const { text } = await fetchText('/sitemap.xml');
   const requiredUrls = [
     `${canonicalBaseUrl}/`,
     `${canonicalBaseUrl}/trackers`,
+    `${canonicalBaseUrl}/sets`,
     `${canonicalBaseUrl}/serialized-mtg-catalog`,
     `${canonicalBaseUrl}/verification-guide`,
     `${canonicalBaseUrl}/discoveries`,
@@ -140,6 +119,8 @@ async function checkSitemap(liveTrackers, catalogEntries) {
       `${canonicalBaseUrl}/trackers/${tracker.slug}/submit`,
     ]),
     ...catalogEntries.map((entry) => `${canonicalBaseUrl}/serialized-mtg-catalog/${entry.slug}`),
+    ...printingModule.serializedSets.map((set) => `${canonicalBaseUrl}/sets/${set.slug}`),
+    ...printingModule.serializedPrintings.map((printing) => `${canonicalBaseUrl}${printingModule.printingPath(printing)}`),
   ];
 
   for (const url of requiredUrls) {
@@ -194,15 +175,21 @@ async function checkDiscoveryRssFeed() {
 }
 
 async function main() {
-  const { trackers } = loadTrackerModule();
+  const { trackers, allTrackers } = loadTrackerModule();
+  const printingModule = loadTsModule(path.join(rootDir, 'src/lib/serialized-printings.ts'));
   const { serializedCatalog } = loadSerializedCatalogModule();
   const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');
   const sampleCatalogEntry = serializedCatalog.find((entry) => entry.slug === 'aetherdrift-aetherspark') || serializedCatalog[0];
   const checks = [
-    checkPage('/', ['MTG Trackers', 'Live Trackers', 'BreadcrumbList']),
-    checkPage('/trackers', ['Trackers', 'Serialized Scaffold Queue', 'Marketplace links are affiliate links', 'BreadcrumbList']),
-    checkPage('/serialized-mtg-catalog', ['Serialized MTG Catalog', 'Marketplace Research', 'Live tracker', 'Request tracker', 'CollectionPage', 'BreadcrumbList']),
-    checkPage(`/serialized-mtg-catalog/${sampleCatalogEntry.slug}`, [sampleCatalogEntry.title, 'Marketplace Research', 'Tracker Notes', 'Request Tracker', 'Dataset', 'BreadcrumbList']),
+    checkPage('/', ['MTG Trackers', 'Featured Trackers', 'BreadcrumbList']),
+    checkPage('/trackers', ['Featured Trackers', 'All Serialized Treatments', 'Marketplace links are affiliate links', 'BreadcrumbList']),
+    checkPage('/sets', ['Serialized MTG Sets', 'released English printings', '/sets/the-brothers-war']),
+    checkPage('/sets/the-brothers-war', ['Card Printings', 'Search card printings', 'Printing language', 'Mox Amber']),
+    checkPage('/serialized-mtg-catalog/bro-retro-schematic-artifacts/mox-amber-98z', ['Mox Amber', 'Numbered copies', 'Open Serial Tracker', 'eBay Partner Network', 'Amazon Associate', 'BreadcrumbList']),
+    checkPage('/trackers/card-brr-98z', ['Mox Amber Tracker', 'CollectionPage', 'BreadcrumbList']),
+    checkPage('/trackers/card-brr-98z/submit', ['Mox Amber 001/500', 'Mox Amber 500/500', 'Upload Evidence Images']),
+    checkPage('/serialized-mtg-catalog', ['Serialized MTG Catalog', 'Marketplace Research', 'Reporting open', 'Request tracker', 'CollectionPage', 'BreadcrumbList']),
+    checkPage(`/serialized-mtg-catalog/${sampleCatalogEntry.slug}`, [sampleCatalogEntry.title, 'Marketplace Research', 'Tracker Notes', 'Open Live Tracker', 'Dataset', 'BreadcrumbList']),
     checkPage('/verification-guide', ['Serialized MTG Verification Guide', 'Verification Status', 'Best Evidence', 'Fastest Approval Path', 'WebPage', 'BreadcrumbList']),
     checkPage('/discoveries', ['Recent Discoveries', 'Discovery Feeds', 'JSON Feed', 'RSS Feed', 'CollectionPage', 'BreadcrumbList']),
     checkPage('/trackers/one-ring?serial=001', [
@@ -217,7 +204,7 @@ async function main() {
     checkPage('/affiliate-disclosure', ['Affiliate Disclosure', 'eBay Partner Network', 'Amazon Associate', 'BreadcrumbList']),
     ...(skipHealth ? [] : [checkHealth()]),
     checkRobots(),
-    checkSitemap(liveTrackers, serializedCatalog),
+    checkSitemap(allTrackers.filter((tracker) => tracker.status === 'live'), serializedCatalog, printingModule),
     checkDiscoveryJsonFeed(),
     checkDiscoveryRssFeed(),
     checkBreadcrumbJsonLd('/affiliate-disclosure', ['MTG Trackers', 'Affiliate Disclosure']),

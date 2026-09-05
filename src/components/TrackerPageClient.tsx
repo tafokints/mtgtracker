@@ -614,7 +614,9 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-8">
         <div className="w-full max-w-5xl space-y-6">
-          <div className="text-center text-ring-gold text-xl">Loading {tracker.title} Tracker...</div>
+          <Link href="/sets" className="text-sm text-ring-teal hover:underline">All Sets</Link>
+          <h1 className={`break-words text-3xl font-bold ${tracker.theme.accentClass}`}>{tracker.title} Tracker</h1>
+          <p role="status" className="text-ring-light/70">Loading serials...</p>
           <TrackerMarketInsights tracker={tracker} />
         </div>
       </main>
@@ -625,13 +627,14 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     <>
       <main className="flex min-h-screen flex-col items-center p-8 md:p-12">
         <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-          <h1 className="text-2xl md:text-4xl font-bold text-ring-gold mb-4 lg:mb-0">
+          <h1 className={`mb-4 min-w-0 break-words text-2xl font-bold md:text-4xl lg:mb-0 ${tracker.theme.accentClass}`}>
             {tracker.title}
           </h1>
           <div className="flex flex-wrap items-center gap-3">
             <Link href="/" className="text-ring-gold hover:text-yellow-400 transition-colors">
               Home
             </Link>
+            <Link href="/sets" className="text-ring-teal hover:underline">Sets</Link>
             <Link href={`${trackerPath}/stats`} className="text-ring-gold hover:text-yellow-400 transition-colors">
               Stats
             </Link>

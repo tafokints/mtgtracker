@@ -4,6 +4,7 @@ import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
 import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
+import { isDateOnly, parseCardId, parseNonNegativeNumber } from '@/lib/admin-validation';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -27,19 +28,21 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const body = await readJsonBody(request);
     if (!body.ok) return body.response;
 
-    const { cardId, grading } = body.value as { cardId?: unknown; grading?: any };
+    const { cardId, grading } = body.value as { cardId?: unknown; grading?: Record<string, unknown> };
+    const numericCardId = parseCardId(cardId);
 
-    if (!cardId || !grading || !grading.service || grading.grade === undefined) {
+    if (!numericCardId || !grading || Array.isArray(grading) || typeof grading.service !== 'string' || !grading.service.trim() || grading.service.length > 80) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const gradeValue = typeof grading.grade === 'string' ? parseFloat(grading.grade) : grading.grade;
-    if (isNaN(gradeValue) || gradeValue < 0) {
+    const gradeValue = parseNonNegativeNumber(grading.grade);
+    if (gradeValue === undefined || gradeValue > 10) {
       return NextResponse.json({ error: 'Invalid grade value' }, { status: 400 });
     }
 
+    if (grading.dateGraded && !isDateOnly(grading.dateGraded)) return NextResponse.json({ error: 'Invalid grading date' }, { status: 400 });
+
     const card = await mutateTrackerState(redis, tracker, ({ cards }) => {
-      const numericCardId = typeof cardId === 'string' ? parseInt(cardId, 10) : cardId;
       const cardIndex = cards.findIndex((card) => card.id === numericCardId);
 
       if (cardIndex === -1) {
@@ -47,8 +50,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       }
 
       cards[cardIndex].grading = {
-        ...grading,
+        service: grading.service as string,
         grade: gradeValue,
+        dateGraded: typeof grading.dateGraded === 'string' ? grading.dateGraded : undefined,
       };
       cards[cardIndex].found = true;
       cards[cardIndex].verificationStatus = 'confirmed';

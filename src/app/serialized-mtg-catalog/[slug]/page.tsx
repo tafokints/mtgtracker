@@ -11,7 +11,9 @@ import {
   type SerializedCatalogEntry,
 } from '@/lib/serialized-catalog';
 import { buildBreadcrumbJsonLd, buildSerializedCatalogEntryJsonLd } from '@/lib/seo';
-import { getCatalogAffiliateLinks, getCatalogTracker } from '@/lib/trackers';
+import { getCatalogAffiliateLinks, getCatalogTracker, getPrintingTrackerHref } from '@/lib/trackers';
+import { catalogOfficialSources, getCatalogPrintings, getCatalogSet } from '@/lib/serialized-printings';
+import SerializedPrintingList from '@/components/SerializedPrintingList';
 
 type CatalogEntryPageProps = {
   params: Promise<{ slug: string }>;
@@ -74,6 +76,9 @@ export default async function SerializedCatalogEntryPage({ params }: CatalogEntr
   const linkedTracker = getCatalogTracker(entry.slug);
   const affiliateLinks = getCatalogAffiliateLinks(entry);
   const trackerRequestIssueUrl = getTrackerRequestIssueUrl(entry);
+  const printings = getCatalogPrintings(entry.slug);
+  const reportsOpen = printings.some((printing) => Boolean(getPrintingTrackerHref(printing)));
+  const set = getCatalogSet(entry);
 
   return (
     <main className="min-h-screen px-6 py-8 md:px-10">
@@ -92,14 +97,13 @@ export default async function SerializedCatalogEntryPage({ params }: CatalogEntr
 
       <div className="mx-auto w-full max-w-5xl">
         <header className="border-b border-ring-gold/30 pb-6">
-          <Link href="/serialized-mtg-catalog" className="text-sm text-ring-gold hover:text-yellow-400">
-            &larr; Serialized MTG Catalog
+          <Link href={`/sets/${set.slug}`} className="text-sm text-ring-gold hover:text-yellow-400">
+            &larr; {set.title}
           </Link>
           <p className="mt-4 text-sm font-bold uppercase tracking-[0.2em] text-ring-teal">{entry.setCode} serialized entry</p>
           <h1 className="mt-3 text-4xl font-bold text-ring-gold md:text-5xl">{entry.title}</h1>
           <p className="mt-4 max-w-3xl text-base leading-7 text-ring-light/80">
-            {entry.treatment} from {entry.setName}. This page collects print-run notes, source links, tracker status,
-            and marketplace research paths for this serialized Magic: The Gathering treatment.
+            {entry.treatment} from {entry.setName}. {printings.filter((printing) => printing.language === 'en').length} English printings.
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             {linkedTracker?.status === 'live' ? (
@@ -109,6 +113,8 @@ export default async function SerializedCatalogEntryPage({ params }: CatalogEntr
               >
                 Open Live Tracker
               </Link>
+            ) : reportsOpen ? (
+              <a href="#card-printings" className="inline-flex min-h-10 items-center rounded bg-ring-gold px-4 py-2 text-sm font-bold text-ring-dark">Browse Card Trackers</a>
             ) : (
               <>
                 <Link
@@ -135,11 +141,13 @@ export default async function SerializedCatalogEntryPage({ params }: CatalogEntr
         </header>
 
         <section className="mt-8 grid grid-cols-1 gap-3 md:grid-cols-4">
-          <CatalogMetric label="Status" value={statusLabels[entry.status]} />
+          <CatalogMetric label="Status" value={reportsOpen ? 'Reporting open' : statusLabels[entry.status]} />
           <CatalogMetric label="Cards" value={entry.cardCount.toLocaleString()} />
           <CatalogMetric label="Numbered" value={getSerializedCatalogNumberedLabel(entry)} />
           <CatalogMetric label="Release" value={String(getSerializedCatalogDateLabel(entry))} />
         </section>
+
+        <div id="card-printings"><SerializedPrintingList printings={printings} /></div>
 
         <section className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-[1.3fr_0.7fr]">
           <article className="rounded border border-ring-gold/30 bg-ring-dark/70 p-5">
@@ -188,6 +196,7 @@ export default async function SerializedCatalogEntryPage({ params }: CatalogEntr
           <aside className="rounded border border-ring-gold/30 bg-ring-dark/70 p-5">
             <h2 className="text-2xl font-bold text-ring-light">Sources</h2>
             <div className="mt-4 flex flex-col gap-2 text-sm">
+              {catalogOfficialSources[entry.slug] && <a href={catalogOfficialSources[entry.slug]} className="font-bold text-ring-gold hover:underline">Wizards collecting source</a>}
               <Link
                 href={`https://scryfall.com/search?q=${encodeURIComponent(entry.scryfallQuery)}`}
                 className="font-bold text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline"
@@ -207,7 +216,7 @@ export default async function SerializedCatalogEntryPage({ params }: CatalogEntr
           </aside>
         </section>
 
-        {linkedTracker?.status !== 'live' && (
+        {!reportsOpen && linkedTracker?.status !== 'live' && (
           <section className="mt-8 rounded border border-ring-teal/35 bg-ring-teal/10 p-5">
             <h2 className="text-2xl font-bold text-ring-light">Help Prioritize This Tracker</h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-ring-light/80">

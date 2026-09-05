@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { AFFILIATE_PLACEMENTS } from '@/lib/affiliate-placements';
 import { getRedis } from '@/lib/redis';
-import { defaultAffiliateLinks, trackers } from '@/lib/trackers';
+import { defaultAffiliateLinks, getTracker, trackers } from '@/lib/trackers';
 import { formatTrackerSerial, getTrackerCardDefinitions } from '@/lib/tracker-data';
 import { getAffiliateCoverageRows, getAffiliateCoverageSummary } from '@/lib/affiliate-coverage';
 
@@ -521,6 +521,10 @@ export async function GET(request: NextRequest) {
   if (unauthorized) return unauthorized;
 
   const requestedDays = Number(request.nextUrl.searchParams.get('days') || DEFAULT_DAYS);
+  const requestedTracker = request.nextUrl.searchParams.get('tracker');
+  const scopedTracker = requestedTracker ? getTracker(requestedTracker) : undefined;
+  if (requestedTracker && !scopedTracker) return NextResponse.json({ message: 'Tracker not found' }, { status: 404 });
+  const reportTrackers = scopedTracker ? [scopedTracker] : trackers;
   const days = Number.isInteger(requestedDays)
     ? Math.min(Math.max(requestedDays, 1), MAX_DAYS)
     : DEFAULT_DAYS;
@@ -536,7 +540,7 @@ export async function GET(request: NextRequest) {
         cardValues: [],
         serialValues: [],
       },
-      ...trackers.map((tracker) => {
+      ...reportTrackers.map((tracker) => {
         const cardDefinitions = getTrackerCardDefinitions(tracker);
 
         return {
@@ -602,7 +606,7 @@ export async function GET(request: NextRequest) {
     const promotionVisits = await readPromotionVisitStats(redis, trackerEntries, dateKeys);
     const affiliatePromotionSources = await readAffiliatePromotionSourceStats(redis, dateKeys);
     const directory = await readDirectoryCtaStats(redis, trackerEntries, dateKeys);
-    const affiliateCoverageRows = getAffiliateCoverageRows(trackers);
+    const affiliateCoverageRows = getAffiliateCoverageRows(reportTrackers);
 
     return NextResponse.json({
       days,

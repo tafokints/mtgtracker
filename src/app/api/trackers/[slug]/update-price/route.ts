@@ -5,6 +5,7 @@ import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
 import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
+import { parseCardId, parseNonNegativeNumber } from '@/lib/admin-validation';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -29,14 +30,15 @@ export async function POST(request: Request, { params }: RouteContext) {
     if (!body.ok) return body.response;
 
     const { cardId, price } = body.value as { cardId?: unknown; price?: unknown };
-    const priceValue = Number(price);
+    const priceValue = parseNonNegativeNumber(price);
+    const numericCardId = parseCardId(cardId);
+    if (!numericCardId) return NextResponse.json({ message: 'Valid card ID is required' }, { status: 400 });
 
-    if (!Number.isFinite(priceValue) || priceValue < 0) {
+    if (priceValue === undefined) {
       return NextResponse.json({ message: 'Valid price is required' }, { status: 400 });
     }
 
     await mutateTrackerState(redis, tracker, ({ cards }) => {
-      const numericCardId = typeof cardId === 'string' ? parseInt(cardId, 10) : cardId;
       const cardIndex = cards.findIndex((card) => card.id === numericCardId);
 
       if (cardIndex === -1) {

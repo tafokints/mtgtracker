@@ -16,21 +16,33 @@ Current phase: infrastructure readiness. Zero production discoveries is acceptab
 - [x] Correct generic TCGplayer CTA copy and One Ring sealed-product relevance; preserve existing affiliate account IDs.
 - [x] Distinguish verified affiliate destinations from bot-blocked checks; audit dynamic serial and catalog links too.
 - [x] Apply compatible dependency security updates and rerun tests, build, and live checks.
-- [x] Refresh architecture/agent docs to match the current three-tracker platform.
+- [x] Refresh architecture/agent docs for featured trackers and the generated printing registry.
 
-Audit evidence: 146 tests pass; lint, TypeScript, production build, local smoke, and baseline production smoke pass. Dependency audit is clear. Actual Lua scripts and the Upstash client passed concurrent-write and restore checks against an isolated fakeredis/Lupa service. Mobile report selection and catalog layout were inspected at 390px, with no horizontal overflow. TCGplayer/Amazon destination checks passed; eBay 403 results remain manual-review. See docs/PROJECT_AUDIT_2026-09-05.md for scope and remaining risks. Post-push deployment checks are reported in the task handoff.
+Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upload, CRUD, catalog, and browser checks are in docs/QA_AND_CATALOG_2026-09-05.md. Neither report proves merchant commission credit or a completed cloud Blob lifecycle.
+
+### Completed: Upload And Catalog Pass
+
+- [x] Decode and re-encode actual JPEG/PNG/WebP bytes; reject malformed, oversized, animated, and excessive-pixel images; strip embedded private metadata.
+- [x] Enforce upload body limits plus cross-tracker IP and site-wide budgets; show previews and prevent duplicate form sends.
+- [x] Test create/read/review/edit/export/restore routes, admin access, invalid inputs, and concurrency with isolated fixtures; tighten review and backup validation.
+- [x] Verify the actual Upstash SDK and Lua CAS/restore/activity-index scripts against a disposable local emulator.
+- [x] Research and snapshot 298 serialized printings: 291 English (290 released, one announced) and seven non-English reference variants.
+- [x] Publish the set -> treatment -> printing hierarchy, search/language controls, source links, sitemap entries, and 268 generated single-printing trackers.
+- [x] Reuse existing One Ring, Edgar, and poster trackers; keep Golden Chocobo migration deferred.
+- [x] Validate affiliate attribution and query relevance for all generated printing/serial links; retain generic TCGplayer and top/bottom disclosures.
 
 ### Next: Infrastructure Readiness
 
 - [ ] Unify the One Ring's canonical records across its dedicated tracker and LOTR Poster Cards, with a reviewed migration and deduplicated discovery counts.
-- [ ] Verify uploaded image contents, strip private metadata, and add orphan-upload cleanup with a retention policy.
+- [ ] Connect Vercel Blob (`BLOB_READ_WRITE_TOKEN`), redeploy, and perform an isolated real upload/read/delete check. Production returned 503 "Image uploads are not configured" on 2026-09-05.
+- [ ] Add orphan-upload cleanup, a retention policy, and audited admin removal. Detaching a form attachment is not physical deletion; report hard-delete is not implemented.
 - [ ] Bound/rate-limit public telemetry and add retention so analytics cannot create unlimited Redis keys.
 - [ ] Add automated backups and perform an isolated restore drill.
 - [ ] Reopen needs-more-info reports with a secure submitter follow-up path; preserve review history.
 - [ ] Preserve earlier source details and verification when approving a follow-up report; record sightings separately from first discovery and distinguish asking prices from completed sales.
 - [ ] Validate the existing tracker scaffold across single-card and multi-card sets, different serialized quantities, shared identities, themes, and relevant affiliate defaults/fallbacks.
 - [ ] Add mobile/browser regression checks for empty trackers and isolated populated fixtures: serial selection, submission, image preview, review, and filters; improve the 2,000-slot browsing experience.
-- [ ] Recheck catalog quantities, release dates, printings, and product eligibility against primary sources before launching each tracker.
+- [ ] Locate primary distribution documentation for the two Secret Lair serialized promos; their pages currently disclose the source limitation. Refresh the printing snapshot for new releases and manually review newly encountered sets.
 - [ ] Add per-tracker aesthetics through shared theme tokens and verify contrast/readability.
 - [ ] Confirm mtgtrackers.com is registered/approved in eBay, Amazon Associates, and TCGplayer/Impact accounts; verify configured IDs against each dashboard and retain prominent disclosures.
 

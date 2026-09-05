@@ -20,7 +20,9 @@ Read `TODO.md` for the current priority queue, `ARCHITECTURE.md` for invariants,
 
 ## Essential Invariants
 
-- Live trackers: One Ring, Edgar Markov, LOTR Poster Cards. Golden Chocobo is planned.
+- `trackers` is only the featured list. `allTrackers`/`getTracker` include generated printing trackers; Golden Chocobo migration remains deferred.
+- Catalog hierarchy is set -> treatment -> printing -> numbered tracker. Refresh the reviewed Scryfall snapshot with `catalog:sync`; unknown treatments need manual mapping and sourced quantities. Non-English and unreleased printings are reference-only.
+- Generated printing storage uses Scryfall IDs. Mutations/restores atomically maintain the active-printing index; do not scan every empty tracker for the homepage feed.
 - Use `getTrackerTotalSlots` for whole-tracker counts. Poster Cards has 2,000 slots, not 100.
 - Use `src/lib/tracker-store.ts` for mutations. Separate GET/edit/SET operations can lose concurrent updates.
 - Mutation callbacks may retry. Keep them synchronous with no uploads, notifications, or external side effects.
@@ -30,6 +32,7 @@ Read `TODO.md` for the current priority queue, `ARCHITECTURE.md` for invariants,
 - Preserve existing data and legacy keys. Never run destructive reset/import/restore tests against production.
 - Require admin authentication for privileged routes. Missing production credentials must fail closed.
 - Do not commit credentials, cookies, local environment files, database dumps, or private evidence.
+- Upload files are decoded/re-encoded and metadata-stripped before public Blob storage. Mocked storage tests do not prove cloud upload/read/delete. Detaching evidence is not deletion; retention is pending.
 
 ## Configuration
 

@@ -4,7 +4,9 @@
 
 MTG Trackers is a standalone Next.js 15 App Router application deployed on Vercel at https://mtgtrackers.com. Upstash Redis (or Vercel KV REST environment names) stores tracker records and analytics; Vercel Blob stores evidence uploads. The parent Golden Chocobo repository remains separate.
 
-The registry in `src/lib/trackers.ts` drives dynamic tracker pages, statistics, report forms, APIs, themes, source links, and affiliate destinations. Live trackers are One Ring (100 slots), Edgar Markov (500), and LOTR Poster Cards (20 cards x 100 = 2,000). Golden Chocobo remains planned.
+The registry in `src/lib/trackers.ts` drives dynamic tracker pages, statistics, report forms, APIs, themes, source links, and affiliate destinations. The `trackers` array is the featured list: One Ring (100 slots), Edgar Markov (500), LOTR Poster Cards (20 cards x 100 = 2,000), and planned Golden Chocobo. `allTrackers` adds 268 generated single-printing trackers. Look up any route through `getTracker`, not the featured array.
+
+`src/data/serialized-printings.json` is the reviewed Scryfall snapshot. `catalog:sync` fetches all serialized printings and fails on an unknown treatment instead of guessing quantities. `serialized-printings.ts` supplies release grouping, per-variant totals, language, and source metadata. Reporting opens for released English printings except the deferred Golden Chocobo migration. Announced and non-English printings have reference pages, not active report forms. Existing poster and Edgar records are reused, not regenerated.
 
 ## Identity And Storage
 
@@ -16,6 +18,8 @@ Each tracker has separate `cardsKey` and `submissionsKey` JSON arrays. Use `getT
 
 Backup export reads a consistent pair. Explicit admin restore validates all slots and replaces the pair with atomic MSET, including when existing data is damaged. Restore intentionally overwrites the target tracker; it does not merge reports received before the restore.
 
+Generated printing keys use `printing:{scryfallId}:cards` and `printing:{scryfallId}:submissions`. A single printing has at most 513 slots; large sets are not stored as one giant array. Generated mutations/restores also atomically SADD their slug to `mtgtrackers:active-printing-trackers`. Public discovery feeds read featured trackers plus that index, avoiding hundreds of empty reads. Backups validate numeric IDs, slot identity, nested evidence/prices/grading, and unique submission IDs before replacement. Generated restore rebuilds its own index membership.
+
 Known identity gap: One Ring is present in both its standalone tracker and LOTR Poster Cards, with independent storage. Unifying those records and deduplicating platform counts is a top priority in TODO.md. Do not silently migrate live data.
 
 ## Public And Admin Flows
@@ -24,13 +28,17 @@ Known identity gap: One Ring is present in both its standalone tracker and LOTR 
 - `/trackers/[slug]`: serial grid, filters, details, evidence, and marketplace links.
 - `/trackers/[slug]/stats`: discovery and market summaries.
 - `/trackers/[slug]/submit`: card/serial selection and evidence report.
-- `/serialized-mtg-catalog[/slug]`: researched treatments, sources, and tracker requests.
+- `/sets[/set]`: release-group directory and searchable printing lists, English by default.
+- `/serialized-mtg-catalog[/slug]`: researched treatments and sources.
+- `/serialized-mtg-catalog/[slug]/[card]`: exact printing references, language, total, release, relevant affiliates, and links into tracker/report flows.
 - `/discoveries`, `/discoveries.json`, `/discoveries.xml`: public discovery feeds.
 - `/verification-guide`, `/about`, `/contact`, `/privacy`, `/affiliate-disclosure`: trust and contact pages.
 
 Public reports enter a separate pending queue. Admins can approve, reject, request more info, mark duplicate, or mark cannot verify. Approval merges selected evidence, updates the card, records reviewer metadata, and marks merged reports duplicate in one commit. Follow-up/reopening for needs-more-info reports is still pending.
 
-Uploaded JPEG/PNG/WebP evidence (maximum 4 MB per file) is stored in Vercel Blob. Canonical cards preserve evidence source submission IDs, source URLs, and source types. Upload content validation, metadata stripping, and orphan cleanup remain roadmap work.
+Uploaded JPEG/PNG/WebP evidence (maximum 4 MB per file, 25 million decoded pixels) is decoded, oriented, resized to at most 3,000 pixels per side, and re-encoded as WebP without private metadata. Malformed, mismatched, animated, or oversized inputs are rejected before Blob storage. Multipart stream bytes are bounded even without Content-Length. Uploads have a cross-tracker 10/IP/hour limit and 500/site/day budget. Files receive UUID paths, not user filenames.
+
+Blob URLs are public, including for pending reports. Forms and privacy copy disclose this. Canonical cards preserve evidence source submission IDs, source URLs, and source types. Orphan cleanup, retention, and audited deletion are not implemented. Do not describe attachment removal as Blob deletion. `BLOB_READ_WRITE_TOKEN` is required; its absence returns 503. Local tests mock Blob, so cloud upload/read/delete verification remains a separate deployment gate.
 
 ## Security
 

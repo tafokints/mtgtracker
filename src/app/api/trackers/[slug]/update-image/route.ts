@@ -4,6 +4,7 @@ import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
 import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
+import { isSafeImageUrl, parseCardId } from '@/lib/admin-validation';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -11,15 +12,6 @@ export const revalidate = 0;
 type RouteContext = {
   params: Promise<{ slug: string }>;
 };
-
-function isValidHttpUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:' || value.startsWith('/');
-  } catch {
-    return value.startsWith('/');
-  }
-}
 
 export async function POST(request: Request, { params }: RouteContext) {
   const unauthorized = requireAdmin(request);
@@ -38,12 +30,13 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     const { cardId, imageUrl } = body.value as { cardId?: unknown; imageUrl?: unknown };
 
-    if (typeof imageUrl !== 'string' || !isValidHttpUrl(imageUrl)) {
+    const numericCardId = parseCardId(cardId);
+    if (!numericCardId) return NextResponse.json({ message: 'Valid card ID is required' }, { status: 400 });
+    if (!isSafeImageUrl(imageUrl)) {
       return NextResponse.json({ message: 'Valid image URL is required' }, { status: 400 });
     }
 
     await mutateTrackerState(redis, tracker, ({ cards }) => {
-      const numericCardId = typeof cardId === 'string' ? parseInt(cardId, 10) : cardId;
       const cardIndex = cards.findIndex((card) => card.id === numericCardId);
 
       if (cardIndex === -1) {

@@ -3,7 +3,7 @@ import { isAffiliatePlacement } from '@/lib/affiliate-placements';
 import { getRedis } from '@/lib/redis';
 import { sanitizeInternalPath } from '@/lib/internal-path';
 import { readJsonBody } from '@/lib/request-json';
-import { AffiliateLink, defaultAffiliateLinks, getTracker, trackers } from '@/lib/trackers';
+import { AffiliateLink, defaultAffiliateLinks, getTracker } from '@/lib/trackers';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -82,7 +82,7 @@ function getAllowedAffiliateLink(trackerSlug: string, merchant: string, href: st
 }
 
 function isKnownTrackerSlug(trackerSlug: string) {
-  return trackerSlug === 'default' || trackers.some((tracker) => tracker.slug === trackerSlug);
+  return trackerSlug === 'default' || Boolean(getTracker(trackerSlug));
 }
 
 function safeKeyPart(value: string) {

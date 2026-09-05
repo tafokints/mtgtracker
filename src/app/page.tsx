@@ -44,10 +44,10 @@ export default async function HomePage() {
               Browse Trackers
             </Link>
             <Link
-              href="/serialized-mtg-catalog"
+              href="/sets"
               className="inline-flex h-11 items-center justify-center rounded border border-ring-teal/60 px-5 font-bold text-ring-teal transition-colors hover:bg-ring-teal hover:text-ring-dark"
             >
-              Serialized Catalog
+              Browse All Sets
             </Link>
           </div>
         </header>
@@ -56,8 +56,8 @@ export default async function HomePage() {
 
         <section>
           <div className="mb-4 flex items-center justify-between gap-4">
-            <h2 className="text-2xl font-bold text-ring-light">Live Trackers</h2>
-            <span className="text-sm text-ring-light/60">{liveTrackers.length} active</span>
+            <h2 className="text-2xl font-bold text-ring-light">Featured Trackers</h2>
+            <Link href="/sets" className="text-sm text-ring-teal">All serialized sets</Link>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {liveTrackers.map((tracker) => (

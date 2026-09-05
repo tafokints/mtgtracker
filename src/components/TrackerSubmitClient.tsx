@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { XMarkIcon } from '@heroicons/react/24/outline';
+import ExternalImage from '@/components/ExternalImage';
 import Link from 'next/link';
 import type { TrackerSummary } from '@/lib/trackers';
 import {
@@ -41,6 +43,8 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
   const [uploadedEvidenceUrls, setUploadedEvidenceUrls] = useState<string[]>([]);
   const [uploadMessage, setUploadMessage] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const submitLock = useRef(false);
   const [notes, setNotes] = useState('');
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
@@ -52,7 +56,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
       .map((url) => url.trim())
       .filter(Boolean).length
   ), [evidenceImageUrls]);
-  const totalEvidenceImageCount = uploadedEvidenceUrls.length + manualEvidenceUrlCount;
+  const totalEvidenceImageCount = uploadedEvidenceUrls.length + manualEvidenceUrlCount + (imageUrl.trim() ? 1 : 0);
   const evidenceLimitExceeded = totalEvidenceImageCount > MAX_EVIDENCE_IMAGES;
   const hasSourceLink = link.trim().length > 0;
   const hasPrimaryImage = imageUrl.trim().length > 0;
@@ -122,6 +126,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitLock.current || uploading) return;
     setMessage('');
     setErrors([]);
     setIsError(false);
@@ -133,7 +138,10 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
       return;
     }
 
-    const response = await fetch(`/api/trackers/${tracker.slug}/submit`, {
+    submitLock.current = true;
+    setSubmitting(true);
+    try {
+      const response = await fetch(`/api/trackers/${tracker.slug}/submit`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -152,7 +160,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
         evidenceImageUrls: [...uploadedEvidenceUrls, evidenceImageUrls].filter(Boolean).join('\n'),
         notes,
       }),
-    });
+      });
 
     if (response.ok) {
       setMessage('Submission queued for review. Thank you!');
@@ -175,6 +183,13 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
       setErrors(Array.isArray(data?.errors) ? data.errors : []);
       setIsError(true);
     }
+    } catch {
+      setMessage('Could not confirm submission. Your report is still here; check your connection before retrying.');
+      setIsError(true);
+    } finally {
+      submitLock.current = false;
+      setSubmitting(false);
+    }
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -182,6 +197,12 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
     event.target.value = '';
 
     if (files.length === 0) return;
+    if (uploading || submitting) return;
+    if (files.length + totalEvidenceImageCount > MAX_EVIDENCE_IMAGES) {
+      setErrors([`A report can contain up to ${MAX_EVIDENCE_IMAGES} images. Remove an image before adding more.`]);
+      setIsError(true);
+      return;
+    }
 
     setUploading(true);
     setUploadMessage(`Uploading ${files.length} image${files.length === 1 ? '' : 's'}...`);
@@ -472,10 +493,13 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
               accept="image/jpeg,image/png,image/webp"
               multiple
               onChange={handleImageUpload}
-              disabled={uploading}
+              disabled={uploading || submitting}
             />
             <p className="mt-2 text-xs text-ring-light/70">
               JPEG, PNG, or WebP. Max 4 MB per image.
+            </p>
+            <p className="mt-2 text-xs text-ring-light/70">
+              Uploaded files have public links, including before review. Do not include private information.
             </p>
             {uploadMessage && (
               <p className="mt-2 text-sm text-ring-light">{uploadMessage}</p>
@@ -484,18 +508,21 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
               Evidence images queued: {totalEvidenceImageCount}/{MAX_EVIDENCE_IMAGES}
             </p>
             {uploadedEvidenceUrls.length > 0 && (
-              <ul className="mt-3 space-y-1 text-xs text-ring-light">
-                {uploadedEvidenceUrls.map((url) => (
-                  <li key={url} className="flex items-start justify-between gap-3">
-                    <span className="min-w-0 break-all">
-                      Uploaded: <a href={url} target="_blank" rel="noopener noreferrer" className="text-ring-gold hover:underline">{url}</a>
-                    </span>
+              <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {uploadedEvidenceUrls.map((url, index) => (
+                  <li key={url} className="relative min-w-0">
+                    <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`View uploaded evidence ${index + 1}`}>
+                      <ExternalImage src={url} alt={`Uploaded evidence ${index + 1}`} className="aspect-[3/4] w-full rounded border border-ring-light/30 object-contain" />
+                    </a>
                     <button
                       type="button"
+                      disabled={submitting}
+                      aria-label={`Remove evidence ${index + 1} from report`}
+                      title="Remove from report"
                       onClick={() => setUploadedEvidenceUrls((currentUrls) => currentUrls.filter((currentUrl) => currentUrl !== url))}
-                      className="shrink-0 text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline"
+                      className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded border border-ring-light/50 bg-ring-dark text-ring-light"
                     >
-                      Remove
+                      <XMarkIcon className="h-5 w-5" />
                     </button>
                   </li>
                 ))}
@@ -517,9 +544,9 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
           <button
             className="mt-6 bg-ring-gold hover:bg-yellow-400 disabled:cursor-not-allowed disabled:bg-ring-light/40 text-ring-dark font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
             type="submit"
-            disabled={uploading || evidenceLimitExceeded}
+            disabled={uploading || submitting || evidenceLimitExceeded}
           >
-            {uploading ? 'Uploading...' : 'Submit'}
+            {uploading ? 'Uploading...' : submitting ? 'Submitting...' : 'Submit'}
           </button>
           {message && <p className={`mt-4 text-center ${isError ? 'text-red-500' : 'text-green-400'}`}>{message}</p>}
           {errors.length > 0 && (

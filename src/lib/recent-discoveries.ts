@@ -1,12 +1,14 @@
 import { getRedis } from '@/lib/redis';
-import { trackers } from '@/lib/trackers';
+import { generatedTrackers, trackers } from '@/lib/trackers';
+import { ACTIVE_PRINTING_TRACKERS_KEY } from '@/lib/tracker-store';
 import { getRecentTrackerDiscoveriesSnapshot } from '@/lib/tracker-data';
 
 export async function getPublicRecentDiscoveries(limit = 20) {
   const redis = getRedis();
+  const active = new Set(await redis.smembers<string[]>(ACTIVE_PRINTING_TRACKERS_KEY));
   return getRecentTrackerDiscoveriesSnapshot(
     redis,
-    trackers.filter((tracker) => tracker.status === 'live'),
+    [...trackers, ...generatedTrackers.filter((tracker) => active.has(tracker.slug))].filter((tracker) => tracker.status === 'live'),
     limit,
   );
 }

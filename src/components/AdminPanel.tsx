@@ -636,7 +636,7 @@ export default function AdminPanel({
   const fetchAffiliateStats = useCallback(async () => {
     setAffiliateStatsLoading(true);
     try {
-      const response = await fetch('/api/admin/affiliate-stats?days=30');
+      const response = await fetch(`/api/admin/affiliate-stats?days=30${tracker.catalogGenerated ? `&tracker=${encodeURIComponent(tracker.slug)}` : ''}`);
       if (response.ok) {
         setAffiliateStats(await response.json());
       } else if (response.status === 401) {
@@ -647,7 +647,7 @@ export default function AdminPanel({
     } finally {
       setAffiliateStatsLoading(false);
     }
-  }, []);
+  }, [tracker.catalogGenerated, tracker.slug]);
 
   const exportAffiliateStatsCsv = () => {
     if (!affiliateStats || (
@@ -862,7 +862,7 @@ export default function AdminPanel({
           submissionId: submission.id,
           action,
           reviewNotes: reviewNotes[submission.id],
-          imageUrl: imageOverrides[submission.id],
+          imageUrl: imageOverrides[submission.id]?.trim() || undefined,
           verificationStatus: verificationOverrides[submission.id] || submission.requestedVerificationStatus,
           mergeSubmissionIds: mergeSelections[submission.id] || [],
         }),

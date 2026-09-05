@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { getRedis } from '@/lib/redis';
-import { getTracker } from '@/lib/trackers';
+import { getTracker, type TrackerSummary } from '@/lib/trackers';
+import { validBackupCard, validBackupSubmission } from '@/lib/backup-validation';
 import { DiscoverySubmission, SerializedRingCard, SubmissionStatus } from '@/lib/types';
 import { getTrackerTotalSlots, normalizeTrackerCard } from '@/lib/tracker-data';
 import { restoreTrackerState } from '@/lib/tracker-store';
@@ -34,12 +35,13 @@ type RestoreBackup = {
   submissions?: unknown;
 };
 
-function validateBackup(backup: RestoreBackup, trackerTotal: number, trackerSlug: string) {
+function validateBackup(backup: RestoreBackup, tracker: TrackerSummary) {
+  const trackerTotal = getTrackerTotalSlots(tracker);
   if (backup.schemaVersion !== BACKUP_SCHEMA_VERSION) {
     return 'Unsupported backup schema version';
   }
 
-  if (backup.tracker?.slug !== trackerSlug) {
+  if (backup.tracker?.slug !== tracker.slug) {
     return 'Backup tracker does not match this tracker';
   }
 
@@ -49,10 +51,11 @@ function validateBackup(backup: RestoreBackup, trackerTotal: number, trackerSlug
 
   const cardIds = new Set<number>();
   for (const card of backup.cards) {
-    const cardId = typeof card === 'object' && card !== null && 'id' in card ? Number((card as { id?: unknown }).id) : NaN;
-    if (!Number.isInteger(cardId) || cardId < 1 || cardId > trackerTotal || cardIds.has(cardId)) {
+    const cardId = typeof card === 'object' && card !== null && 'id' in card ? (card as { id?: unknown }).id : undefined;
+    if (typeof cardId !== 'number' || !Number.isInteger(cardId) || cardId < 1 || cardId > trackerTotal || cardIds.has(cardId)) {
       return 'Backup contains invalid card ids';
     }
+    if (!validBackupCard(card, tracker)) return 'Backup contains invalid card details or mismatched serial identity';
     cardIds.add(cardId);
   }
 
@@ -60,24 +63,28 @@ function validateBackup(backup: RestoreBackup, trackerTotal: number, trackerSlug
     return 'Backup submissions must be an array';
   }
 
+  const submissionIds = new Set<string>();
   for (const submission of backup.submissions) {
     if (typeof submission !== 'object' || submission === null) {
       return 'Backup contains invalid submissions';
     }
 
     const item = submission as Partial<DiscoverySubmission>;
-    const cardId = Number(item.cardId);
+    const cardId = item.cardId;
     if (
       typeof item.id !== 'string' ||
+      !item.id.trim() || item.id.length > 200 || submissionIds.has(item.id) ||
+      typeof cardId !== 'number' ||
       !Number.isInteger(cardId) ||
       cardId < 1 ||
       cardId > trackerTotal ||
       typeof item.serialNumber !== 'string' ||
       !SUBMISSION_STATUSES.includes(item.status as SubmissionStatus) ||
-      typeof item.submittedAt !== 'string'
+      !validBackupSubmission(item, tracker)
     ) {
       return 'Backup contains invalid submission records';
     }
+    submissionIds.add(item.id);
   }
 
   return undefined;
@@ -106,7 +113,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       return NextResponse.json({ message: 'Backup payload is required' }, { status: 400 });
     }
 
-    const validationError = validateBackup(input.backup, getTrackerTotalSlots(tracker), tracker.slug);
+    const validationError = validateBackup(input.backup, tracker);
     if (validationError) {
       return NextResponse.json({ message: validationError }, { status: 400 });
     }

@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, createAdminSession } from '@/lib/admin-auth';
 import { buildAmazonSearchUrl, buildTrackerEbaySearchUrl, getSerialAffiliateLinks, getTracker } from '@/lib/trackers';
+import sharp from 'sharp';
+import { ACTIVE_PRINTING_TRACKERS_KEY } from '@/lib/tracker-store';
 
 const redisFixture = vi.hoisted(() => {
   const store = new Map<string, unknown>();
@@ -24,10 +26,17 @@ const redisFixture = vi.hoisted(() => {
       },
       async eval(script: string, keys: string[], args: string[]) {
         const raw = (key: string) => store.has(key) ? JSON.stringify(store.get(key)) : null;
+        if (script.includes('-- restore printing')) {
+          store.set(keys[0], JSON.parse(args[0]));
+          store.set(keys[1], JSON.parse(args[1]));
+          store.set(keys[2], Array.from(new Set([...(store.get(keys[2]) as string[] || []), args[2]])));
+          return 1;
+        }
         if (script.includes("redis.call('MSET'")) {
           if ((raw(keys[0]) || '') !== args[0] || (raw(keys[1]) || '') !== args[1]) return 0;
           store.set(keys[0], JSON.parse(args[2]));
           store.set(keys[1], JSON.parse(args[3]));
+          if (keys[2]) store.set(keys[2], Array.from(new Set([...(store.get(keys[2]) as string[] || []), args[4]])));
           return 1;
         }
         return { cards: raw(keys[0]), submissions: raw(keys[1]) };
@@ -80,6 +89,11 @@ import { POST as trackDirectoryClick } from '@/app/api/directory/click/route';
 import { POST as loginAdmin } from '@/app/api/admin/login/route';
 import { POST as updatePrice } from '@/app/api/trackers/[slug]/update-price/route';
 import { POST as updateImage } from '@/app/api/trackers/[slug]/update-image/route';
+import { POST as updateGrading } from '@/app/api/trackers/[slug]/update-grading/route';
+import { POST as addPriceHistory } from '@/app/api/trackers/[slug]/add-price-history/route';
+import { GET as readCards } from '@/app/api/trackers/[slug]/cards/route';
+import { GET as readSubmissions } from '@/app/api/trackers/[slug]/submissions/route';
+import { GET as readSession, DELETE as logoutAdmin } from '@/app/api/admin/login/route';
 import { createInitialTrackerCards } from '@/lib/tracker-data';
 
 const tracker = getTracker('one-ring');
@@ -116,6 +130,11 @@ function uploadRequest(file: File, ip = '203.0.113.7') {
     },
     body: formData,
   });
+}
+
+async function realImage(format: 'png' | 'jpeg' | 'webp' = 'png') {
+  const buffer = await sharp({ create: { width: 24, height: 32, channels: 3, background: '#0099aa' } }).toFormat(format).toBuffer();
+  return new File([new Uint8Array(buffer)], `private-owner-name.${format}`, { type: `image/${format}` });
 }
 
 function affiliateClickRequest(body: unknown) {
@@ -345,26 +364,209 @@ describe('tracker API routes', () => {
   });
 
   it('uploads a valid evidence image to blob storage', async () => {
-    const file = new File(['image-bytes'], 'Serial Evidence.PNG', { type: 'image/png' });
+    const file = await realImage();
     const response = await uploadEvidenceImage(uploadRequest(file), routeContext());
     const body = await json(response);
 
     expect(response.status).toBe(200);
     expect(body).toMatchObject({
       url: expect.stringContaining('https://blob.vercel-storage.com/trackers/one-ring/evidence/'),
-      contentType: 'image/png',
-      size: file.size,
+      contentType: 'image/webp',
+      size: expect.any(Number),
+      width: 24,
+      height: 32,
       remaining: 9,
     });
     expect(blobFixture.put).toHaveBeenCalledWith(
-      expect.stringMatching(/^trackers\/one-ring\/evidence\/\d+-serial-evidence\.png$/),
-      file,
+      expect.stringMatching(/^trackers\/one-ring\/evidence\/[a-f0-9-]+\.webp$/),
+      expect.any(Buffer),
       expect.objectContaining({
         access: 'public',
         addRandomSuffix: true,
-        contentType: 'image/png',
+        contentType: 'image/webp',
       })
     );
+  });
+
+  it.each(['png', 'jpeg', 'webp'] as const)('decodes and stores real %s image bytes', async (format) => {
+    const response = await uploadEvidenceImage(uploadRequest(await realImage(format)), routeContext());
+    expect(response.status).toBe(200);
+    expect((await response.json()).pathname).not.toContain('private-owner-name');
+  });
+
+  it.each([
+    new File(['image-bytes'], 'fake.png', { type: 'image/png' }),
+    new File(['<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"></svg>'], 'fake.png', { type: 'image/png' }),
+    new File([], 'empty.png', { type: 'image/png' }),
+  ])('rejects invalid upload content: $name', async (file) => {
+    expect((await uploadEvidenceImage(uploadRequest(file), routeContext())).status).toBe(400);
+    expect(blobFixture.put).not.toHaveBeenCalled();
+  });
+
+  it('rejects a MIME mismatch and oversized or malformed multipart requests', async () => {
+    const png = await realImage();
+    const mismatch = new File([await png.arrayBuffer()], 'fake.jpg', { type: 'image/jpeg' });
+    expect((await uploadEvidenceImage(uploadRequest(mismatch), routeContext())).status).toBe(400);
+    const oversized = new File([new Uint8Array(4 * 1024 * 1024 + 1)], 'large.png', { type: 'image/png' });
+    expect((await uploadEvidenceImage(uploadRequest(oversized), routeContext())).status).toBe(413);
+    const malformed = new Request('https://mtgtrackers.com/upload', { method: 'POST', headers: { 'content-type': 'multipart/form-data; boundary=missing' }, body: 'not multipart' });
+    expect((await uploadEvidenceImage(malformed, routeContext())).status).toBe(400);
+    expect(blobFixture.put).not.toHaveBeenCalled();
+  });
+
+  it('requires exactly one file and returns 415 for non-multipart input', async () => {
+    const form = new FormData();
+    const file = await realImage();
+    form.append('file', file); form.append('file', file);
+    const duplicate = new Request('https://mtgtrackers.com/upload', { method: 'POST', body: form });
+    expect((await uploadEvidenceImage(duplicate, routeContext())).status).toBe(400);
+    expect((await uploadEvidenceImage(submitRequest({ file: 'fake' }), routeContext())).status).toBe(415);
+    expect(blobFixture.put).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when Blob configuration or storage is unavailable', async () => {
+    delete process.env.BLOB_READ_WRITE_TOKEN;
+    expect((await uploadEvidenceImage(uploadRequest(await realImage()), routeContext())).status).toBe(503);
+    expect(blobFixture.put).not.toHaveBeenCalled();
+    process.env.BLOB_READ_WRITE_TOKEN = 'test-blob-token';
+    blobFixture.put.mockRejectedValueOnce(new Error('Fixture storage failure'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    expect((await uploadEvidenceImage(uploadRequest(await realImage()), routeContext())).status).toBe(500);
+  });
+
+  it('enforces cross-tracker IP and site-wide upload limits', async () => {
+    redisFixture.counters.set('rate-limit:upload:203.0.113.7', 10);
+    const response = await uploadEvidenceImage(uploadRequest(await realImage()), routeContext('card-brr-64z'));
+    expect(response.status).toBe(429);
+    expect(response.headers.get('Retry-After')).toBe('3600');
+    redisFixture.counters.clear();
+    redisFixture.counters.set('rate-limit:upload:site', 500);
+    expect((await uploadEvidenceImage(uploadRequest(await realImage()), routeContext())).status).toBe(429);
+    expect(blobFixture.put).not.toHaveBeenCalled();
+  });
+
+  it('runs upload -> pending report -> private review -> public read -> edits -> backup restore', async () => {
+    const uploaded = await (await uploadEvidenceImage(uploadRequest(await realImage()), routeContext())).json();
+    const { body } = await submitValidDiscovery(7, '203.0.113.7', { imageUrl: uploaded.url });
+    const before = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
+    expect(before[6]).toMatchObject({ found: false, pendingReports: 1 });
+    const queueRequest = new NextRequest('https://mtgtrackers.com/submissions?status=pending', { headers: { cookie: `${ADMIN_COOKIE_NAME}=${createAdminSession()}` } });
+    const queue = await (await readSubmissions(queueRequest, routeContext())).json();
+    expect(queue).toHaveLength(1);
+    expect(queue[0].id).toBe(body.submissionId);
+    expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve', verificationStatus: 'confirmed' }), routeContext())).status).toBe(200);
+    expect((await updateGrading(reviewRequest({ cardId: 7, grading: { service: 'PSA', grade: 9, dateGraded: '2026-08-01' } }), routeContext())).status).toBe(200);
+    expect((await addPriceHistory(reviewRequest({ cardId: 7, entry: { price: 1200, date: '2026-08-02', soldBy: 'Fixture seller' } }), routeContext())).status).toBe(200);
+    expect((await updatePrice(reviewRequest({ cardId: 7, price: '1250.50' }), routeContext())).status).toBe(200);
+    expect((await updateImage(reviewRequest({ cardId: 7, imageUrl: uploaded.url }), routeContext())).status).toBe(200);
+    const after = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
+    expect(after[6]).toMatchObject({ found: true, pendingReports: 0, image: uploaded.url, price: 1250.50, grading: { service: 'PSA', grade: 9 } });
+    expect(after[6].evidenceImages).toEqual(expect.arrayContaining([expect.objectContaining({ url: uploaded.url, sourceSubmissionId: body.submissionId })]));
+    const backup = await (await exportTrackerBackup(exportRequest(), routeContext())).json();
+    await updatePrice(reviewRequest({ cardId: 7, price: 1 }), routeContext());
+    expect((await importTrackerBackup(importRequest({ confirm: 'RESTORE_TRACKER_BACKUP', backup }), routeContext())).status).toBe(200);
+    const restored = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
+    expect(restored).toEqual(after);
+  });
+
+  it('keeps generated printing records isolated and indexes activity on mutation/restore', async () => {
+    const generated = getTracker('card-brr-64z')!;
+    const other = getTracker('card-brr-65z')!;
+    const response = await submitDiscovery(submitRequest({ cardId: 500, notes: 'Isolated fixture' }), routeContext(generated.slug));
+    expect(response.status).toBe(202);
+    expect(redisFixture.store.get(ACTIVE_PRINTING_TRACKERS_KEY)).toEqual([generated.slug]);
+    expect(redisFixture.store.has(other.storage.cardsKey)).toBe(false);
+    expect(redisFixture.store.has(tracker.storage.cardsKey)).toBe(false);
+    const backup = await (await exportTrackerBackup(exportRequest(), routeContext(generated.slug))).json();
+    redisFixture.store.delete(ACTIVE_PRINTING_TRACKERS_KEY);
+    expect((await importTrackerBackup(importRequest({ confirm: 'RESTORE_TRACKER_BACKUP', backup }), routeContext(generated.slug))).status).toBe(200);
+    expect(redisFixture.store.get(ACTIVE_PRINTING_TRACKERS_KEY)).toEqual([generated.slug]);
+  });
+
+  it.each([updatePrice, updateImage, updateGrading, addPriceHistory, reviewSubmission, importTrackerBackup])('protects every privileged mutation from anonymous requests', async (handler) => {
+    const request = new NextRequest('https://mtgtrackers.com/admin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    expect((await handler(request, routeContext())).status).toBe(401);
+    expect(redisFixture.store.size).toBe(0);
+  });
+
+  it.each(['7junk', '7.5', 7.5, true, null])('rejects malformed IDs in all card edits: %j', async (cardId) => {
+    const requests = [
+      [updatePrice, { cardId, price: 100 }], [updateImage, { cardId, imageUrl: 'https://example.com/a.png' }],
+      [updateGrading, { cardId, grading: { service: 'PSA', grade: 9 } }], [addPriceHistory, { cardId, entry: { price: 100, date: '2026-08-01' } }],
+    ] as const;
+    for (const [handler, body] of requests) expect((await handler(reviewRequest(body), routeContext())).status).toBe(400);
+    expect(redisFixture.store.size).toBe(0);
+  });
+
+  it.each([null, false, '', '9junk', 'Infinity', -1])('rejects invalid admin prices: %j', async (price) => {
+    expect((await updatePrice(reviewRequest({ cardId: 7, price }), routeContext())).status).toBe(400);
+  });
+
+  it.each([null, false, '9junk', 'Infinity', 11, -1])('rejects invalid grades: %j', async (grade) => {
+    expect((await updateGrading(reviewRequest({ cardId: 7, grading: { service: 'PSA', grade } }), routeContext())).status).toBe(400);
+  });
+
+  it('rejects impossible dates and dangerous image URLs', async () => {
+    expect((await addPriceHistory(reviewRequest({ cardId: 7, entry: { price: 1, date: '2026-02-30' } }), routeContext())).status).toBe(400);
+    expect((await updateGrading(reviewRequest({ cardId: 7, grading: { service: 'PSA', grade: 9, dateGraded: 'nonsense' } }), routeContext())).status).toBe(400);
+    for (const imageUrl of ['javascript:alert(1)', '//example.com/a.png', '/\\example.com/a.png', 'https://user:pass@example.com/a.png']) {
+      expect((await updateImage(reviewRequest({ cardId: 7, imageUrl }), routeContext())).status).toBe(400);
+    }
+  });
+
+  it('returns 404 for missing records and keeps reviewed reports immutable', async () => {
+    expect((await updatePrice(reviewRequest({ cardId: 101, price: 100 }), routeContext())).status).toBe(404);
+    for (const action of ['reject', 'needs-more-info', 'duplicate', 'cannot-verify']) {
+      const { body } = await submitValidDiscovery(7, `203.0.113.${action.length}`);
+      expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action }), routeContext())).status).toBe(200);
+      expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext())).status).toBe(409);
+    }
+    const cards = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
+    expect(cards[6].found).toBe(false);
+  });
+
+  it.each([
+    { imageUrl: 'javascript:alert(1)' }, { imageUrl: '//attacker.test/image' },
+    { reviewedBy: 'x'.repeat(121) }, { reviewNotes: 'x'.repeat(5001) },
+    { verificationStatus: 'trusted' }, { mergeSubmissionIds: [true] },
+    { mergeSubmissionIds: Array(101).fill('id') },
+  ])('rejects invalid review overrides without approving: %j', async (details) => {
+    const { body } = await submitValidDiscovery(7);
+    const response = await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve', ...details }), routeContext());
+    expect(response.status).toBe(400);
+    expect((redisFixture.store.get(tracker.storage.submissionsKey) as Array<{ status: string }>)[0].status).toBe('pending');
+  });
+
+  it.each([
+    { id: '1' }, { serialNumber: '999' }, { cardSlug: 'another-card' },
+    { evidenceImages: 'not an array' }, { evidenceImages: [{ url: 'javascript:alert(1)' }] },
+    { priceHistory: {} }, { priceHistory: [{ price: true, date: '2026-09-05' }] },
+    { grading: { service: 'PSA', grade: 11 } }, { found: 'false' }, { image: '//attacker.test/x' },
+  ])('rejects malformed backup cards without replacing live state: %j', async (fields) => {
+    await submitValidDiscovery(7);
+    const backup = await (await exportTrackerBackup(exportRequest(), routeContext())).json();
+    const before = structuredClone(redisFixture.store.get(tracker.storage.cardsKey));
+    Object.assign(backup.cards[0], fields);
+    const response = await importTrackerBackup(importRequest({ confirm: 'RESTORE_TRACKER_BACKUP', backup }), routeContext());
+    expect(response.status).toBe(400);
+    expect(redisFixture.store.get(tracker.storage.cardsKey)).toEqual(before);
+  });
+
+  it('rejects duplicate or malformed submission records during restore', async () => {
+    await submitValidDiscovery(7);
+    const backup = await (await exportTrackerBackup(exportRequest(), routeContext())).json();
+    const restore = (submissions: unknown[]) => importTrackerBackup(importRequest({ confirm: 'RESTORE_TRACKER_BACKUP', backup: { ...backup, submissions } }), routeContext());
+    expect((await restore([backup.submissions[0], backup.submissions[0]])).status).toBe(400);
+    for (const fields of [{ cardId: '7' }, { serialTotal: 999 }, { evidenceImages: {} }, { submittedAt: 'not a date' }]) {
+      expect((await restore([{ ...backup.submissions[0], ...fields }])).status).toBe(400);
+    }
+  });
+
+  it('logs out by deleting the browser session cookie', async () => {
+    expect(await (await readSession(reviewRequest({}))).json()).toEqual({ authenticated: true });
+    const response = await logoutAdmin();
+    expect(await response.json()).toEqual({ authenticated: false });
+    expect(response.headers.get('set-cookie')).toContain('Max-Age=0');
   });
 
   it('rejects unsupported evidence upload file types', async () => {

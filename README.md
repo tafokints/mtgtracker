@@ -2,14 +2,16 @@
 
 A Vercel-ready umbrella site for Magic: The Gathering serialized card trackers.
 
-The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at `/trackers/edgar-markov`, and `LOTR Poster Cards` at `/trackers/lotr-poster-cards`. The existing Golden Chocobo tracker stays untouched for now and can be migrated later as `/trackers/golden-chocobo`.
+Featured trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at `/trackers/edgar-markov`, and `LOTR Poster Cards` at `/trackers/lotr-poster-cards`. The researched catalog adds 268 single-printing trackers, accessible through `/sets`. The existing Golden Chocobo tracker stays untouched and its catalog page is reference-only until migration.
 
 ## Routes
 
 - `/` - platform homepage
 - `/trackers` - tracker directory
-- `/serialized-mtg-catalog` - researched serialized MTG catalog and tracker backlog
+- `/sets` and `/sets/[set]` - release groups, English-first printing search, and language filter
+- `/serialized-mtg-catalog` - researched serialized MTG treatment catalog
 - `/serialized-mtg-catalog/[slug]` - individual serialized treatment research pages
+- `/serialized-mtg-catalog/[slug]/[card]` - exact printing reference, sources, quantities, marketplace links, and reporting entry point
 - `/verification-guide` - public evidence and admin-review guide for serialized discovery reports
 - `/trackers/one-ring` - The One Ring tracker
 - `/trackers/one-ring/stats` - The One Ring stats
@@ -20,7 +22,7 @@ The live trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - `/trackers/lotr-poster-cards` - LOTR Poster Cards multi-card tracker
 - `/trackers/lotr-poster-cards/stats` - LOTR Poster Cards stats
 - `/trackers/lotr-poster-cards/submit` - public discovery report flow
-- `/trackers` also includes a serialized scaffold queue sourced from `src/lib/serialized-catalog.ts`
+- `/trackers` also links to all serialized treatments and their reporting availability
 - `/about` - project purpose and independence notes
 - `/contact` - correction, tracker request, and issue-reporting paths
 - `/privacy` - submission, analytics, and admin review privacy notes
@@ -119,7 +121,7 @@ Each live tracker owns two Redis JSON values defined in `src/lib/trackers.ts`:
 - `tracker.storage.cardsKey` stores the public serial card records.
 - `tracker.storage.submissionsKey` stores public discovery reports and admin review history.
 
-Current live keys:
+Featured live keys:
 
 - `one_ring_cards`
 - `one_ring_submissions`
@@ -128,7 +130,9 @@ Current live keys:
 - `lotr_poster_cards`
 - `lotr_poster_submissions`
 
-Legacy keys are copied during initialization with SET NX and retained as recovery sources. All discovery/review/admin edits use `src/lib/tracker-store.ts`: a consistent raw snapshot and atomic compare-and-set prevent lost concurrent updates. Conflicts retry up to five times, then return 409. Rate-limit keys use `rate-limit:{trackerSlug}:submit:{clientIp}`, `rate-limit:{trackerSlug}:upload:{clientIp}`, and `rate-limit:admin:login:{clientIp}` and are not included in tracker backups.
+Generated trackers use `printing:{scryfallId}:cards` and `printing:{scryfallId}:submissions`. Their mutations/restores maintain `mtgtrackers:active-printing-trackers` atomically so discovery feeds can skip untouched trackers. `getTracker` resolves featured and generated trackers; the exported `trackers` array deliberately remains featured-only.
+
+Legacy keys are copied during initialization with SET NX and retained as recovery sources. All discovery/review/admin edits use `src/lib/tracker-store.ts`: a consistent raw snapshot and atomic compare-and-set prevent lost concurrent updates. Conflicts retry up to five times, then return 409. Rate-limit keys use `rate-limit:{trackerSlug}:submit:{clientIp}`, `rate-limit:upload:{clientIp}`, `rate-limit:upload:site`, and `rate-limit:admin:login:{clientIp}` and are not included in tracker backups.
 
 Affiliate click telemetry is stored separately from tracker backups:
 
@@ -166,7 +170,7 @@ Admin backups are tracker-scoped:
 - Report form: use the `Report a Find` link on any live tracker page to send a discovery into admin review.
 - Evidence checklist: public report pages show live guidance for serial selection, source links, image evidence, and admin-review context.
 - Evidence level: public reports can request `Looks Confirmed` only when they include a source link or evidence image.
-- Evidence uploads: report forms accept JPEG, PNG, or WebP uploads up to 4 MB per image. Uploaded images are stored in Vercel Blob and saved as evidence image URLs on the queued report.
+- Evidence uploads: report forms accept JPEG, PNG, or WebP uploads up to 4 MB and 25 million decoded pixels. The server validates actual image contents, removes metadata, and stores a re-encoded WebP under a UUID path in Vercel Blob. Uploads are limited to 10/IP/hour and 500/site/day. Uploaded URLs are public before review. Attachment removal does not physically delete the file; orphan retention is still pending.
 - Admin panel: press `Ctrl + Alt + A` on `/trackers/one-ring`.
 - Production authentication requires both `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET`; neither may fall back to a development credential. Login allows ten attempts per IP per fifteen minutes and requires Redis for rate limiting.
 - Review queue: use the admin panel `Review` tab to approve or reject pending reports.
@@ -193,7 +197,16 @@ Admin backups are tracker-scoped:
 
 ## Tracker Scaffolding
 
-List serialized catalog entries:
+Refresh the reviewed printing snapshot (network access required):
+
+```bash
+npm run catalog:sync
+npm test
+```
+
+This discovers exact serialized printings from Scryfall, not every normal printing of a serialized card name. New treatments fail until mapped and their serial quantities are researched. Review source/count/language changes before committing. Current snapshot: 298 printings, 291 English (290 released, one announced), seven non-English, 22 treatments, 17 release groups. Released English printings get single-printing trackers unless already covered by a featured tracker or deferred Golden Chocobo. Announced/non-English entries remain reference-only. See `docs/QA_AND_CATALOG_2026-09-05.md` for source evidence and exclusions.
+
+List serialized catalog entries for curated/featured scaffolding:
 
 ```bash
 npm run catalog:list
@@ -206,6 +219,26 @@ npm run tracker:scaffold -- innistrad-remastered-edgar-markov --tracker-slug edg
 ```
 
 The scaffold command reads `src/lib/serialized-catalog.ts`, blocks multi-card treatments that need card-plus-serial support, emits the catalog back-reference, uses the current affiliate URL builders, and tries to fetch direct Scryfall card images when available.
+
+Generated printing trackers do not require one manual scaffold per card. Before adding a curated tracker, ensure it reuses or explicitly migrates the generated printing's records instead of introducing another canonical copy.
+
+### Isolated Redis Script Checks
+
+In a separate terminal, start the disposable in-memory REST emulator, then run the SDK checks:
+
+```bash
+uv run --with 'fakeredis[lua]' python scripts/redis-test-server.py
+# In another terminal:
+npm run test:redis
+```
+
+Stop the fixture with Ctrl+C afterward. The checker only targets its hard-coded loopback fixture and never reads production credentials. It tests the actual Lua scripts through the Upstash SDK, including conflicts, restore, index membership, and no partial writes on a wrong-type index. It does not reproduce every Upstash service limit.
+
+With a local production preview running, `node scripts/check-catalog-pages.mjs http://127.0.0.1:3101` checks every set, printing, and generated tracker/report/stats page. This broad sweep is intentionally restricted to loopback to avoid production load. It verifies rendered HTML, not authenticated admin operations.
+
+### Production Upload Gate
+
+The live upload endpoint returned 503 `Image uploads are not configured` on 2026-09-05. Connect a **public Vercel Blob store** to this project for the intended deployment environments, ensure it injects `BLOB_READ_WRITE_TOKEN`, and redeploy. Test a non-private image in an isolated preview, confirm its public URL renders, then delete that test blob from storage. Do not approve fixture discoveries into production. Unit/route tests mock Blob and are not proof that cloud credentials, storage, or deletion work.
 
 ## Promotion Checks
 

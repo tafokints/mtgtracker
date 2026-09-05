@@ -37,6 +37,9 @@ export default function PrivacyPage() {
             The site uses Vercel hosting, Vercel Analytics, Vercel Speed Insights, and Upstash Redis or Vercel KV to run the app, store tracker data, and understand basic site performance.
           </p>
           <p>
+            Evidence files are stored in Vercel Blob with public URLs, including while a report is pending. New uploads are re-encoded to remove embedded metadata; information visible in the image itself remains. Removing an attachment from an unsent form does not delete the stored file. Contact the site to request file removal.
+          </p>
+          <p>
             Marketplace affiliate clicks and promoted discovery visits may be counted with tracker, source, campaign, card, serial, and page-path context so admins can understand which public pages and promotion channels are useful. These counters do not create visitor accounts or store payment information.
           </p>
           <p>

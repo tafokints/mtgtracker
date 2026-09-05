@@ -1,5 +1,6 @@
 import type { SerializedRingCard } from '@/lib/types';
-import type { SerializedCatalogEntry } from '@/lib/serialized-catalog';
+import { serializedCatalog, type SerializedCatalogEntry } from '@/lib/serialized-catalog';
+import { catalogOfficialSources, isReleasedPrinting, printingPath, printingTitle, printingTotal, serializedPrintings, type SerializedPrinting } from '@/lib/serialized-printings';
 
 export interface AffiliateLink {
   label: string;
@@ -52,6 +53,8 @@ export interface TrackerCardDefinition {
 export interface TrackerSummary {
   slug: string;
   catalogSlug?: string;
+  printingId?: string;
+  catalogGenerated?: boolean;
   title: string;
   subtitle: string;
   description: string;
@@ -491,14 +494,15 @@ export const trackers: TrackerSummary[] = [
 ];
 
 export function getTracker(slug: string) {
-  return trackers.find((tracker) => tracker.slug === slug);
+  return trackerRegistry.get(slug);
 }
 
 export function getCatalogTracker(catalogSlug: string) {
   const matches = trackers.filter((tracker) => tracker.catalogSlug === catalogSlug);
   return matches.find((tracker) => tracker.slug === catalogSlug && tracker.status === 'live')
     || matches.find((tracker) => tracker.status === 'live')
-    || matches[0];
+    || matches[0]
+    || generatedTrackers.find((tracker) => tracker.catalogSlug === catalogSlug && serializedCatalog.find((entry) => entry.slug === catalogSlug)?.cardCount === 1);
 }
 
 export function getCatalogAffiliateLinks(entry: SerializedCatalogEntry): AffiliateLink[] {
@@ -506,7 +510,14 @@ export function getCatalogAffiliateLinks(entry: SerializedCatalogEntry): Affilia
   const hasCollectorBoosters = holidayRelease || /collector booster/i.test(entry.foundIn || '');
   const amazonQuery = holidayRelease
     ? 'lord of the rings mtg special edition collector booster'
-    : `${entry.setName} collector booster`;
+    : ({
+      'bro-retro-schematic-artifacts': 'mtg the brothers war collector booster',
+      'mom-multiverse-legends': 'mtg march of the machine collector booster',
+      'lotr-serialized-sol-rings': 'mtg lord of the rings tales of middle earth collector booster',
+    } as Record<string, string>)[entry.slug] || `${entry.setName} collector booster`;
+  const boosterSet = entry.slug === 'bro-retro-schematic-artifacts' ? "The Brothers' War"
+    : entry.slug === 'mom-multiverse-legends' ? 'March of the Machine'
+      : entry.slug === 'lotr-serialized-sol-rings' ? 'The Lord of the Rings' : entry.setName;
 
   return defaultAffiliateLinks.map((link) => {
     if (link.merchant === 'ebay') {
@@ -521,10 +532,10 @@ export function getCatalogAffiliateLinks(entry: SerializedCatalogEntry): Affilia
     if (link.merchant === 'amazon') {
       return hasCollectorBoosters ? {
         ...link,
-        label: holidayRelease ? 'LOTR Special Edition Boosters on Amazon' : `${entry.setName} on Amazon`,
+        label: holidayRelease ? 'LOTR Special Edition Boosters on Amazon' : `${boosterSet} on Amazon`,
         href: buildAmazonSearchUrl(amazonQuery),
         ctaEyebrow: 'Sealed product',
-        ctaDetail: holidayRelease ? 'Browse Holiday Release Special Edition collector boosters.' : `Browse ${entry.setName} collector boosters.`,
+        ctaDetail: holidayRelease ? 'Browse Holiday Release Special Edition collector boosters.' : `Browse ${boosterSet} collector boosters.`,
       } : {
         ...link,
         label: 'MTG Collector Boosters on Amazon',
@@ -542,7 +553,7 @@ export function getSerialAffiliateLinks(tracker: TrackerSummary, card: Serialize
     : defaultAffiliateLinks;
   const cardTitle = card.cardTitle || tracker.title;
   const serialTotal = card.serialTotal || tracker.total;
-  const serialQuery = `${cardTitle} ${card.serialNumber}/${serialTotal} serialized mtg`;
+  const serialQuery = `${cardTitle} ${card.serialNumber}/${serialTotal} serialized mtg${tracker.setName ? ` ${tracker.setName}` : ''}`;
 
   return links.map((link) => {
     if (link.merchant !== 'ebay') {
@@ -557,4 +568,65 @@ export function getSerialAffiliateLinks(tracker: TrackerSummary, card: Serialize
       ctaDetail: `Search eBay for ${cardTitle} ${card.serialNumber}/${serialTotal}.`,
     };
   });
+}
+
+function existingPrintingTracker(printing: SerializedPrinting) {
+  if (printing.catalogSlug === 'lotr-poster-cards') return trackers.find((tracker) => tracker.slug === (printing.collectorNumber === '748z' ? 'one-ring' : 'lotr-poster-cards'));
+  if (printing.setCode === 'INR') return trackers.find((tracker) => tracker.slug === 'edgar-markov');
+  if (printing.setCode === 'FIN') return trackers.find((tracker) => tracker.slug === 'golden-chocobo');
+}
+
+function makePrintingTracker(printing: SerializedPrinting): TrackerSummary {
+  const entry = serializedCatalog.find((entry) => entry.slug === printing.catalogSlug)!;
+  const slug = `card-${printing.setCode.toLowerCase()}-${printing.collectorNumber.toLowerCase()}`;
+  const title = printingTitle(printing);
+  const officialUrl = catalogOfficialSources[printing.catalogSlug];
+  const accentClass = ['PIP', 'ECL'].includes(printing.setCode) ? 'text-emerald-300'
+    : ['INR', 'MKM', 'FRA'].includes(printing.setCode) ? 'text-rose-300' : 'text-cyan-300';
+  const theme: TrackerTheme = { accentClass, surfaceClass: 'bg-zinc-950', textClass: 'text-zinc-100', glowClass: 'shadow-none' };
+  return {
+    slug, catalogSlug: entry.slug, printingId: printing.id, catalogGenerated: true,
+    title, subtitle: entry.treatment, setName: entry.setName, releaseName: entry.foundIn,
+    cardType: entry.treatment, total: printingTotal(printing), serialPadding: 3,
+    description: `${title}, ${printing.setCode} #${printing.collectorNumber}. ${printingTotal(printing)} numbered English copies.`,
+    href: `/trackers/${slug}`, status: 'live', theme, referenceImage: printing.referenceImage,
+    storage: { cardsKey: `printing:${printing.id}:cards`, submissionsKey: `printing:${printing.id}:submissions` },
+    affiliateLinks: getCatalogAffiliateLinks(entry).map((link) => link.merchant === 'ebay' ? {
+      ...link, label: `${title} serials on eBay`, href: buildTrackerEbaySearchUrl(`${title} ${entry.setName} serialized mtg`, slug),
+      ctaDetail: `Search active listings for ${title} from ${entry.setName}.`,
+    } : link),
+    referenceLinks: [
+      ...(officialUrl ? [{ label: 'Wizards collecting guide', href: officialUrl, type: 'official' as const }] : []),
+      { label: 'Scryfall printing', href: printing.scryfallUrl, type: 'scryfall' },
+      { label: 'Card catalog', href: printingPath(printing), type: 'other' },
+    ],
+  };
+}
+
+export const generatedTrackers = serializedPrintings
+  .filter((printing) => printing.language === 'en' && isReleasedPrinting(printing) && !existingPrintingTracker(printing))
+  .map(makePrintingTracker);
+export const allTrackers = [...trackers, ...generatedTrackers];
+const trackerRegistry = new Map(allTrackers.map((tracker) => [tracker.slug, tracker]));
+
+export function getPrintingTracker(printing: SerializedPrinting) {
+  return existingPrintingTracker(printing) || generatedTrackers.find((tracker) => tracker.printingId === printing.id);
+}
+
+export function getPrintingTrackerHref(printing: SerializedPrinting) {
+  const tracker = getPrintingTracker(printing);
+  if (!tracker || tracker.status !== 'live') return undefined;
+  if (tracker.slug === 'lotr-poster-cards') {
+    const definition = tracker.cardDefinitions?.find((card) => card.scryfallUrl?.split('/')[5] === printing.collectorNumber);
+    return definition ? `${tracker.href}?card=${definition.slug}` : undefined;
+  }
+  return tracker.href;
+}
+
+export function getPrintingAffiliateLinks(printing: SerializedPrinting) {
+  const entry = serializedCatalog.find((entry) => entry.slug === printing.catalogSlug)!;
+  const title = printingTitle(printing);
+  return getCatalogAffiliateLinks(entry).map((link) => link.merchant === 'ebay' ? {
+    ...link, label: `${title} serials on eBay`, href: buildTrackerEbaySearchUrl(`${title} ${entry.setName} serialized mtg`, 'serialized-mtg'),
+  } : link);
 }

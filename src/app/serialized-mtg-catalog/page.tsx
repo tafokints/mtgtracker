@@ -10,7 +10,8 @@ import {
   type SerializedCatalogEntry,
 } from '@/lib/serialized-catalog';
 import { buildBreadcrumbJsonLd, buildSerializedCatalogJsonLd } from '@/lib/seo';
-import { defaultAffiliateLinks, getCatalogTracker } from '@/lib/trackers';
+import { defaultAffiliateLinks, getCatalogTracker, getPrintingTrackerHref } from '@/lib/trackers';
+import { catalogCheckedAt, getCatalogPrintings, getPrintingCoverage } from '@/lib/serialized-printings';
 
 export const metadata: Metadata = {
   title: 'Serialized MTG Catalog',
@@ -62,6 +63,7 @@ function getCatalogCounts() {
 
 export default function SerializedMtgCatalogPage() {
   const counts = getCatalogCounts();
+  const coverage = getPrintingCoverage();
 
   return (
     <main className="min-h-screen px-6 py-8 md:px-10">
@@ -86,22 +88,21 @@ export default function SerializedMtgCatalogPage() {
             <p className="mt-4 text-sm font-bold uppercase tracking-[0.2em] text-ring-teal">Research catalog</p>
             <h1 className="mt-3 text-4xl font-bold text-ring-gold">Serialized MTG Catalog</h1>
             <p className="mt-4 max-w-3xl text-sm leading-6 text-ring-light/75">
-              A working index of serialized Magic: The Gathering treatments, print ranges, release sets, and tracker readiness.
-              Live trackers can accept reports now; planned entries are the backlog for future tracker pages.
+              {coverage.releasedEnglish} released English printings, {coverage.english - coverage.releasedEnglish} announced English printing, and {coverage.otherLanguages} non-English variants. Checked {catalogCheckedAt}.
             </p>
           </div>
           <Link
-            href="/trackers"
+            href="/sets"
             className="inline-flex h-11 items-center justify-center rounded border border-ring-gold px-5 font-bold text-ring-gold transition-colors hover:bg-ring-gold hover:text-ring-dark"
           >
-            Open Trackers
+            Browse by Set
           </Link>
         </header>
 
         <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
           <CatalogMetric label="Treatments" value={counts.totalTreatments.toLocaleString()} />
-          <CatalogMetric label="Card names" value={counts.totalCards.toLocaleString()} />
-          <CatalogMetric label="Live" value={counts.liveCount.toLocaleString()} />
+          <CatalogMetric label="Printings" value={coverage.all.toLocaleString()} />
+          <CatalogMetric label="Released English" value={coverage.releasedEnglish.toLocaleString()} />
           <CatalogMetric label="Single-card" value={counts.singleCardCount.toLocaleString()} />
           <CatalogMetric label="Multi-card" value={counts.multiCardCount.toLocaleString()} />
         </section>
@@ -153,6 +154,7 @@ export default function SerializedMtgCatalogPage() {
               {serializedCatalog.map((entry) => {
                 const trackerHref = getTrackerHref(entry);
                 const requestIssueUrl = getTrackerRequestIssueUrl(entry);
+                const reportsOpen = getCatalogPrintings(entry.slug).some((printing) => Boolean(getPrintingTrackerHref(printing)));
 
                 return (
                   <tr id={entry.slug} key={entry.slug} className="align-top transition-colors hover:bg-ring-gold/5">
@@ -184,7 +186,7 @@ export default function SerializedMtgCatalogPage() {
                     <td className="px-4 py-3">{trackingModeLabels[entry.trackingMode]}</td>
                     <td className="px-4 py-3">
                       <span className="inline-flex rounded border border-ring-gold/30 px-2 py-1 text-xs uppercase text-ring-light/65">
-                        {statusLabels[entry.status]}
+                        {reportsOpen ? 'Reporting open' : statusLabels[entry.status]}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -194,7 +196,7 @@ export default function SerializedMtgCatalogPage() {
                             Tracker
                           </Link>
                         )}
-                        {!trackerHref && (
+                        {!trackerHref && !reportsOpen && (
                           <Link
                             href={requestIssueUrl}
                             className="font-bold text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline"

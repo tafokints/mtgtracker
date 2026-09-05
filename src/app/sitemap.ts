@@ -1,12 +1,14 @@
 import { MetadataRoute } from 'next'
 import { serializedCatalog } from '@/lib/serialized-catalog'
-import { trackers } from '@/lib/trackers'
+import { allTrackers as trackers } from '@/lib/trackers'
+import { catalogCheckedAt, printingPath, serializedPrintings, serializedSets } from '@/lib/serialized-printings'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://mtgtrackers.com'
   const staticRoutes = [
     '',
     '/trackers',
+    '/sets',
     '/serialized-mtg-catalog',
     '/verification-guide',
     '/discoveries',
@@ -56,6 +58,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: route === '' ? 1 : route === '/trackers' ? 0.8 : route === '/serialized-mtg-catalog' ? 0.75 : route === '/discoveries' ? 0.7 : route === '/verification-guide' ? 0.6 : 0.4,
     })),
     ...catalogEntryRoutes,
+    ...serializedSets.map((set) => ({ url: `${baseUrl}/sets/${set.slug}`, lastModified: catalogCheckedAt, changeFrequency: 'weekly' as const, priority: 0.7 })),
+    ...serializedPrintings.map((printing) => ({ url: `${baseUrl}${printingPath(printing)}`, lastModified: catalogCheckedAt, changeFrequency: 'weekly' as const, priority: 0.6 })),
     ...liveTrackerRoutes,
   ]
 }

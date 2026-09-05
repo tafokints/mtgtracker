@@ -10,11 +10,14 @@ Work inside the standalone `mtg-serial-tracker` repository. The parent Golden Ch
 ## Fragile Invariants
 
 - `src/lib/trackers.ts` drives live pages, quantities, card definitions, themes, sources, and affiliate destinations.
+- `trackers` is the featured list, not the full registry. Use `getTracker`/`allTrackers` for generated printing routes. Catalog snapshot refresh and set/treatment/printing rules are in ARCHITECTURE.md.
+- Generated printing mutations and restores must atomically maintain the active-printing index; discovery feeds should not read hundreds of empty trackers.
 - Use `getTrackerTotalSlots` for whole-tracker validation. A multi-card tracker's `total` is only the default per-card quantity.
 - Existing numeric slot IDs depend on card-definition order. Do not reorder launched definitions without a migration.
 - Use `src/lib/tracker-store.ts` for canonical writes. Its compare-and-set commit prevents concurrent reports or admin actions from overwriting one another.
 - Mutation callbacks may retry: keep external effects outside them. Approval must persist card changes and review status together.
 - Discovery reports stay pending until admin review. Vercel Blob uploads, extended review states, and backup/restore already exist.
+- Uploads decode/re-encode real image bytes and strip metadata before public Blob storage. Distinguish local mocked-storage tests from a real cloud upload/read/delete test; attachment removal does not delete a blob. Retention remains in TODO.md.
 - Reference artwork is not serial-specific evidence. Do not inflate discovery/evidence counts with placeholders.
 - One Ring currently appears in two independently stored trackers. Resolve its canonical identity explicitly before expanding overlapping collections.
 - Preserve legacy source keys and existing records. Use isolated fixtures for destructive or concurrency tests.

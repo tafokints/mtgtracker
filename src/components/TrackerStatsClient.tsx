@@ -143,7 +143,9 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-8">
         <div className="w-full max-w-5xl space-y-6">
-          <div className="text-center text-ring-gold text-xl">Loading {tracker.title} Statistics...</div>
+          <Link href={trackerPath} className="text-sm text-ring-teal hover:underline">Back to Tracker</Link>
+          <h1 className={`break-words text-3xl font-bold ${tracker.theme.accentClass}`}>{tracker.title} Statistics</h1>
+          <p role="status" className="text-ring-light/70">Loading statistics...</p>
           <TrackerMarketInsights tracker={tracker} />
         </div>
       </main>

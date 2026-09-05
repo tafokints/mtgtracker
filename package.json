@@ -7,8 +7,10 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
+    "test:redis": "node scripts/check-redis-scripts.mjs",
     "lint": "eslint .",
     "catalog:list": "node scripts/scaffold-tracker.mjs list",
+    "catalog:sync": "node scripts/sync-serialized-printings.mjs",
     "tracker:scaffold": "node scripts/scaffold-tracker.mjs generate",
     "links:validate": "node scripts/validate-affiliate-links.mjs",
     "smoke": "node scripts/smoke-check.mjs"
@@ -24,6 +26,7 @@
     "react": "^18",
     "react-dom": "^18",
     "react-is": "^18.3.1",
+    "sharp": "0.35.3",
     "recharts": "^3.9.1",
     "yet-another-react-lightbox": "^3.23.3"
   },

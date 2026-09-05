@@ -3,26 +3,17 @@ import { NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { getTracker } from '@/lib/trackers';
+import { randomUUID } from 'node:crypto';
+import { EvidenceUploadError, prepareEvidenceImage, readEvidenceFile } from '@/lib/evidence-upload';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+export const runtime = 'nodejs';
 
 type RouteContext = {
   params: Promise<{ slug: string }>;
 };
-
-function sanitizeFilename(filename: string) {
-  const fallbackName = 'evidence-image';
-  const sanitized = filename
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-
-  return sanitized || fallbackName;
-}
 
 export async function POST(request: Request, { params }: RouteContext) {
   const { slug } = await params;
@@ -39,7 +30,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     const redis = getRedis();
     const clientIp = getClientIp(request);
     const rateLimit = await checkRateLimit(redis, {
-      key: `rate-limit:${tracker.slug}:upload:${clientIp}`,
+      key: `rate-limit:upload:${clientIp}`,
       limit: 10,
       windowSeconds: 60 * 60,
     });
@@ -47,43 +38,43 @@ export async function POST(request: Request, { params }: RouteContext) {
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { message: 'Too many uploads. Please try again later.' },
-        { status: 429 }
+        { status: 429, headers: { 'Retry-After': '3600' } }
       );
     }
 
-    const formData = await request.formData();
-    const file = formData.get('file');
-
-    if (!(file instanceof File)) {
-      return NextResponse.json({ message: 'Image file is required' }, { status: 400 });
+    const budget = await checkRateLimit(redis, {
+      key: 'rate-limit:upload:site', limit: 500, windowSeconds: 24 * 60 * 60,
+    });
+    if (!budget.allowed) {
+      return NextResponse.json({ message: 'Daily upload capacity reached. Please use an evidence URL or try again later.' }, {
+        status: 429, headers: { 'Retry-After': '86400' },
+      });
     }
 
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      return NextResponse.json({ message: 'Only JPEG, PNG, and WebP images are supported' }, { status: 400 });
-    }
-
-    if (file.size > MAX_UPLOAD_BYTES) {
-      return NextResponse.json({ message: 'Image must be 4 MB or smaller' }, { status: 400 });
-    }
+    const file = await readEvidenceFile(request);
+    const image = await prepareEvidenceImage(file);
 
     const blob = await put(
-      `trackers/${tracker.slug}/evidence/${Date.now()}-${sanitizeFilename(file.name)}`,
-      file,
+      `trackers/${tracker.slug}/evidence/${randomUUID()}.${image.extension}`,
+      image.data,
       {
         access: 'public',
         addRandomSuffix: true,
-        contentType: file.type,
+        contentType: image.contentType,
       }
     );
 
     return NextResponse.json({
       url: blob.url,
       pathname: blob.pathname,
-      contentType: file.type,
-      size: file.size,
+      contentType: image.contentType,
+      size: image.data.byteLength,
+      width: image.width,
+      height: image.height,
       remaining: rateLimit.remaining,
     });
   } catch (error) {
+    if (error instanceof EvidenceUploadError) return NextResponse.json({ message: error.message }, { status: error.status });
     console.error('Error uploading evidence image:', error);
     return NextResponse.json({ message: 'Image upload failed' }, { status: 500 });
   }

@@ -5,6 +5,7 @@ import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
 import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
+import { isDateOnly, parseCardId } from '@/lib/admin-validation';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -29,17 +30,21 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (!body.ok) return body.response;
 
     const { cardId, entry } = body.value as { cardId?: unknown; entry?: Partial<PriceHistoryEntry> };
+    const numericCardId = parseCardId(cardId);
 
-    if (!cardId || !entry || entry.price === undefined || !entry.date) {
+    if (!numericCardId || !entry || entry.price === undefined || !entry.date) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    if (typeof entry.price !== 'number' || entry.price < 0) {
+    if (typeof entry.price !== 'number' || !Number.isFinite(entry.price) || entry.price < 0) {
       return NextResponse.json({ error: 'Invalid price value' }, { status: 400 });
     }
 
-    if (typeof entry.date !== 'string' || Number.isNaN(new Date(entry.date).getTime())) {
+    if (!isDateOnly(entry.date)) {
       return NextResponse.json({ error: 'Invalid sale date' }, { status: 400 });
+    }
+    if ([entry.soldBy, entry.soldTo].some((value) => value !== undefined && (typeof value !== 'string' || value.length > 120))) {
+      return NextResponse.json({ error: 'Sale parties must be 120 characters or fewer' }, { status: 400 });
     }
 
     const historyEntry: PriceHistoryEntry = {
@@ -50,7 +55,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     };
 
     const card = await mutateTrackerState(redis, tracker, ({ cards }) => {
-      const numericCardId = typeof cardId === 'string' ? parseInt(cardId, 10) : cardId;
       const cardIndex = cards.findIndex((card) => card.id === numericCardId);
 
       if (cardIndex === -1) {
