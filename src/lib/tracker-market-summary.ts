@@ -1,5 +1,6 @@
 import type { SerializedRingCard } from '@/lib/types';
 import type { AffiliateLink, TrackerSummary } from '@/lib/trackers';
+import { getTrackerCardDefinitions, getTrackerTotalSlots } from '@/lib/tracker-data';
 
 export interface TrackerMarketSummary {
   foundCount: number;
@@ -46,14 +47,18 @@ function choosePrimaryMerchant(tracker: TrackerSummary, cards: SerializedRingCar
 
 export function getTrackerMarketSummary(tracker: TrackerSummary, cards: SerializedRingCard[]): TrackerMarketSummary {
   const foundCards = cards.filter((card) => card.found);
-  const confirmedCount = cards.filter((card) => card.verificationStatus === 'confirmed').length;
-  const sourceLinkedCount = cards.filter((card) => card.verificationStatus === 'source-linked').length;
-  const evidenceBackedCount = cards.filter((card) => (card.evidenceImages || []).length > 0 || Boolean(card.image)).length;
-  const marketplaceSourceCount = cards.filter((card) => card.sourceType === 'marketplace').length;
-  const saleDataCount = cards.filter((card) => typeof card.price === 'number' && Number.isFinite(card.price)).length;
+  const confirmedCount = foundCards.filter((card) => card.verificationStatus === 'confirmed').length;
+  const sourceLinkedCount = foundCards.filter((card) => card.verificationStatus === 'source-linked').length;
+  const referenceImages = new Set([tracker.referenceImage, '/icon.svg', ...getTrackerCardDefinitions(tracker).map((card) => card.referenceImage)]);
+  const isEvidenceImage = (url?: string) => Boolean(url && !referenceImages.has(url));
+  const evidenceBackedCount = foundCards.filter((card) => (
+    (card.evidenceImages || []).some((image) => isEvidenceImage(image.url)) || isEvidenceImage(card.image)
+  )).length;
+  const marketplaceSourceCount = foundCards.filter((card) => card.sourceType === 'marketplace').length;
+  const saleDataCount = foundCards.filter((card) => typeof card.price === 'number' && Number.isFinite(card.price)).length;
   const pendingReportCount = cards.reduce((total, card) => total + (card.pendingReports || 0), 0);
   const primaryMerchant = choosePrimaryMerchant(tracker, cards);
-  const totalCount = cards.length || tracker.total;
+  const totalCount = cards.length || getTrackerTotalSlots(tracker);
   const statsCtaTitle = saleDataCount > 0
     ? `${tracker.title} Market Context`
     : `${tracker.title} Marketplace Watch`;
@@ -82,7 +87,7 @@ export function getTrackerMarketSummary(tracker: TrackerSummary, cards: Serializ
       {
         label: 'Evidence coverage',
         value: String(evidenceBackedCount),
-        detail: 'cards with saved image evidence or canonical images',
+        detail: 'reviewed discoveries with serial-specific images',
       },
       {
         label: 'Market signals',

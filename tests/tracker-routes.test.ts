@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, createAdminSession } from '@/lib/admin-auth';
 import { buildAmazonSearchUrl, buildTrackerEbaySearchUrl, getSerialAffiliateLinks, getTracker } from '@/lib/trackers';
@@ -15,10 +15,25 @@ const redisFixture = vi.hoisted(() => {
         if (counters.has(key)) {
           return counters.get(key);
         }
-        return store.get(key);
+        return structuredClone(store.get(key));
       },
-      async set(key: string, value: unknown) {
-        store.set(key, value);
+      async set(key: string, value: unknown, options?: { nx?: boolean }) {
+        if (options?.nx && store.has(key)) return null;
+        store.set(key, structuredClone(value));
+        return 'OK';
+      },
+      async eval(script: string, keys: string[], args: string[]) {
+        const raw = (key: string) => store.has(key) ? JSON.stringify(store.get(key)) : null;
+        if (script.includes("redis.call('MSET'")) {
+          if ((raw(keys[0]) || '') !== args[0] || (raw(keys[1]) || '') !== args[1]) return 0;
+          store.set(keys[0], JSON.parse(args[2]));
+          store.set(keys[1], JSON.parse(args[3]));
+          return 1;
+        }
+        return { cards: raw(keys[0]), submissions: raw(keys[1]) };
+      },
+      async mset(values: Record<string, unknown>) {
+        for (const [key, value] of Object.entries(values)) store.set(key, structuredClone(value));
         return 'OK';
       },
       async del(key: string) {
@@ -62,6 +77,10 @@ import { GET as getAffiliateStats } from '@/app/api/admin/affiliate-stats/route'
 import { POST as trackPromotionAction } from '@/app/api/admin/promotion-action/route';
 import { POST as trackPromotionVisit } from '@/app/api/promotion/visit/route';
 import { POST as trackDirectoryClick } from '@/app/api/directory/click/route';
+import { POST as loginAdmin } from '@/app/api/admin/login/route';
+import { POST as updatePrice } from '@/app/api/trackers/[slug]/update-price/route';
+import { POST as updateImage } from '@/app/api/trackers/[slug]/update-image/route';
+import { createInitialTrackerCards } from '@/lib/tracker-data';
 
 const tracker = getTracker('one-ring');
 
@@ -203,6 +222,7 @@ async function submitValidDiscovery(cardId = 7, ip = '203.0.113.7', overrides: R
 }
 
 describe('tracker API routes', () => {
+  afterEach(() => vi.restoreAllMocks());
   beforeEach(() => {
     redisFixture.store.clear();
     redisFixture.counters.clear();
@@ -235,6 +255,93 @@ describe('tracker API routes', () => {
       cardId: 7,
       status: 'pending',
     });
+  });
+
+  it.each([null, [], 'text', 1])('rejects non-object JSON bodies: %j', async (value) => {
+    const response = await submitDiscovery(submitRequest(JSON.stringify(value)), routeContext());
+    expect(response.status).toBe(400);
+    expect(redisFixture.store.size).toBe(0);
+  });
+
+  it('preserves simultaneous reports and duplicate candidates', async () => {
+    const results = await Promise.all([
+      submitValidDiscovery(7, '203.0.113.1'),
+      submitValidDiscovery(7, '203.0.113.2'),
+      submitValidDiscovery(8, '203.0.113.3'),
+    ]);
+    expect(results.map(({ response }) => response.status)).toEqual([202, 202, 202]);
+    const submissions = redisFixture.store.get(tracker.storage.submissionsKey) as Array<{ cardId: number; duplicateSubmissionIds: string[] }>;
+    expect(submissions).toHaveLength(3);
+    expect(submissions.filter((report) => report.cardId === 7).map((report) => report.duplicateSubmissionIds.length).sort()).toEqual([0, 1]);
+  });
+
+  it('commits a review only once when two admins approve together', async () => {
+    const { body } = await submitValidDiscovery();
+    const responses = await Promise.all([0, 1].map(() => reviewSubmission(
+      reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext(),
+    )));
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+    const cards = redisFixture.store.get(tracker.storage.cardsKey) as Array<{ priceHistory: unknown[] }>;
+    expect(cards[6].priceHistory).toHaveLength(1);
+  });
+
+  it('preserves concurrent price and image edits', async () => {
+    const responses = await Promise.all([
+      updatePrice(reviewRequest({ cardId: 7, price: 1800 }), routeContext()),
+      updateImage(reviewRequest({ cardId: 7, imageUrl: 'https://example.com/new.jpg' }), routeContext()),
+    ]);
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+    const cards = redisFixture.store.get(tracker.storage.cardsKey) as unknown[];
+    expect(cards[6]).toMatchObject({ price: 1800, image: 'https://example.com/new.jpg' });
+  });
+
+  it('does not partially approve when the atomic commit fails', async () => {
+    const { body } = await submitValidDiscovery();
+    const cardsBefore = structuredClone(redisFixture.store.get(tracker.storage.cardsKey));
+    const evalCommand = redisFixture.redis.eval;
+    vi.spyOn(redisFixture.redis, 'eval').mockImplementation(async (script, keys, args) => {
+      if (script.includes("redis.call('MSET'")) throw new Error('Test storage failure');
+      return evalCommand(script, keys, args);
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const response = await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext());
+    expect(response.status).toBe(500);
+    expect(redisFixture.store.get(tracker.storage.cardsKey)).toEqual(cardsBefore);
+    expect(redisFixture.store.get(tracker.storage.submissionsKey)).toEqual([expect.objectContaining({ status: 'pending' })]);
+  });
+
+  it('exports and restores every slot in a multi-card tracker', async () => {
+    const poster = getTracker('lotr-poster-cards')!;
+    const cards = createInitialTrackerCards(poster);
+    cards[1999].found = true;
+    redisFixture.store.set(poster.storage.cardsKey, cards);
+    const exported = await exportTrackerBackup(exportRequest(), routeContext(poster.slug));
+    const backup = await exported.json();
+    expect(backup.cards).toHaveLength(2000);
+    expect(backup.tracker.totalSlots).toBe(2000);
+    const response = await importTrackerBackup(importRequest({ confirm: 'RESTORE_TRACKER_BACKUP', backup }), routeContext(poster.slug));
+    expect(response.status).toBe(200);
+    const restored = redisFixture.store.get(poster.storage.cardsKey) as unknown[];
+    expect(restored).toHaveLength(2000);
+    expect(restored[1999]).toMatchObject({ cardSlug: 'mount-doom', serialNumber: '100', found: true });
+  });
+
+  it('rejects inherited property names as review actions', async () => {
+    const { body } = await submitValidDiscovery();
+    const response = await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'toString' }), routeContext());
+    expect(response.status).toBe(400);
+  });
+
+  it('rate-limits admin password guesses without issuing a session', async () => {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      expect((await loginAdmin(submitRequest({ password: 'wrong' }))).status).toBe(401);
+    }
+    const blocked = await loginAdmin(submitRequest({ password: 'test-admin-password' }));
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get('set-cookie')).toBeNull();
+    const allowed = await loginAdmin(submitRequest({ password: 'test-admin-password' }, '203.0.113.8'));
+    expect(allowed.status).toBe(200);
+    expect(allowed.headers.get('set-cookie')).toContain('HttpOnly');
   });
 
   it('uploads a valid evidence image to blob storage', async () => {

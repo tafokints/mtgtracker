@@ -1,4 +1,5 @@
 import type { SerializedRingCard } from '@/lib/types';
+import type { SerializedCatalogEntry } from '@/lib/serialized-catalog';
 
 export interface AffiliateLink {
   label: string;
@@ -71,7 +72,14 @@ export interface TrackerSummary {
   faqs?: TrackerFaq[];
 }
 
-const tcgplayerPartnerLink = 'https://partner.tcgplayer.com/DyJ25G';
+export const tcgplayerAffiliateLink: AffiliateLink = {
+  label: 'Browse TCGplayer',
+  href: 'https://partner.tcgplayer.com/DyJ25G',
+  merchant: 'tcgplayer',
+  intent: 'singles',
+  ctaEyebrow: 'Singles Marketplace',
+  ctaDetail: 'Browse the TCGplayer marketplace.',
+};
 
 function buildEbaySearchUrl(query: string, customId: string) {
   const params = new URLSearchParams({
@@ -104,17 +112,8 @@ export function buildAmazonSearchUrl(query: string) {
   return `https://www.amazon.com/s?${params.toString()}`;
 }
 
-function buildTcgplayerSearchUrl(_query: string, _sharedId: string) {
-  return tcgplayerPartnerLink;
-}
-
 export const defaultAffiliateLinks: AffiliateLink[] = [
-  {
-    label: 'MTG Singles on TCGplayer',
-    href: buildTcgplayerSearchUrl('serialized mtg', 'serialized-mtg'),
-    merchant: 'tcgplayer',
-    intent: 'singles',
-  },
+  tcgplayerAffiliateLink,
   {
     label: 'Serialized MTG on eBay',
     href: buildEbaySearchUrl('serialized mtg card', 'serialized-mtg'),
@@ -162,29 +161,22 @@ export const trackers: TrackerSummary[] = [
       glowClass: 'shadow-[0_0_15px_rgba(214,167,61,0.5)]',
     },
     affiliateLinks: [
-      {
-        label: 'LOTR Singles on TCGplayer',
-        href: buildTcgplayerSearchUrl('The One Ring serialized', 'one-ring'),
-        merchant: 'tcgplayer',
-        intent: 'singles',
-        ctaEyebrow: 'Singles Market',
-        ctaDetail: 'Check LOTR singles and sealed-market pricing.',
-      },
+      tcgplayerAffiliateLink,
       {
         label: 'Serialized One Ring on eBay',
         href: buildEbaySearchUrl('serialized one ring mtg', 'one-ring'),
         merchant: 'ebay',
         intent: 'auction-comps',
         ctaEyebrow: 'Auction Watch',
-        ctaDetail: 'Search active and sold One Ring serial listings.',
+        ctaDetail: 'Search active One Ring serial listings.',
       },
       {
-        label: 'LOTR Collector Boosters on Amazon',
-        href: buildAmazonSearchUrl('lord of the rings mtg collector booster'),
+        label: 'LOTR Special Edition Boosters on Amazon',
+        href: buildAmazonSearchUrl('lord of the rings mtg special edition collector booster'),
         merchant: 'amazon',
         intent: 'sealed-product',
         ctaEyebrow: 'Sealed Product',
-        ctaDetail: 'Browse LOTR collector booster availability.',
+        ctaDetail: 'Browse Holiday Release Special Edition collector boosters.',
       },
     ],
     referenceLinks: [
@@ -254,14 +246,7 @@ export const trackers: TrackerSummary[] = [
     status: 'live',
     theme: defaultTrackerTheme,
     affiliateLinks: [
-      {
-        label: 'Innistrad Remastered Singles on TCGplayer',
-        href: buildTcgplayerSearchUrl('Edgar Markov serialized', 'edgar-markov'),
-        merchant: 'tcgplayer',
-        intent: 'singles',
-        ctaEyebrow: 'Singles Market',
-        ctaDetail: 'Check Innistrad Remastered singles demand.',
-      },
+      tcgplayerAffiliateLink,
       {
         label: 'Serialized Edgar Markov on eBay',
         href: buildEbaySearchUrl('serialized edgar markov mtg', 'edgar-markov'),
@@ -351,21 +336,14 @@ export const trackers: TrackerSummary[] = [
       glowClass: 'shadow-[0_0_15px_rgba(214,167,61,0.5)]',
     },
     affiliateLinks: [
-      {
-        label: 'LOTR Poster Singles on TCGplayer',
-        href: buildTcgplayerSearchUrl('LOTR poster serialized', 'lotr-poster-cards'),
-        merchant: 'tcgplayer',
-        intent: 'singles',
-        ctaEyebrow: 'Poster Singles',
-        ctaDetail: 'Check market listings for LOTR poster cards.',
-      },
+      tcgplayerAffiliateLink,
       {
         label: 'LOTR Poster Serials on eBay',
         href: buildEbaySearchUrl('serialized lotr poster mtg', 'lotr-poster-cards'),
         merchant: 'ebay',
         intent: 'auction-comps',
         ctaEyebrow: 'Serial Search',
-        ctaDetail: 'Search serialized poster listings and sold comps.',
+        ctaDetail: 'Search active serialized poster listings.',
       },
       {
         label: 'LOTR Collector Boosters on Amazon',
@@ -470,14 +448,7 @@ export const trackers: TrackerSummary[] = [
       glowClass: 'shadow-[0_0_15px_rgba(214,167,61,0.5)]',
     },
     affiliateLinks: [
-      {
-        label: 'Final Fantasy Singles on TCGplayer',
-        href: buildTcgplayerSearchUrl('Final Fantasy Traveling Chocobo', 'golden-chocobo'),
-        merchant: 'tcgplayer',
-        intent: 'singles',
-        ctaEyebrow: 'Singles Market',
-        ctaDetail: 'Check Final Fantasy singles marketplace activity.',
-      },
+      tcgplayerAffiliateLink,
       {
         label: 'Golden Chocobo on eBay',
         href: buildEbaySearchUrl('traveling chocobo serialized mtg', 'golden-chocobo'),
@@ -521,6 +492,48 @@ export const trackers: TrackerSummary[] = [
 
 export function getTracker(slug: string) {
   return trackers.find((tracker) => tracker.slug === slug);
+}
+
+export function getCatalogTracker(catalogSlug: string) {
+  const matches = trackers.filter((tracker) => tracker.catalogSlug === catalogSlug);
+  return matches.find((tracker) => tracker.slug === catalogSlug && tracker.status === 'live')
+    || matches.find((tracker) => tracker.status === 'live')
+    || matches[0];
+}
+
+export function getCatalogAffiliateLinks(entry: SerializedCatalogEntry): AffiliateLink[] {
+  const holidayRelease = ['lotr-poster-cards', 'lotr-realms-and-relics'].includes(entry.slug);
+  const hasCollectorBoosters = holidayRelease || /collector booster/i.test(entry.foundIn || '');
+  const amazonQuery = holidayRelease
+    ? 'lord of the rings mtg special edition collector booster'
+    : `${entry.setName} collector booster`;
+
+  return defaultAffiliateLinks.map((link) => {
+    if (link.merchant === 'ebay') {
+      return {
+        ...link,
+        label: `${entry.title} serials on eBay`,
+        href: buildTrackerEbaySearchUrl(`serialized ${entry.title} mtg`, 'serialized-mtg'),
+        ctaEyebrow: 'Serial listings',
+        ctaDetail: `Search active eBay listings for ${entry.title}.`,
+      };
+    }
+    if (link.merchant === 'amazon') {
+      return hasCollectorBoosters ? {
+        ...link,
+        label: holidayRelease ? 'LOTR Special Edition Boosters on Amazon' : `${entry.setName} on Amazon`,
+        href: buildAmazonSearchUrl(amazonQuery),
+        ctaEyebrow: 'Sealed product',
+        ctaDetail: holidayRelease ? 'Browse Holiday Release Special Edition collector boosters.' : `Browse ${entry.setName} collector boosters.`,
+      } : {
+        ...link,
+        label: 'MTG Collector Boosters on Amazon',
+        ctaEyebrow: 'Other MTG products',
+        ctaDetail: 'Browse other Magic: The Gathering sealed products.',
+      };
+    }
+    return link;
+  });
 }
 
 export function getSerialAffiliateLinks(tracker: TrackerSummary, card: SerializedRingCard): AffiliateLink[] {

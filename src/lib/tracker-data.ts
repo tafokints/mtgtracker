@@ -292,26 +292,28 @@ export async function getRecentTrackerDiscoveriesSnapshot(redis: Pick<Redis, 'ge
     .slice(0, limit);
 }
 
-export async function getTrackerCards(redis: Redis, tracker: TrackerSummary) {
-  let cards: SerializedRingCard[] = (await redis.get(tracker.storage.cardsKey)) || [];
-
-  if (cards.length === 0) {
-    for (const legacyKey of tracker.storage.legacyCardsKeys || []) {
-      const legacyCards = await redis.get(legacyKey);
-      if (Array.isArray(legacyCards) && legacyCards.length > 0) {
-        cards = legacyCards.map((card: any) => normalizeTrackerCard(tracker, card));
-        await redis.set(tracker.storage.cardsKey, cards);
-        await redis.del(legacyKey);
-        return cards;
-      }
-    }
-
-    cards = createInitialTrackerCards(tracker);
-    await redis.set(tracker.storage.cardsKey, cards);
-    return cards;
+export async function getTrackerCards(redis: Redis, tracker: TrackerSummary): Promise<SerializedRingCard[]> {
+  const stored = await redis.get<SerializedRingCard[]>(tracker.storage.cardsKey);
+  if (stored !== null && stored !== undefined) {
+    if (!Array.isArray(stored) || stored.length === 0) throw new Error('Invalid stored tracker cards');
+    return stored.map((card) => normalizeTrackerCard(tracker, card));
   }
 
-  return cards.map((card) => normalizeTrackerCard(tracker, card));
+  let cards = createInitialTrackerCards(tracker);
+  for (const legacyKey of tracker.storage.legacyCardsKeys || []) {
+    const legacyCards = await redis.get<SerializedRingCard[]>(legacyKey);
+    if (Array.isArray(legacyCards) && legacyCards.length > 0) {
+      cards = legacyCards.map((card) => normalizeTrackerCard(tracker, card));
+      break;
+    }
+  }
+
+  const initialized = await redis.set(tracker.storage.cardsKey, cards, { nx: true });
+  if (initialized) return cards;
+
+  const winner = await redis.get<SerializedRingCard[]>(tracker.storage.cardsKey);
+  if (!Array.isArray(winner) || winner.length === 0) throw new Error('Invalid stored tracker cards');
+  return winner.map((card) => normalizeTrackerCard(tracker, card));
 }
 
 export async function getTrackerSubmissions(redis: Redis, tracker: TrackerSummary) {
@@ -321,14 +323,6 @@ export async function getTrackerSubmissions(redis: Redis, tracker: TrackerSummar
 
 export function sortSubmissions(submissions: DiscoverySubmission[]) {
   return [...submissions].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-}
-
-export async function saveTrackerCards(redis: Redis, tracker: TrackerSummary, cards: SerializedRingCard[]) {
-  await redis.set(tracker.storage.cardsKey, cards);
-}
-
-export async function saveTrackerSubmissions(redis: Redis, tracker: TrackerSummary, submissions: DiscoverySubmission[]) {
-  await redis.set(tracker.storage.submissionsKey, submissions);
 }
 
 function evidenceFromSubmission(submission: DiscoverySubmission, label: string): EvidenceImage[] {

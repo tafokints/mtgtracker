@@ -13,7 +13,7 @@ interface PrimaryAffiliateCtasProps {
 const merchantCopy: Record<AffiliateLink['merchant'], { eyebrow: string; detail: string }> = {
   ebay: {
     eyebrow: 'Auction Watch',
-    detail: 'Search active listings and sold-market signals.',
+    detail: 'Search active marketplace listings.',
   },
   tcgplayer: {
     eyebrow: 'Singles Market',

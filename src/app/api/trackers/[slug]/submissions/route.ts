@@ -6,12 +6,10 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
 import {
   applyApprovedSubmission,
-  getTrackerCards,
   getTrackerSubmissions,
-  saveTrackerCards,
-  saveTrackerSubmissions,
   sortSubmissions,
 } from '@/lib/tracker-data';
+import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -28,7 +26,7 @@ const REVIEW_ACTION_TO_STATUS = {
 type ReviewAction = keyof typeof REVIEW_ACTION_TO_STATUS;
 
 function isReviewAction(action: unknown): action is ReviewAction {
-  return typeof action === 'string' && action in REVIEW_ACTION_TO_STATUS;
+  return typeof action === 'string' && Object.hasOwn(REVIEW_ACTION_TO_STATUS, action);
 }
 
 type RouteContext = {
@@ -99,72 +97,72 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       ? input.mergeSubmissionIds.filter((id): id is string => typeof id === 'string')
       : [];
 
-    const submissions = await getTrackerSubmissions(redis, tracker);
-    const submissionIndex = submissions.findIndex((submission) => submission.id === submissionId);
+    const reviewedSubmission = await mutateTrackerState(redis, tracker, ({ cards, submissions }) => {
+      const submissionIndex = submissions.findIndex((submission) => submission.id === submissionId);
 
-    if (submissionIndex === -1) {
-      return NextResponse.json({ message: 'Submission not found' }, { status: 404 });
-    }
+      if (submissionIndex === -1) {
+        throw new TrackerStoreError('Submission not found', 404);
+      }
 
-    const submission = submissions[submissionIndex];
-    if (submission.status !== 'pending') {
-      return NextResponse.json({ message: 'Submission has already been reviewed' }, { status: 409 });
-    }
+      const submission = submissions[submissionIndex];
+      if (submission.status !== 'pending') {
+        throw new TrackerStoreError('Submission has already been reviewed', 409);
+      }
 
-    const reviewedAt = new Date().toISOString();
-    const reviewedBy = typeof input.reviewedBy === 'string' && input.reviewedBy.trim() ? input.reviewedBy.trim() : 'admin';
-    const reviewNotes = typeof input.reviewNotes === 'string' && input.reviewNotes.trim() ? input.reviewNotes.trim() : undefined;
+      const reviewedAt = new Date().toISOString();
+      const reviewedBy = typeof input.reviewedBy === 'string' && input.reviewedBy.trim() ? input.reviewedBy.trim() : 'admin';
+      const reviewNotes = typeof input.reviewNotes === 'string' && input.reviewNotes.trim() ? input.reviewNotes.trim() : undefined;
 
-    const reviewedSubmission: DiscoverySubmission = {
-      ...submission,
-      status: REVIEW_ACTION_TO_STATUS[action],
-      reviewedAt,
-      reviewedBy,
-      reviewNotes,
-    };
-
-    submissions[submissionIndex] = reviewedSubmission;
-
-    if (action === 'approve') {
-      const cards = await getTrackerCards(redis, tracker);
-      const mergedEvidenceSubmissions = submissions.filter((candidate) => (
-        mergeSubmissionIds.includes(candidate.id) &&
-        candidate.id !== submission.id &&
-        candidate.cardId === submission.cardId &&
-        candidate.status === 'pending'
-      ));
-      const applied = applyApprovedSubmission(tracker, cards, submission, {
-        imageUrl: typeof input.imageUrl === 'string' ? input.imageUrl : undefined,
-        verificationStatus,
+      const reviewedSubmission: DiscoverySubmission = {
+        ...submission,
+        status: REVIEW_ACTION_TO_STATUS[action],
+        reviewedAt,
+        reviewedBy,
         reviewNotes,
-        mergedEvidenceSubmissions,
-      });
+      };
 
-      if (!applied) {
-        return NextResponse.json({ message: 'Card not found' }, { status: 404 });
+      submissions[submissionIndex] = reviewedSubmission;
+
+      if (action === 'approve') {
+        const mergedEvidenceSubmissions = submissions.filter((candidate) => (
+          mergeSubmissionIds.includes(candidate.id) &&
+          candidate.id !== submission.id &&
+          candidate.cardId === submission.cardId &&
+          candidate.status === 'pending'
+        ));
+        const applied = applyApprovedSubmission(tracker, cards, submission, {
+          imageUrl: typeof input.imageUrl === 'string' ? input.imageUrl : undefined,
+          verificationStatus,
+          reviewNotes,
+          mergedEvidenceSubmissions,
+        });
+
+        if (!applied) {
+          throw new TrackerStoreError('Card not found', 404);
+        }
+
+        for (const mergedSubmission of mergedEvidenceSubmissions) {
+          const mergedSubmissionIndex = submissions.findIndex((candidate) => candidate.id === mergedSubmission.id);
+          if (mergedSubmissionIndex === -1) continue;
+
+          submissions[mergedSubmissionIndex] = {
+            ...mergedSubmission,
+            status: 'duplicate',
+            duplicateOf: submission.id,
+            reviewedAt,
+            reviewedBy,
+            reviewNotes: [`Merged evidence into ${submission.id}.`, mergedSubmission.reviewNotes].filter(Boolean).join('\n\n'),
+          };
+        }
+
       }
 
-      for (const mergedSubmission of mergedEvidenceSubmissions) {
-        const mergedSubmissionIndex = submissions.findIndex((candidate) => candidate.id === mergedSubmission.id);
-        if (mergedSubmissionIndex === -1) continue;
-
-        submissions[mergedSubmissionIndex] = {
-          ...mergedSubmission,
-          status: 'duplicate',
-          duplicateOf: submission.id,
-          reviewedAt,
-          reviewedBy,
-          reviewNotes: [`Merged evidence into ${submission.id}.`, mergedSubmission.reviewNotes].filter(Boolean).join('\n\n'),
-        };
-      }
-
-      await saveTrackerCards(redis, tracker, cards);
-    }
-
-    await saveTrackerSubmissions(redis, tracker, submissions);
+      return reviewedSubmission;
+    });
 
     return NextResponse.json({ success: true, submission: reviewedSubmission });
   } catch (error) {
+    if (error instanceof TrackerStoreError) return NextResponse.json({ message: error.message }, { status: error.status });
     console.error('Error reviewing submission:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }

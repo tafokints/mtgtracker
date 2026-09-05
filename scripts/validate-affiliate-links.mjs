@@ -2,12 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { pathToFileURL } from 'node:url';
 
 const rootDir = process.cwd();
 const trackerPath = path.join(rootDir, 'src', 'lib', 'trackers.ts');
 
-function loadTrackerModule() {
-  const source = fs.readFileSync(trackerPath, 'utf8');
+function loadModule(modulePath) {
+  const source = fs.readFileSync(modulePath, 'utf8');
   const transpiled = ts.transpileModule(source, {
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,
@@ -16,13 +17,14 @@ function loadTrackerModule() {
   }).outputText;
 
   const sandbox = {
+    URL,
     URLSearchParams,
     exports: {},
     module: { exports: {} },
   };
 
   sandbox.exports = sandbox.module.exports;
-  vm.runInNewContext(transpiled, sandbox, { filename: trackerPath });
+  vm.runInNewContext(transpiled, sandbox, { filename: modulePath });
 
   return sandbox.module.exports;
 }
@@ -43,7 +45,7 @@ function collectLinks(trackers, defaultAffiliateLinks) {
   return [...links.values()];
 }
 
-function assertUrlShape(link) {
+export function assertUrlShape(link) {
   const url = new URL(link.href);
   const expectedIntentByMerchant = {
     tcgplayer: 'singles',
@@ -53,6 +55,12 @@ function assertUrlShape(link) {
 
   if (!['https:'].includes(url.protocol)) {
     throw new Error(`${link.tracker} ${link.label} must use https`);
+  }
+  if (url.username || url.password || url.port) {
+    throw new Error(`${link.tracker} ${link.label} must not contain credentials or a custom port`);
+  }
+  for (const key of new Set(url.searchParams.keys())) {
+    if (url.searchParams.getAll(key).length !== 1) throw new Error(`${link.tracker} ${link.label} has duplicate ${key} parameters`);
   }
 
   if (!link.intent) {
@@ -64,7 +72,7 @@ function assertUrlShape(link) {
   }
 
   if (link.merchant === 'ebay') {
-    if (!url.hostname.endsWith('ebay.com')) {
+    if (!/(^|\.)ebay\.com$/.test(url.hostname)) {
       throw new Error(`${link.tracker} ${link.label} must point to ebay.com`);
     }
     if (url.searchParams.get('campid') !== '5339113954') {
@@ -80,15 +88,19 @@ function assertUrlShape(link) {
     if (!url.searchParams.get('_nkw')) {
       throw new Error(`${link.tracker} ${link.label} is missing eBay search query`);
     }
+    for (const [key, value] of Object.entries({ mkcid: '1', mkrid: '711-53200-19255-0', siteid: '0', mkevt: '1', toolid: '20012' })) {
+      if (url.searchParams.get(key) !== value) throw new Error(`${link.tracker} ${link.label} has invalid eBay ${key}`);
+    }
   }
 
   if (link.merchant === 'amazon') {
-    if (!url.hostname.endsWith('amazon.com')) {
+    if (!/(^|\.)amazon\.com$/.test(url.hostname)) {
       throw new Error(`${link.tracker} ${link.label} must point to amazon.com`);
     }
     if (url.searchParams.get('tag') !== 'meleeitonme0a-20') {
       throw new Error(`${link.tracker} ${link.label} is missing Amazon associate tag`);
     }
+    if (!url.searchParams.get('k')) throw new Error(`${link.tracker} ${link.label} is missing an Amazon search query`);
   }
 
   if (link.merchant === 'tcgplayer') {
@@ -98,6 +110,29 @@ function assertUrlShape(link) {
     if (url.pathname !== '/DyJ25G') {
       throw new Error(`${link.tracker} ${link.label} is missing the TCGplayer partner link id`);
     }
+  }
+}
+
+export function assessResponse(link, result) {
+  if ([403, 429].includes(result.status)) return { outcome: 'manual-review', reason: 'Merchant blocked automated checking; destination not verified.' };
+  if (!result.ok) return { outcome: 'failed', reason: result.error || `HTTP ${result.status}` };
+
+  try {
+    const finalUrl = new URL(result.finalUrl);
+    if (link.merchant === 'tcgplayer') {
+      const expected = { irpid: '6334129', irgwc: '1', utm_source: 'impact' };
+      if (finalUrl.protocol !== 'https:' || !/(^|\.)tcgplayer\.com$/.test(finalUrl.hostname)
+        || finalUrl.username || finalUrl.password || finalUrl.port
+        || !finalUrl.searchParams.get('irclickid')
+        || Object.entries(expected).some(([key, value]) => finalUrl.searchParams.get(key) !== value)) {
+        throw new Error('TCGplayer redirect did not preserve the configured Impact attribution.');
+      }
+    } else {
+      assertUrlShape({ ...link, href: result.finalUrl });
+    }
+    return { outcome: 'verified', reason: 'Destination and attribution parameters checked.' };
+  } catch (error) {
+    return { outcome: 'failed', reason: error.message };
   }
 }
 
@@ -116,7 +151,7 @@ async function fetchStatusOnce(link) {
     });
 
     return {
-      ok: response.ok || (link.merchant === 'ebay' && response.status === 403),
+      ok: response.ok,
       status: response.status,
       finalUrl: response.url,
     };
@@ -146,48 +181,62 @@ async function fetchStatus(link) {
 }
 
 async function main() {
-  const { trackers, defaultAffiliateLinks } = loadTrackerModule();
+  const { trackers, defaultAffiliateLinks, getSerialAffiliateLinks, getCatalogAffiliateLinks } = loadModule(trackerPath);
+  const { serializedCatalog } = loadModule(path.join(rootDir, 'src', 'lib', 'serialized-catalog.ts'));
   const links = collectLinks(trackers, defaultAffiliateLinks);
 
-  for (const link of links) {
+  const dynamicLinks = trackers.filter((tracker) => tracker.status === 'live').flatMap((tracker) => (
+    (tracker.cardDefinitions || [{ title: tracker.title, total: tracker.total }]).flatMap((card) => (
+      [1, card.total || tracker.total].flatMap((serial) => getSerialAffiliateLinks(tracker, {
+        cardTitle: card.title,
+        serialTotal: card.total || tracker.total,
+        serialNumber: String(serial).padStart(card.serialPadding || tracker.serialPadding, '0'),
+      }).map((link) => ({ tracker: tracker.slug, ...link })))
+    ))
+  ));
+  const catalogLinks = serializedCatalog.flatMap((entry) => getCatalogAffiliateLinks(entry).map((link) => ({ tracker: 'default', ...link })));
+
+  for (const link of [...links, ...dynamicLinks, ...catalogLinks]) {
     assertUrlShape(link);
   }
+  console.log(`URL checks passed for ${links.length} configured, ${dynamicLinks.length} serial-boundary, and ${catalogLinks.length} catalog links.`);
+  if (process.argv.includes('--offline')) return;
 
   const results = [];
+  const destinationResults = new Map();
   for (const link of links) {
-    const result = await fetchStatus(link);
+    const result = destinationResults.get(link.href) || await fetchStatus(link);
+    destinationResults.set(link.href, result);
     results.push({
       tracker: link.tracker,
       merchant: link.merchant,
       label: link.label,
       status: result.status,
-      ok: result.ok && (
-        link.merchant !== 'tcgplayer' ||
-        (
-          result.finalUrl.includes('irclickid=') &&
-          result.finalUrl.includes('irpid=6334129') &&
-          result.finalUrl.includes('irgwc=1') &&
-          result.finalUrl.includes('utm_source=impact')
-        )
-      ),
+      ...assessResponse(link, result),
       finalUrl: result.finalUrl,
       error: result.error,
     });
   }
 
-  console.table(results.map(({ tracker, merchant, label, status, ok }) => ({ tracker, merchant, label, status, ok })));
+  console.table(results.map(({ tracker, merchant, status, outcome }) => ({ tracker, merchant, status, outcome })));
 
-  const failures = results.filter((result) => !result.ok);
+  const manualChecks = results.filter((result) => result.outcome === 'manual-review');
+  if (manualChecks.length) console.warn(`${manualChecks.length} checks need a browser/merchant-dashboard review. Bot blocks are not verified passes.`);
+  console.log('These checks verify URLs, not account approval or earned commissions. Confirm earnings in merchant reports.');
+
+  const failures = results.filter((result) => result.outcome === 'failed');
   if (failures.length > 0) {
     console.error('Affiliate link validation failures:');
     for (const failure of failures) {
-      console.error(`${failure.tracker} ${failure.merchant} ${failure.label}: ${failure.status} ${failure.error || failure.finalUrl}`);
+      console.error(`${failure.tracker} ${failure.merchant} ${failure.label}: ${failure.reason}`);
     }
     process.exit(1);
   }
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  main().catch((error) => {
+    console.error(error.message);
+    process.exit(1);
+  });
+}

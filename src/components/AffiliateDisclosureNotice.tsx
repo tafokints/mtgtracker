@@ -31,6 +31,9 @@ export default function AffiliateDisclosureNotice({ links, compact = false }: Af
           {hasAmazonLink ? ' As an Amazon Associate I earn from qualifying purchases.' : ''}
         </p>
       )}
+      {compact && hasAmazonLink && !hasEbayLink && (
+        <p className="mt-2">As an Amazon Associate I earn from qualifying purchases.</p>
+      )}
     </div>
   );
 }

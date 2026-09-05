@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
-import { getTrackerCards, getTrackerSubmissions } from '@/lib/tracker-data';
+import { getTrackerTotalSlots } from '@/lib/tracker-data';
+import { getTrackerState } from '@/lib/tracker-store';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -25,10 +26,7 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   try {
     const redis = getRedis();
-    const [cards, submissions] = await Promise.all([
-      getTrackerCards(redis, tracker),
-      getTrackerSubmissions(redis, tracker),
-    ]);
+    const { cards, submissions } = await getTrackerState(redis, tracker);
     const generatedAt = new Date().toISOString();
     const backup = {
       schemaVersion: BACKUP_SCHEMA_VERSION,
@@ -37,6 +35,7 @@ export async function GET(request: Request, { params }: RouteContext) {
         slug: tracker.slug,
         title: tracker.title,
         total: tracker.total,
+        totalSlots: getTrackerTotalSlots(tracker),
         storage: tracker.storage,
       },
       counts: {

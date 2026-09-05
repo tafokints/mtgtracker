@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { validateDiscoverySubmission } from '@/lib/submission-validation';
 
 describe('validateDiscoverySubmission', () => {
+  it.each(['7junk', '7.8', 7.8, true, null])('rejects ambiguous serial slot %j', (cardId) => {
+    expect(validateDiscoverySubmission({ cardId, notes: 'Serial evidence.' }, 100).errors).toContain('Serial slot must be between 1 and 100.');
+  });
+
+  it('preserves numeric sale prices submitted by API clients', () => {
+    const result = validateDiscoverySubmission({ cardId: 7, price: 1234.5, notes: 'Public sale.' }, 100);
+    expect(result.errors).toEqual([]);
+    expect(result.value.price).toBe(1234.5);
+  });
   it('normalizes a valid crowd-sourced discovery report', () => {
     const result = validateDiscoverySubmission({
       cardId: '7',

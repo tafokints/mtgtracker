@@ -3,7 +3,7 @@ import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
-import { getTrackerCards, saveTrackerCards } from '@/lib/tracker-data';
+import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -42,19 +42,20 @@ export async function POST(request: Request, { params }: RouteContext) {
       return NextResponse.json({ message: 'Valid image URL is required' }, { status: 400 });
     }
 
-    const cards = await getTrackerCards(redis, tracker);
-    const numericCardId = typeof cardId === 'string' ? parseInt(cardId, 10) : cardId;
-    const cardIndex = cards.findIndex((card) => card.id === numericCardId);
+    await mutateTrackerState(redis, tracker, ({ cards }) => {
+      const numericCardId = typeof cardId === 'string' ? parseInt(cardId, 10) : cardId;
+      const cardIndex = cards.findIndex((card) => card.id === numericCardId);
 
-    if (cardIndex === -1) {
-      return NextResponse.json({ message: 'Card not found' }, { status: 404 });
-    }
+      if (cardIndex === -1) {
+        throw new TrackerStoreError('Card not found', 404);
+      }
 
-    cards[cardIndex].image = imageUrl;
-    await saveTrackerCards(redis, tracker, cards);
+      cards[cardIndex].image = imageUrl;
+    });
 
     return NextResponse.json({ message: 'Image updated successfully' });
   } catch (error) {
+    if (error instanceof TrackerStoreError) return NextResponse.json({ message: error.message }, { status: error.status });
     console.error('Error updating image:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }

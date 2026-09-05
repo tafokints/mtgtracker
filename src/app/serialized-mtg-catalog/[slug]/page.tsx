@@ -11,7 +11,7 @@ import {
   type SerializedCatalogEntry,
 } from '@/lib/serialized-catalog';
 import { buildBreadcrumbJsonLd, buildSerializedCatalogEntryJsonLd } from '@/lib/seo';
-import { buildAmazonSearchUrl, buildTrackerEbaySearchUrl, defaultAffiliateLinks, trackers, type AffiliateLink } from '@/lib/trackers';
+import { getCatalogAffiliateLinks, getCatalogTracker } from '@/lib/trackers';
 
 type CatalogEntryPageProps = {
   params: Promise<{ slug: string }>;
@@ -62,40 +62,6 @@ function getCatalogEntry(slug: string) {
   return serializedCatalog.find((entry) => entry.slug === slug);
 }
 
-function getTracker(entry: SerializedCatalogEntry) {
-  return trackers.find((tracker) => tracker.catalogSlug === entry.slug);
-}
-
-function getCatalogAffiliateLinks(entry: SerializedCatalogEntry): AffiliateLink[] {
-  const ebayLink = defaultAffiliateLinks.find((link) => link.merchant === 'ebay');
-  const amazonLink = defaultAffiliateLinks.find((link) => link.merchant === 'amazon');
-  const specificEbayLink = ebayLink
-    ? {
-      ...ebayLink,
-      label: `${entry.title} serials on eBay`,
-      href: buildTrackerEbaySearchUrl(`serialized ${entry.title} mtg`, 'serialized-mtg'),
-      ctaEyebrow: 'Auction comps',
-      ctaDetail: `Search public eBay listings and sold comps for ${entry.title}.`,
-    }
-    : undefined;
-  const specificAmazonLink = amazonLink
-    ? {
-      ...amazonLink,
-      label: `${entry.setName} on Amazon`,
-      href: buildAmazonSearchUrl(`${entry.setName} collector booster`),
-      ctaEyebrow: 'Sealed product',
-      ctaDetail: `Search sealed product and collector booster availability for ${entry.setName}.`,
-    }
-    : undefined;
-
-  return defaultAffiliateLinks.map((link) => (
-    link.merchant === 'ebay' && specificEbayLink
-      ? specificEbayLink
-      : link.merchant === 'amazon' && specificAmazonLink
-        ? specificAmazonLink
-        : link
-  ));
-}
 
 export default async function SerializedCatalogEntryPage({ params }: CatalogEntryPageProps) {
   const { slug } = await params;
@@ -105,7 +71,7 @@ export default async function SerializedCatalogEntryPage({ params }: CatalogEntr
     notFound();
   }
 
-  const linkedTracker = getTracker(entry);
+  const linkedTracker = getCatalogTracker(entry.slug);
   const affiliateLinks = getCatalogAffiliateLinks(entry);
   const trackerRequestIssueUrl = getTrackerRequestIssueUrl(entry);
 

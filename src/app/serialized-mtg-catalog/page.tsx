@@ -10,7 +10,7 @@ import {
   type SerializedCatalogEntry,
 } from '@/lib/serialized-catalog';
 import { buildBreadcrumbJsonLd, buildSerializedCatalogJsonLd } from '@/lib/seo';
-import { defaultAffiliateLinks, trackers } from '@/lib/trackers';
+import { defaultAffiliateLinks, getCatalogTracker } from '@/lib/trackers';
 
 export const metadata: Metadata = {
   title: 'Serialized MTG Catalog',
@@ -41,7 +41,8 @@ const statusLabels: Record<SerializedCatalogEntry['status'], string> = {
 };
 
 function getTrackerHref(entry: SerializedCatalogEntry) {
-  return trackers.find((tracker) => tracker.catalogSlug === entry.slug && tracker.status === 'live')?.href;
+  const tracker = getCatalogTracker(entry.slug);
+  return tracker?.status === 'live' ? tracker.href : undefined;
 }
 
 function getCatalogCounts() {

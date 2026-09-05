@@ -260,21 +260,14 @@ async function generateTrackerSnippet(entry, options) {
   status: '${status}',
   theme: defaultTrackerTheme,
   affiliateLinks: [
-    {
-      label: '${entry.setName.replace(/'/g, "\\'")} Singles on TCGplayer',
-      href: buildTcgplayerSearchUrl('${entry.title.replace(/'/g, "\\'")} serialized', '${trackerSlug}'),
-      merchant: 'tcgplayer',
-      intent: 'singles',
-      ctaEyebrow: 'Singles Market',
-      ctaDetail: 'Check marketplace availability for this tracker.',
-    },
+    tcgplayerAffiliateLink,
     {
       label: 'Serialized ${entry.title.replace(/'/g, "\\'")} on eBay',
       href: buildEbaySearchUrl('serialized ${entry.title.replace(/'/g, "\\'")} mtg', '${trackerSlug}'),
       merchant: 'ebay',
       intent: 'auction-comps',
       ctaEyebrow: 'Auction Watch',
-      ctaDetail: 'Search active serial listings and sold comps.',
+      ctaDetail: 'Search active serial listings.',
     },
     {
       label: '${entry.setName.replace(/'/g, "\\'")} on Amazon',

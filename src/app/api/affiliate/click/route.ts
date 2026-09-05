@@ -34,6 +34,10 @@ function getAllowedAffiliateLink(trackerSlug: string, merchant: string, href: st
 
   try {
     const candidateUrl = new URL(href);
+    if (candidateUrl.username || candidateUrl.password || candidateUrl.port) return undefined;
+    for (const key of candidateUrl.searchParams.keys()) {
+      if (candidateUrl.searchParams.getAll(key).length !== 1) return undefined;
+    }
 
     if (merchant === 'ebay') {
       const baseEbayLink = allowedLinks.find((link) => link.merchant === 'ebay');
@@ -143,7 +147,7 @@ export async function POST(request: Request) {
 
   const trackerSlug = typeof input.tracker === 'string' ? input.tracker : '';
   const merchant = typeof input.merchant === 'string' ? input.merchant : '';
-  const href = typeof input.href === 'string' ? input.href : '';
+  const href = typeof input.href === 'string' && input.href.length <= 2048 ? input.href : '';
   const label = typeof input.label === 'string' ? input.label.slice(0, 120) : undefined;
   const placement = typeof input.placement === 'string' ? input.placement.slice(0, 80) : '';
   const sourcePath = sanitizeInternalPath(input.sourcePath, 200);

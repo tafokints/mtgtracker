@@ -1,5 +1,47 @@
 # TODO
 
+## Current Plan (2026-09-05)
+
+Goal: become a trusted, comprehensive serialized MTG reference funded by relevant affiliate purchases. Accuracy, recoverability, and useful collector workflows come before more promotional placements. Click counts measure interest; merchant-reported commissions and operating costs measure profitability.
+
+### Now: Audit And Reliability
+
+- [x] Prevent concurrent submissions, reviews, and admin edits from overwriting each other; commit approved cards and review status together.
+- [x] Fix multi-card backup round trips and export a consistent cards/submissions snapshot.
+- [x] Fail closed when production admin credentials are missing; rate-limit login attempts.
+- [x] Reject malformed JSON shapes and ambiguous serial IDs before storage.
+- [x] Stop counting reference artwork as serial evidence and fix catalog links to complete treatment trackers.
+- [x] Correct generic TCGplayer CTA copy and One Ring sealed-product relevance; preserve existing affiliate account IDs.
+- [x] Distinguish verified affiliate destinations from bot-blocked checks; audit dynamic serial and catalog links too.
+- [x] Apply compatible dependency security updates and rerun tests, build, and live checks.
+- [x] Refresh architecture/agent docs to match the current three-tracker platform.
+
+Audit evidence: 146 tests pass; lint, TypeScript, production build, local smoke, and baseline production smoke pass. Dependency audit is clear. Actual Lua scripts and the Upstash client passed concurrent-write and restore checks against an isolated fakeredis/Lupa service. Mobile report selection and catalog layout were inspected at 390px, with no horizontal overflow. TCGplayer/Amazon destination checks passed; eBay 403 results remain manual-review. See docs/PROJECT_AUDIT_2026-09-05.md for scope and remaining risks. Post-push deployment checks are reported in the task handoff.
+
+### Next: Collector Trust And Growth
+
+- [ ] Unify the One Ring's canonical records across its dedicated tracker and LOTR Poster Cards, with a reviewed migration and deduplicated discovery counts.
+- [ ] Seed source-backed discoveries through admin review. Audit baseline: all three production trackers have zero approved discoveries and zero pending reports.
+- [ ] Reopen needs-more-info reports with a secure submitter follow-up path; preserve review history.
+- [ ] Preserve earlier source details and verification when approving a follow-up report; record sightings separately from first discovery and distinguish asking prices from completed sales.
+- [ ] Verify uploaded image contents, strip private metadata, and add orphan-upload cleanup with a retention policy.
+- [ ] Bound/rate-limit public telemetry and add retention so analytics cannot create unlimited Redis keys.
+- [ ] Add planned-tracker request demand reporting before prioritizing new live trackers.
+- [ ] Add mobile/browser regression checks for serial selection, submission, image preview, review, and filters; improve the 2,000-slot browsing experience.
+- [ ] Recheck catalog quantities, release dates, printings, and product eligibility against primary sources before launching each tracker.
+- [ ] Add per-tracker aesthetics through shared theme tokens and verify contrast/readability.
+- [ ] Add automated backups and perform an isolated restore drill.
+
+### Revenue And Promotion Gates
+
+- [ ] Confirm mtgtrackers.com is registered/approved in eBay, Amazon Associates, and TCGplayer/Impact accounts; verify configured IDs against each dashboard.
+- [ ] Reconcile merchant-reported clicks, qualifying orders, reversals, and commissions with site telemetry. Record hosting/storage costs and net revenue monthly.
+- [ ] Verify Google Search Console ownership and submit the sitemap.
+- [ ] Seed source-backed discoveries through admin review and measure report-to-approval time before broad promotion.
+- [ ] Migrate Golden Chocobo only after canonical identity and backup work is verified; preserve the separate existing tracker.
+
+The sections below retain completed implementation history; unchecked alternatives are not current commitments.
+
 ## Launch Readiness
 
 - [x] Add real admin authentication.

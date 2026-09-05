@@ -10,7 +10,7 @@ This repository is the standalone MTG Trackers app. The parent Golden Chocobo tr
 
 ## Repo Facts
 
-- Framework: Next.js 14 App Router
+- Framework: Next.js 15 App Router
 - Runtime target: Vercel
 - Data store: Upstash Redis / Vercel KV REST API
 - Live domain: `https://mtgtrackers.com`
@@ -38,7 +38,8 @@ Read the closest files and these docs when relevant:
 - Use `apply_patch` for manual edits.
 - Keep changes scoped to the requested behavior.
 - Prefer config-driven tracker behavior in `src/lib/trackers.ts`.
-- Prefer shared helpers in `src/lib/tracker-data.ts` for card/submission persistence.
+- Use `src/lib/tracker-data.ts` for pure card/serial helpers and `src/lib/tracker-store.ts` for atomic card/submission persistence. Mutation callbacks may retry and must not perform external side effects.
+- Use `getTrackerTotalSlots` for whole-tracker validation; `tracker.total` is a per-card default on multi-card trackers.
 - Do not duplicate One Ring-specific logic into new trackers.
 - Keep public endpoints conservative and admin endpoints authenticated.
 - Do not commit secrets or generated local env files.

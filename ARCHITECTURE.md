@@ -1,120 +1,51 @@
 # Architecture
 
-## App Shape
+## Platform
 
-The app uses Next.js App Router with an umbrella homepage and nested tracker pages.
+MTG Trackers is a standalone Next.js 15 App Router application deployed on Vercel at https://mtgtrackers.com. Upstash Redis (or Vercel KV REST environment names) stores tracker records and analytics; Vercel Blob stores evidence uploads. The parent Golden Chocobo repository remains separate.
 
-```text
-src/app/page.tsx                         MTG Trackers homepage
-src/app/trackers/page.tsx                tracker directory
-src/app/trackers/[slug]/page.tsx         dynamic tracker page
-src/app/trackers/[slug]/stats/page.tsx   dynamic tracker stats
-src/app/trackers/[slug]/submit/page.tsx  dynamic public discovery report form
-src/app/api/trackers/[slug]/*            generic tracker API routes
-src/app/api/health/route.ts              Redis/runtime health check
-src/components/Tracker*Client.tsx        shared client tracker views
-src/components/*                         shared tracker controls/details/admin UI
-src/lib/trackers.ts                      tracker directory configuration
-src/lib/serialized-catalog.ts            researched serialized-card scaffold catalog
-src/lib/tracker-data.ts                  generic tracker storage helpers
-src/lib/types.ts                         shared card schema
-src/lib/redis.ts                         lazy Redis client factory
-```
+The registry in `src/lib/trackers.ts` drives dynamic tracker pages, statistics, report forms, APIs, themes, source links, and affiliate destinations. Live trackers are One Ring (100 slots), Edgar Markov (500), and LOTR Poster Cards (20 cards x 100 = 2,000). Golden Chocobo remains planned.
 
-## Tracker Directory
+## Identity And Storage
 
-`src/lib/trackers.ts` is the top-level registry. Each tracker should define the collection identity, serialized quantity, theme, and affiliate links. It currently contains:
+Each tracker has separate `cardsKey` and `submissionsKey` JSON arrays. Use `getTrackerTotalSlots`, not `tracker.total`, when validating a whole tracker; individual card definitions can have different quantities. A slot's numeric ID is tracker-local; its card slug plus printed serial identifies it within a treatment. Do not reorder launched card definitions without a migration: numeric IDs currently depend on their order.
 
-- `one-ring`: live
-- `golden-chocobo`: planned placeholder
+`src/lib/tracker-data.ts` contains shared formatting, slot lookup, normalization, evidence merging, and read helpers. Client components also import its pure helpers.
 
-Future single-card trackers should start as entries there. Live tracker pages, stats pages, submit forms, API routes, and sitemap entries resolve by slug from this config.
+`src/lib/tracker-store.ts` owns server-side writes. A Lua snapshot reads both raw arrays atomically, and a compare-and-set script commits both only if neither stored value changed. Conflicts reread current data and retry up to five times, then return a retryable 409. Mutation callbacks are synchronous and must have no external side effects. All report, review, price, image, and grading mutations use this path. Initialization uses SET NX and retains legacy source keys.
 
-`src/lib/serialized-catalog.ts` is a broader research catalog of MTG serialized treatments. It includes single-card trackers that fit the current data model and multi-card treatments that need card-plus-serial support before launch.
+Backup export reads a consistent pair. Explicit admin restore validates all slots and replaces the pair with atomic MSET, including when existing data is damaged. Restore intentionally overwrites the target tracker; it does not merge reports received before the restore.
 
-Tracker config fields include:
+Known identity gap: One Ring is present in both its standalone tracker and LOTR Poster Cards, with independent storage. Unifying those records and deduplicating platform counts is a top priority in TODO.md. Do not silently migrate live data.
 
-- `slug`, `title`, `subtitle`, `description`
-- `setName`, `releaseName`, `cardType`
-- `total`
-- `theme`
-- `affiliateLinks`
-- `referenceImage`
+## Public And Admin Flows
 
-## Data Model
+- `/`, `/trackers`: umbrella directory and recent discoveries.
+- `/trackers/[slug]`: serial grid, filters, details, evidence, and marketplace links.
+- `/trackers/[slug]/stats`: discovery and market summaries.
+- `/trackers/[slug]/submit`: card/serial selection and evidence report.
+- `/serialized-mtg-catalog[/slug]`: researched treatments, sources, and tracker requests.
+- `/discoveries`, `/discoveries.json`, `/discoveries.xml`: public discovery feeds.
+- `/verification-guide`, `/about`, `/contact`, `/privacy`, `/affiliate-disclosure`: trust and contact pages.
 
-The live One Ring tracker stores cards as one array at Redis key `one_ring_cards`.
-Crowd-sourced discovery reports are stored separately at `one_ring_submissions`.
+Public reports enter a separate pending queue. Admins can approve, reject, request more info, mark duplicate, or mark cannot verify. Approval merges selected evidence, updates the card, records reviewer metadata, and marks merged reports duplicate in one commit. Follow-up/reopening for needs-more-info reports is still pending.
 
-Each card has:
+Uploaded JPEG/PNG/WebP evidence (maximum 4 MB per file) is stored in Vercel Blob. Canonical cards preserve evidence source submission IDs, source URLs, and source types. Upload content validation, metadata stripping, and orphan cleanup remain roadmap work.
 
-- `id` and `serialNumber`
-- `found`
-- `verificationStatus`: `unverified`, `source-linked`, or `confirmed`
-- optional discovery source fields: `foundBy`, `dateFound`, `link`, `sourceType`, `notes`
-- optional market fields: `price`, `priceDate`, `priceHistory`
-- optional grading fields: `grading`
-- optional `image`, defaulting to the Scryfall reference image
-- optional `pendingReports`, computed at read time from pending submissions
+## Security
 
-## API Shape
+Admin routes require a signed, expiring HTTP-only session. Production requires both ADMIN_PASSWORD and ADMIN_SESSION_SECRET; missing configuration disables session creation and verification. Login is rate-limited to ten attempts per IP per fifteen minutes and fails closed if the limiter is unavailable. Public reports and image uploads have separate limits.
 
-The UI uses the platform-shaped tracker API namespace:
+JSON endpoints require object bodies. Public reports validate slot bounds, source/evidence URLs, prices, and text lengths before storage. Baseline headers are in next.config.mjs. Do not expose secrets or raw database errors to public clients.
 
-- `GET /api/trackers/[slug]/cards`
-- `POST /api/trackers/[slug]/submit`
-- `POST /api/trackers/[slug]/update-price`
-- `POST /api/trackers/[slug]/add-price-history`
-- `POST /api/trackers/[slug]/update-image`
-- `POST /api/trackers/[slug]/update-grading`
-- `GET /api/trackers/[slug]/submissions?status=pending`
-- `POST /api/trackers/[slug]/submissions`
+## Affiliates And Measurement
 
-All tracker API routes resolve storage keys, serial formatting, and totals from `src/lib/trackers.ts`.
+Affiliate builders live in `src/lib/trackers.ts`. TCGplayer uses the user-approved generic partner redirect; eBay uses tracker or default campaign context; Amazon uses the configured Associate tag and relevant product searches. LOTR holiday poster pages target Special Edition collector boosters. Catalog promos without collector-booster distribution use an explicitly generic sealed-product fallback.
 
-## Serialized Catalog
+`AffiliateOutboundLink` leaves the merchant destination intact and sends best-effort click telemetry separately. Disclosures appear near marketplace links, including at the top of tracker pages. Admin analytics measure clicks and promotion activity, not commissions.
 
-The serialized catalog drives the scaffold queue on `/trackers` and is documented in `docs/SERIALIZED_MTG_CATALOG.md`.
+`scripts/validate-affiliate-links.mjs` validates configured, catalog, and boundary-serial URL shapes. Live checks deduplicate destinations, inspect redirects, and distinguish verified, failed, and manual-review outcomes. A 403/429 is not a verified pass. Merchant approval, credited orders, reversals, and payouts require merchant reports.
 
-Catalog tracking modes:
+## Verification
 
-- `single-card`: current data model can support this after adding tracker config/routes.
-- `multi-card-treatment`: needs a selected card plus serial number.
-- `variant-card`: one card name with multiple serialized variants and totals.
-- `promo-series`: related promo cards that may need extra source verification.
-
-## Submission Review Flow
-
-1. A user reports a discovered serial at `/trackers/[slug]/submit`.
-2. The report is written to the tracker submissions Redis key with status `pending`.
-3. `/api/trackers/[slug]/cards` includes pending report counts per serial.
-4. An admin opens the hidden admin panel and uses the `Review` tab.
-5. Approving a report updates `one_ring_cards` and marks the report `approved`.
-6. Rejecting a report marks it `rejected` without changing the public card state.
-
-## Deployment Notes
-
-The API routes call `getRedis()` inside handlers instead of at module import time. This lets local and Vercel builds compile before runtime env vars are available.
-
-Required admin runtime env vars:
-
-```bash
-ADMIN_PASSWORD
-ADMIN_SESSION_SECRET
-```
-
-Redis runtime env vars can use either naming pair:
-
-```bash
-UPSTASH_REDIS_REST_URL
-UPSTASH_REDIS_REST_TOKEN
-```
-
-or:
-
-```bash
-KV_REST_API_URL
-KV_REST_API_TOKEN
-```
-
-Use a write-capable token, not the read-only token. `/api/health` verifies that the deployed runtime can write, read, and delete a temporary Redis key without exposing secrets.
+Run focused regression tests, lint, and a production build. For affiliate changes also run link validation; for deployment changes run the public smoke check. Never use real submissions or destructive restores as production test fixtures. See TODO.md for current priorities and README.md for setup, keys, and operational commands.

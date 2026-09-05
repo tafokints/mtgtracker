@@ -11,7 +11,7 @@ export default function TrackerMarketTrustStrip({ summary }: TrackerMarketTrustS
         <div>
           <h2 className="text-sm font-bold uppercase text-ring-teal">Tracker Trust And Market Signals</h2>
           <p className="mt-1 text-xs text-ring-light/70">
-            Best current marketplace path: <span className="font-bold text-ring-teal">{summary.primaryMerchantLabel}</span>.
+            Marketplace to explore: <span className="font-bold text-ring-teal">{summary.primaryMerchantLabel}</span>.
           </p>
         </div>
         <span className="rounded border border-ring-teal/40 px-2 py-1 text-xs font-bold uppercase text-ring-light/70">

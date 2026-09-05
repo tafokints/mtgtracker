@@ -3,7 +3,8 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { DiscoverySubmission, SerializedRingCard, SubmissionStatus } from '@/lib/types';
-import { normalizeTrackerCard, saveTrackerCards, saveTrackerSubmissions } from '@/lib/tracker-data';
+import { getTrackerTotalSlots, normalizeTrackerCard } from '@/lib/tracker-data';
+import { restoreTrackerState } from '@/lib/tracker-store';
 import { readJsonBody } from '@/lib/request-json';
 
 export const dynamic = 'force-dynamic';
@@ -105,7 +106,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       return NextResponse.json({ message: 'Backup payload is required' }, { status: 400 });
     }
 
-    const validationError = validateBackup(input.backup, tracker.total, tracker.slug);
+    const validationError = validateBackup(input.backup, getTrackerTotalSlots(tracker), tracker.slug);
     if (validationError) {
       return NextResponse.json({ message: validationError }, { status: 400 });
     }
@@ -116,10 +117,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       .sort((a, b) => a.id - b.id);
     const submissions = input.backup.submissions as DiscoverySubmission[];
 
-    await Promise.all([
-      saveTrackerCards(redis, tracker, cards),
-      saveTrackerSubmissions(redis, tracker, submissions),
-    ]);
+    await restoreTrackerState(redis, tracker, { cards, submissions });
 
     return NextResponse.json({
       message: 'Backup restored',

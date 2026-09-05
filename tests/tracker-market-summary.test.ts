@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getTrackerMarketSummary } from '@/lib/tracker-market-summary';
 import { trackers } from '@/lib/trackers';
 import type { SerializedRingCard } from '@/lib/types';
+import { createInitialTrackerCards } from '@/lib/tracker-data';
 
 const tracker = trackers.find((candidate) => candidate.slug === 'one-ring');
 
@@ -10,6 +11,20 @@ if (!tracker) {
 }
 
 describe('tracker market summary', () => {
+  it('does not count reference artwork as serial evidence', () => {
+    for (const liveTracker of trackers.filter((tracker) => tracker.status === 'live')) {
+      const cards = createInitialTrackerCards(liveTracker);
+      expect(getTrackerMarketSummary(liveTracker, cards).evidenceBackedCount).toBe(0);
+      cards[0].found = true;
+      cards[0].verificationStatus = 'source-linked';
+      expect(getTrackerMarketSummary(liveTracker, cards).evidenceBackedCount).toBe(0);
+    }
+  });
+
+  it('uses all card slots when a multi-card tracker is empty', () => {
+    const poster = trackers.find((tracker) => tracker.slug === 'lotr-poster-cards')!;
+    expect(getTrackerMarketSummary(poster, []).trustSignals[0].value).toBe('0/2000');
+  });
   it('summarizes reviewed discoveries, evidence, market signals, and pending reports', () => {
     const cards: SerializedRingCard[] = [
       {

@@ -45,9 +45,11 @@ function parseEvidenceUrls(rawValue: unknown, primaryImageUrl?: string) {
   ].filter(Boolean) as string[]));
 }
 
-export function validateDiscoverySubmission(body: any, totalCards: number) {
+export function validateDiscoverySubmission(input: unknown, totalCards: number) {
+  const body = input && typeof input === 'object' && !Array.isArray(input) ? input as Record<string, unknown> : {};
   const errors: string[] = [];
-  const cardId = parseInt(body.cardId, 10);
+  const cardId = typeof body.cardId === 'number' || (typeof body.cardId === 'string' && /^\d+$/.test(body.cardId))
+    ? Number(body.cardId) : NaN;
 
   if (!Number.isInteger(cardId) || cardId < 1 || cardId > totalCards) {
     errors.push(`Serial slot must be between 1 and ${totalCards}.`);
@@ -78,7 +80,7 @@ export function validateDiscoverySubmission(body: any, totalCards: number) {
     errors.push('Evidence level is not valid.');
   }
 
-  const priceInput = cleanString(body.price);
+  const priceInput = typeof body.price === 'number' ? String(body.price) : cleanString(body.price);
   const price = priceInput ? Number(priceInput) : undefined;
   if (priceInput && (!Number.isFinite(price) || price! < 0)) {
     errors.push('Sale price must be a non-negative number.');

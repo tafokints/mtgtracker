@@ -5,7 +5,8 @@ import { getTracker } from '@/lib/trackers';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { readJsonBody } from '@/lib/request-json';
 import { validateDiscoverySubmission } from '@/lib/submission-validation';
-import { formatTrackerSerial, getTrackerCards, getTrackerSubmissions, getTrackerTotalSlots, saveTrackerSubmissions } from '@/lib/tracker-data';
+import { formatTrackerSerial, getTrackerTotalSlots } from '@/lib/tracker-data';
+import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -48,52 +49,56 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     const input = validation.value;
-    const cards = await getTrackerCards(redis, tracker);
-    const card = cards.find((item) => item.id === input.cardId);
+    const submissionId = crypto.randomUUID();
+    const submittedAt = new Date().toISOString();
+    await mutateTrackerState(redis, tracker, (state) => {
+      const { cards, submissions } = state;
+      const card = cards.find((item) => item.id === input.cardId);
 
-    if (!card) {
-      return NextResponse.json({ message: 'Card not found' }, { status: 404 });
-    }
+      if (!card) {
+        throw new TrackerStoreError('Card not found', 404);
+      }
 
-    const submissions = await getTrackerSubmissions(redis, tracker);
-    const duplicateCandidates = submissions.filter((existingSubmission) => (
-      existingSubmission.cardId === input.cardId &&
-      !['rejected', 'cannot-verify'].includes(existingSubmission.status)
-    ));
+      const duplicateCandidates = submissions.filter((existingSubmission) => (
+        existingSubmission.cardId === input.cardId &&
+        !['rejected', 'cannot-verify'].includes(existingSubmission.status)
+      ));
 
-    const submission: DiscoverySubmission = {
-      id: crypto.randomUUID(),
-      cardId: input.cardId,
-      cardSlug: card.cardSlug,
-      cardTitle: card.cardTitle,
-      serialTotal: card.serialTotal,
-      serialNumber: card.serialNumber || formatTrackerSerial(tracker, input.cardId),
-      foundBy: input.foundBy,
-      dateFound: input.dateFound,
-      link: input.link,
-      sourceType: input.sourceType,
-      requestedVerificationStatus: input.verificationStatus,
-      price: input.price,
-      imageUrl: input.imageUrl,
-      evidenceImages: input.evidenceImages,
-      notes: input.notes,
-      status: 'pending',
-      submittedAt: new Date().toISOString(),
-      duplicateOf: duplicateCandidates[0]?.id,
-      duplicateSubmissionIds: duplicateCandidates.map((candidate) => candidate.id),
-    };
+      const submission: DiscoverySubmission = {
+        id: submissionId,
+        cardId: input.cardId,
+        cardSlug: card.cardSlug,
+        cardTitle: card.cardTitle,
+        serialTotal: card.serialTotal,
+        serialNumber: card.serialNumber || formatTrackerSerial(tracker, input.cardId),
+        foundBy: input.foundBy,
+        dateFound: input.dateFound,
+        link: input.link,
+        sourceType: input.sourceType,
+        requestedVerificationStatus: input.verificationStatus,
+        price: input.price,
+        imageUrl: input.imageUrl,
+        evidenceImages: input.evidenceImages,
+        notes: input.notes,
+        status: 'pending',
+        submittedAt,
+        duplicateOf: duplicateCandidates[0]?.id,
+        duplicateSubmissionIds: duplicateCandidates.map((candidate) => candidate.id),
+      };
 
-    await saveTrackerSubmissions(redis, tracker, [submission, ...submissions]);
+      state.submissions = [submission, ...submissions];
+    });
 
     return NextResponse.json(
       {
         message: 'Submission queued for review',
-        submissionId: submission.id,
+        submissionId,
         remaining: rateLimit.remaining,
       },
       { status: 202 }
     );
   } catch (error) {
+    if (error instanceof TrackerStoreError) return NextResponse.json({ message: error.message }, { status: error.status });
     console.error('Error queueing submission:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }

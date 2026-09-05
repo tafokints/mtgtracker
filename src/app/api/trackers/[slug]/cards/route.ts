@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
-import { getTrackerCards, getTrackerSubmissions, withPendingReportCounts } from '@/lib/tracker-data';
+import { withPendingReportCounts } from '@/lib/tracker-data';
+import { getTrackerState } from '@/lib/tracker-store';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -20,8 +21,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
   try {
     const redis = getRedis();
-    const cards = await getTrackerCards(redis, tracker);
-    const submissions = await getTrackerSubmissions(redis, tracker);
+    const { cards, submissions } = await getTrackerState(redis, tracker);
 
     return NextResponse.json(withPendingReportCounts(cards, submissions));
   } catch (error) {

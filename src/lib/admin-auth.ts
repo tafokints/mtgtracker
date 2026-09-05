@@ -13,7 +13,11 @@ function base64Url(value: string | Buffer) {
 }
 
 function getAdminSecret() {
-  return process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD || 'local-dev-admin-secret';
+  return process.env.ADMIN_SESSION_SECRET || (process.env.NODE_ENV === 'production' ? undefined : 'local-dev-admin-secret');
+}
+
+export function isAdminConfigured() {
+  return Boolean(getAdminPassword() && getAdminSecret());
 }
 
 export function getAdminPassword() {
@@ -21,7 +25,18 @@ export function getAdminPassword() {
 }
 
 function sign(payload: string) {
-  return base64Url(crypto.createHmac('sha256', getAdminSecret()).update(payload).digest());
+  const secret = getAdminSecret();
+  if (!secret) throw new Error('Admin session secret is not configured');
+  return base64Url(crypto.createHmac('sha256', secret).update(payload).digest());
+}
+
+export function verifyAdminPassword(value: unknown) {
+  const configured = getAdminPassword();
+  if (!configured || typeof value !== 'string') return false;
+  return crypto.timingSafeEqual(
+    crypto.createHash('sha256').update(value).digest(),
+    crypto.createHash('sha256').update(configured).digest(),
+  );
 }
 
 function safeEqual(left: string, right: string) {
@@ -32,6 +47,7 @@ function safeEqual(left: string, right: string) {
 }
 
 export function createAdminSession() {
+  if (!isAdminConfigured()) throw new Error('Admin authentication is not configured');
   const now = Math.floor(Date.now() / 1000);
   const payload = base64Url(JSON.stringify({
     iat: now,
@@ -42,16 +58,16 @@ export function createAdminSession() {
 }
 
 export function verifyAdminSession(session?: string) {
-  if (!session) return false;
+  if (!session || !isAdminConfigured()) return false;
 
-  const [payload, signature] = session.split('.');
-  if (!payload || !signature || !safeEqual(signature, sign(payload))) {
+  const [payload, signature, extra] = session.split('.');
+  if (!payload || !signature || extra !== undefined || !safeEqual(signature, sign(payload))) {
     return false;
   }
 
   try {
     const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { exp?: number };
-    return typeof decoded.exp === 'number' && decoded.exp > Math.floor(Date.now() / 1000);
+    return Number.isSafeInteger(decoded.exp) && decoded.exp! > Math.floor(Date.now() / 1000);
   } catch {
     return false;
   }

@@ -101,7 +101,7 @@ For local development only, the admin password falls back to `dev-admin` if `ADM
 ## Deploying On Vercel
 
 1. Import the repository in Vercel.
-2. Set the project root to `mtg-serial-tracker`.
+2. Use the standalone repository root (`.`) as the Vercel project root. The nested folder name is only its location in this local workspace.
 3. Add an Upstash Redis database.
 4. Add Redis REST env vars. Vercel may provide `KV_REST_API_URL` and `KV_REST_API_TOKEN`; those are supported. Manual Upstash envs can use `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
 5. Add a Vercel Blob store and connect it to the project. Vercel should provide `BLOB_READ_WRITE_TOKEN`.
@@ -128,7 +128,7 @@ Current live keys:
 - `lotr_poster_cards`
 - `lotr_poster_submissions`
 
-Legacy keys are read once during card initialization, migrated into the configured `cardsKey`, then deleted. Rate-limit keys use the `rate-limit:{trackerSlug}:submit:{clientIp}` and `rate-limit:{trackerSlug}:upload:{clientIp}` patterns and are not included in tracker backups.
+Legacy keys are copied during initialization with SET NX and retained as recovery sources. All discovery/review/admin edits use `src/lib/tracker-store.ts`: a consistent raw snapshot and atomic compare-and-set prevent lost concurrent updates. Conflicts retry up to five times, then return 409. Rate-limit keys use `rate-limit:{trackerSlug}:submit:{clientIp}`, `rate-limit:{trackerSlug}:upload:{clientIp}`, and `rate-limit:admin:login:{clientIp}` and are not included in tracker backups.
 
 Affiliate click telemetry is stored separately from tracker backups:
 
@@ -158,6 +158,7 @@ Admin backups are tracker-scoped:
 - `GET /api/trackers/[slug]/export` downloads a JSON backup with `schemaVersion`, tracker metadata, counts, cards, and submissions.
 - `POST /api/trackers/[slug]/import` restores one exported backup for the same tracker slug.
 - Restore requests must include `confirm: "RESTORE_TRACKER_BACKUP"` and overwrite only that tracker's `cardsKey` and `submissionsKey`.
+- Export reads cards and submissions together. Restore replaces both atomically and validates every slot, including all 2,000 LOTR Poster Cards slots.
 - The hidden admin panel includes `Export Backup` and `Restore Backup` controls after login.
 
 ## Admin And Review Workflows
@@ -167,6 +168,7 @@ Admin backups are tracker-scoped:
 - Evidence level: public reports can request `Looks Confirmed` only when they include a source link or evidence image.
 - Evidence uploads: report forms accept JPEG, PNG, or WebP uploads up to 4 MB per image. Uploaded images are stored in Vercel Blob and saved as evidence image URLs on the queued report.
 - Admin panel: press `Ctrl + Alt + A` on `/trackers/one-ring`.
+- Production authentication requires both `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET`; neither may fall back to a development credential. Login allows ten attempts per IP per fifteen minutes and requires Redis for rate limiting.
 - Review queue: use the admin panel `Review` tab to approve or reject pending reports.
 - Pending reports show evidence-strength summaries and are prioritized by review signal count.
 - Affiliate stats: use the admin panel `Affiliate` tab to compare tracker, merchant, and placement click totals, review quick-read performance insights, then export CSV for outside analysis.
@@ -227,8 +229,11 @@ Also verify:
 - Marketplace links are relevant to the tracker subject.
 - Affiliate disclosures are visible near marketplace links.
 - TCGplayer links use the generic `partner.tcgplayer.com/DyJ25G` redirect and validate that the final URL receives `irclickid` and Impact parameters.
+- Generic TCGplayer links are labeled `Browse TCGplayer`. LOTR poster Amazon links target Special Edition collector boosters, and catalog promos use a clearly generic fallback when collector boosters are not their distribution product.
 - eBay affiliate links use campaign `5339113954` and a `customid` matching the tracker slug.
 - Amazon affiliate links use Associate tag `meleeitonme0a-20`.
+- The validator checks configured, boundary-serial, and catalog URL shapes. HTTP 403/429 means `manual-review`, not a verified destination. Run `node scripts/validate-affiliate-links.mjs --offline` for URL-only checks without merchant requests.
+- Link checks cannot confirm merchant account approval, qualifying orders, or commissions. Reconcile merchant reports and operating costs before calling the site profitable. See `docs/PROJECT_AUDIT_2026-09-05.md` and the current priority queue in `TODO.md`.
 - `/about`, `/contact`, `/privacy`, and `/affiliate-disclosure` load in production.
 - `/serialized-mtg-catalog` loads in production and is included in the sitemap.
 - Individual `/serialized-mtg-catalog/[slug]` pages load in production and are included in the sitemap.

@@ -4,7 +4,7 @@ import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
-import { getTrackerCards, saveTrackerCards } from '@/lib/tracker-data';
+import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -35,31 +35,32 @@ export async function POST(request: Request, { params }: RouteContext) {
       return NextResponse.json({ message: 'Valid price is required' }, { status: 400 });
     }
 
-    const cards = await getTrackerCards(redis, tracker);
-    const numericCardId = typeof cardId === 'string' ? parseInt(cardId, 10) : cardId;
-    const cardIndex = cards.findIndex((card) => card.id === numericCardId);
+    await mutateTrackerState(redis, tracker, ({ cards }) => {
+      const numericCardId = typeof cardId === 'string' ? parseInt(cardId, 10) : cardId;
+      const cardIndex = cards.findIndex((card) => card.id === numericCardId);
 
-    if (cardIndex === -1) {
-      return NextResponse.json({ message: 'Card not found' }, { status: 404 });
-    }
+      if (cardIndex === -1) {
+        throw new TrackerStoreError('Card not found', 404);
+      }
 
-    const currentDate = new Date().toISOString().split('T')[0];
-    const historyEntry: PriceHistoryEntry = {
-      price: priceValue,
-      date: currentDate,
-    };
+      const currentDate = new Date().toISOString().split('T')[0];
+      const historyEntry: PriceHistoryEntry = {
+        price: priceValue,
+        date: currentDate,
+      };
 
-    cards[cardIndex].priceHistory = [
-      historyEntry,
-      ...(cards[cardIndex].priceHistory || []),
-    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    cards[cardIndex].price = priceValue;
-    cards[cardIndex].priceDate = currentDate;
+      cards[cardIndex].priceHistory = [
+        historyEntry,
+        ...(cards[cardIndex].priceHistory || []),
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      cards[cardIndex].price = priceValue;
+      cards[cardIndex].priceDate = currentDate;
 
-    await saveTrackerCards(redis, tracker, cards);
+    });
 
     return NextResponse.json({ message: 'Price updated successfully' });
   } catch (error) {
+    if (error instanceof TrackerStoreError) return NextResponse.json({ message: error.message }, { status: error.status });
     console.error('Error updating price:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
