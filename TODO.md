@@ -6,6 +6,8 @@ Goal: become a trusted, comprehensive serialized MTG reference funded by relevan
 
 Current phase: infrastructure readiness. Zero production discoveries is acceptable and is not a launch blocker. Validate empty and populated workflows with isolated test fixtures; do not seed production just to demonstrate readiness. Content acquisition and audience growth come later.
 
+Standing affiliate requirement: preserve a clear top-of-page disclosure before the first affiliate link on every page containing affiliate links, on desktop and mobile. The owner reports prior eBay compliance feedback, which is why this placement is intentional. Future layout work must not remove, collapse, or relocate it to the footer; see ARCHITECTURE.md.
+
 ### Now: Audit And Reliability
 
 - [x] Prevent concurrent submissions, reviews, and admin edits from overwriting each other; commit approved cards and review status together.

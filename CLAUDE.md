@@ -40,6 +40,8 @@ Vercel uses the standalone Git repository root (`.`). Redis accepts either UPSTA
 
 The user-approved TCGplayer redirect is generic: label it accordingly. Preserve affiliate IDs in configuration; do not invent tracking IDs or claim link checks prove commission credit. eBay/Amazon product queries must match the printing and distribution product. Official merchant reports are needed for earned revenue.
 
+Keep a visible affiliate disclosure at the top of every page containing affiliate links, before the first affiliate link, including on mobile and new generated pages. The owner requires this placement because of prior eBay compliance feedback. It is not redundant UI to remove during design cleanup; a footer-only notice is not a substitute. See ARCHITECTURE.md for the standing requirement.
+
 ## Product Priorities
 
 Current phase: infrastructure readiness. Zero production discoveries is acceptable and is not a launch blocker. Use isolated fixtures to verify populated workflows; defer discovery acquisition and audience growth to the later TODO queue.

@@ -43,6 +43,7 @@ Read the closest files and these docs when relevant:
 - Do not duplicate One Ring-specific logic into new trackers.
 - Keep public endpoints conservative and admin endpoints authenticated.
 - Do not commit secrets or generated local env files.
+- Preserve a visible top-of-page affiliate disclosure before the first affiliate link on every page that contains affiliate links, including generated pages and mobile layouts. This is an owner requirement based on prior eBay compliance feedback; see ARCHITECTURE.md. Do not move it to the footer or remove it as layout cleanup.
 
 ## Verification
 

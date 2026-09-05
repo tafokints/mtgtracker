@@ -52,6 +52,8 @@ Affiliate builders live in `src/lib/trackers.ts`. TCGplayer uses the user-approv
 
 `AffiliateOutboundLink` leaves the merchant destination intact and sends best-effort click telemetry separately. Disclosures appear near marketplace links, including at the top of tracker pages. Admin analytics measure clicks and promotion activity, not commissions.
 
+Standing owner requirement: every page containing affiliate links must show a clear affiliate disclosure at the top, before its first affiliate link, on desktop and mobile. The owner reports prior eBay affiliate compliance feedback; this placement is intentional, not decorative or redundant UI. Preserve it when redesigning pages or generating new trackers. Do not remove it, collapse it, or replace it with a footer-only notice or a link to the disclosure page. Additional notices near lower marketplace links may remain. This records the owner's requirement and rationale, not a claim that placement alone guarantees merchant compliance or commission credit.
+
 `scripts/validate-affiliate-links.mjs` validates configured, catalog, and boundary-serial URL shapes. Live checks deduplicate destinations, inspect redirects, and distinguish verified, failed, and manual-review outcomes. A 403/429 is not a verified pass. Merchant approval, credited orders, reversals, and payouts require merchant reports.
 
 ## Verification
