@@ -34,13 +34,28 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 - [x] Reuse existing One Ring, Edgar, and poster trackers; keep Golden Chocobo migration deferred.
 - [x] Validate affiliate attribution and query relevance for all generated printing/serial links; retain generic TCGplayer and top/bottom disclosures.
 
+### Now: Protected Evidence Intake
+
+- [x] Replace public uploads with private Blob intake and individually addressable asset metadata; protect reads with scan status, canonical approval, ownership, and content hashes.
+- [x] Add server-verified Turnstile and one-hour, card-bound report sessions; cap uploads per session and submissions across trackers; deduplicate report retries.
+- [x] Reject external image URLs and restrict source links to supported direct HTTPS pages; strip query/fragment parameters and do not fetch arbitrary destinations.
+- [x] Integrate Cloudmersive malware checks, Azure sexual-content screening, and Google Web Risk source checks with fail-closed responses and authenticated scan retries.
+- [x] Prevent unsafe previews/approval/merge/image overrides; show review safety states, check source links before opening, and preserve atomic approval after asynchronous checks.
+- [x] Make rate-limit increment/expiry atomic; bound public JSON bodies; reject cross-origin admin mutations.
+- [ ] Configure private Blob, Turnstile, both image scanners, and Web Risk in isolated Preview/Development, then Production. No real scanner credentials or external moderation calls were used for the local tests. See docs/EVIDENCE_SECURITY.md.
+- [ ] Verify real private upload/read/scan/approve/revoke/delete in an isolated hosted environment before enabling intake broadly; never seed production with QA discoveries.
+- [ ] Add durable scanning jobs with authenticated delivery, retry/backoff, and reconciliation for interrupted requests. Current scanning is synchronous and supports admin retry only.
+- [ ] Add a paginated, indexed all-tracker moderation inbox and independent submission records; current review remains per tracker and report arrays still grow.
+- [ ] Add named moderator/admin roles, MFA, server-derived reviewer identity, and append-only audit history before inviting more moderators.
+- [ ] Add safe review/escalation for content-filter false positives, malicious-content reporting/takedown, and later source rechecks. No manual scanner override exists; legitimate MTG artwork may be held.
+
 ### Next: Infrastructure Readiness
 
 - [ ] Unify the One Ring's canonical records across its dedicated tracker and LOTR Poster Cards, with a reviewed migration and deduplicated discovery counts.
-- [ ] Connect Vercel Blob (`BLOB_READ_WRITE_TOKEN`), redeploy, and perform an isolated real upload/read/delete check. Production returned 503 "Image uploads are not configured" on 2026-09-05.
+- [ ] Complete the protected-intake service setup and hosted lifecycle gate above. Earlier public Blob setup advice is superseded: use a private store.
 - [ ] Add orphan-upload cleanup, a retention policy, and audited admin removal. Detaching a form attachment is not physical deletion; report hard-delete is not implemented.
 - [ ] Bound/rate-limit public telemetry and add retention so analytics cannot create unlimited Redis keys.
-- [ ] Add automated backups and perform an isolated restore drill.
+- [ ] Add automated backups covering tracker data, `evidence:v1:*` asset records, and private Blob files; perform an isolated restore drill. Existing tracker exports alone do not restore evidence storage.
 - [ ] Reopen needs-more-info reports with a secure submitter follow-up path; preserve review history.
 - [ ] Preserve earlier source details and verification when approving a follow-up report; record sightings separately from first discovery and distinguish asking prices from completed sales.
 - [ ] Validate the existing tracker scaffold across single-card and multi-card sets, different serialized quantities, shared identities, themes, and relevant affiliate defaults/fallbacks.

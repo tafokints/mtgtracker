@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import ExternalImage from '@/components/ExternalImage';
+import SubmissionChallenge from '@/components/SubmissionChallenge';
 import Link from 'next/link';
 import type { TrackerSummary } from '@/lib/trackers';
 import {
@@ -38,9 +39,12 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
   const [sourceType, setSourceType] = useState<SourceType>('marketplace');
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>('source-linked');
   const [price, setPrice] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [evidenceImageUrls, setEvidenceImageUrls] = useState('');
-  const [uploadedEvidenceUrls, setUploadedEvidenceUrls] = useState<string[]>([]);
+  const [uploadedEvidence, setUploadedEvidence] = useState<Array<{ id: string; preview: string; status: string }>>([]);
+  const previews = useRef(new Set<string>());
+  const session = useRef<{ token: string; expiresAt: number; cardId: number }>();
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [challengeVersion, setChallengeVersion] = useState(0);
+  const [consent, setConsent] = useState(false);
   const [uploadMessage, setUploadMessage] = useState('');
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -50,17 +54,10 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
   const [errors, setErrors] = useState<string[]>([]);
   const [isError, setIsError] = useState(false);
   const trackerPath = `/trackers/${tracker.slug}`;
-  const manualEvidenceUrlCount = useMemo(() => (
-    evidenceImageUrls
-      .split(/[\s,]+/)
-      .map((url) => url.trim())
-      .filter(Boolean).length
-  ), [evidenceImageUrls]);
-  const totalEvidenceImageCount = uploadedEvidenceUrls.length + manualEvidenceUrlCount + (imageUrl.trim() ? 1 : 0);
+  const totalEvidenceImageCount = uploadedEvidence.length;
   const evidenceLimitExceeded = totalEvidenceImageCount > MAX_EVIDENCE_IMAGES;
   const hasSourceLink = link.trim().length > 0;
-  const hasPrimaryImage = imageUrl.trim().length > 0;
-  const hasEvidenceImage = totalEvidenceImageCount > 0 || hasPrimaryImage;
+  const hasEvidenceImage = totalEvidenceImageCount > 0;
   const hasReviewNotes = notes.trim().length > 0;
   const selectedSerialSummary = useMemo(() => {
     if (hasMultipleCardDefinitions) {
@@ -108,6 +105,36 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
       ? 'Reviewable report'
       : 'Needs more evidence';
 
+  const selectedSlotId = hasMultipleCardDefinitions ? getTrackerSlotId(tracker, selectedCardSlug, Number(selectedSerialId)) : Number(cardId);
+  useEffect(() => {
+    session.current = undefined;
+    setUploadedEvidence([]);
+    for (const preview of previews.current) URL.revokeObjectURL(preview);
+    previews.current.clear();
+  }, [selectedSlotId]);
+  useEffect(() => {
+    const current = previews.current;
+    return () => { for (const preview of current) URL.revokeObjectURL(preview); };
+  }, []);
+
+  async function ensureSession() {
+    if (!consent) throw new Error('Please confirm permission to submit this evidence.');
+    if (!selectedSlotId) throw new Error('Select a card and serial first.');
+    if (session.current?.cardId === selectedSlotId && session.current.expiresAt > Date.now()) return session.current.token;
+    if (uploadedEvidence.length) throw new Error('This report permission expired. Remove its attachments and upload them again after verification.');
+    if (!turnstileToken) throw new Error('Complete the verification check first.');
+    const response = await fetch(`/api/trackers/${tracker.slug}/submission-session`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cardId: selectedSlotId, turnstileToken, consent: true }),
+    });
+    setTurnstileToken('');
+    setChallengeVersion((version) => version + 1);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Verification failed.');
+    session.current = { ...data, cardId: selectedSlotId };
+    return data.token as string;
+  }
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const slotId = getTrackerSlotIdFromDeepLinkParams(tracker, params);
@@ -141,10 +168,12 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
     submitLock.current = true;
     setSubmitting(true);
     try {
+      const token = await ensureSession();
       const response = await fetch(`/api/trackers/${tracker.slug}/submit`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-submission-token': token,
       },
       body: JSON.stringify({
         cardId: hasMultipleCardDefinitions
@@ -156,8 +185,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
         sourceType,
         verificationStatus,
         price,
-        imageUrl,
-        evidenceImageUrls: [...uploadedEvidenceUrls, evidenceImageUrls].filter(Boolean).join('\n'),
+        evidenceAssetIds: uploadedEvidence.map((asset) => asset.id),
         notes,
       }),
       });
@@ -172,9 +200,8 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
       setDateFound('');
       setLink('');
       setPrice('');
-      setImageUrl('');
-      setEvidenceImageUrls('');
-      setUploadedEvidenceUrls([]);
+      setUploadedEvidence([]);
+      session.current = undefined;
       setUploadMessage('');
       setNotes('');
     } else {
@@ -183,8 +210,8 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
       setErrors(Array.isArray(data?.errors) ? data.errors : []);
       setIsError(true);
     }
-    } catch {
-      setMessage('Could not confirm submission. Your report is still here; check your connection before retrying.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not confirm submission. Your report is still here.');
       setIsError(true);
     } finally {
       submitLock.current = false;
@@ -209,8 +236,17 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
     setErrors([]);
     setIsError(false);
 
-    const uploadedUrls: string[] = [];
+    const uploaded: typeof uploadedEvidence = [];
     const uploadErrors: string[] = [];
+
+    let token: string;
+    try { token = await ensureSession(); } catch (error) {
+      setErrors([error instanceof Error ? error.message : 'Verification failed.']);
+      setIsError(true);
+      setUploading(false);
+      setUploadMessage('');
+      return;
+    }
 
     for (const file of files) {
       const formData = new FormData();
@@ -219,12 +255,15 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
       try {
         const response = await fetch(`/api/trackers/${tracker.slug}/upload-image`, {
           method: 'POST',
+          headers: { 'x-submission-token': token },
           body: formData,
         });
         const data = await response.json().catch(() => null);
 
-        if (response.ok && typeof data?.url === 'string') {
-          uploadedUrls.push(data.url);
+        if (response.ok && typeof data?.assetId === 'string') {
+          const preview = URL.createObjectURL(file);
+          previews.current.add(preview);
+          uploaded.push({ id: data.assetId, preview, status: data.safetyStatus });
         } else {
           uploadErrors.push(`${file.name}: ${data?.message || 'upload failed'}`);
         }
@@ -233,16 +272,16 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
       }
     }
 
-    if (uploadedUrls.length > 0) {
-      setUploadedEvidenceUrls((currentUrls) => [...currentUrls, ...uploadedUrls]);
+    if (uploaded.length > 0) {
+      setUploadedEvidence((current) => [...current, ...uploaded]);
     }
 
     if (uploadErrors.length > 0) {
       setErrors(uploadErrors);
       setIsError(true);
-      setUploadMessage(`Uploaded ${uploadedUrls.length}/${files.length} image${files.length === 1 ? '' : 's'}.`);
+      setUploadMessage(`Uploaded ${uploaded.length}/${files.length} image${files.length === 1 ? '' : 's'} privately.`);
     } else {
-      setUploadMessage(`Uploaded ${uploadedUrls.length} image${uploadedUrls.length === 1 ? '' : 's'}.`);
+      setUploadMessage(`Uploaded ${uploaded.length} image${uploaded.length === 1 ? '' : 's'} privately.`);
     }
 
     setUploading(false);
@@ -250,7 +289,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
 
   return (
     <>
-      <main className="flex min-h-screen flex-col items-center justify-center p-8">
+      <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8 sm:px-8">
         <div className="w-full max-w-2xl mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-ring-gold">Report a Find</h1>
@@ -260,7 +299,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
             Back
           </Link>
         </div>
-        <form onSubmit={handleSubmit} className="w-full max-w-2xl bg-ring-dark p-8 rounded-lg border border-ring-gold">
+        <form onSubmit={handleSubmit} className="w-full max-w-2xl bg-ring-dark p-4 sm:p-8 rounded-lg border border-ring-gold">
           {selectedSerialSummary && (
             <div className="mb-6 rounded border border-ring-gold/30 bg-black/20 px-4 py-3 text-sm text-ring-light">
               <p className="text-xs font-bold uppercase text-ring-gold">Reporting selected serial</p>
@@ -313,6 +352,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
                 <select
                   className="block w-full bg-ring-light border border-ring-gold text-ring-dark py-3 px-4 rounded leading-tight focus:outline-none focus:bg-white"
                   id="serial"
+                  disabled={uploading || submitting}
                   value={selectedCardSlug}
                   onChange={(e) => {
                     setSelectedCardSlug(e.target.value);
@@ -330,6 +370,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
                 <select
                   className="block w-full bg-ring-light border border-ring-gold text-ring-dark py-3 px-4 rounded leading-tight focus:outline-none focus:bg-white"
                   id="serial"
+                  disabled={uploading || submitting}
                   value={cardId}
                   onChange={(e) => setCardId(e.target.value)}
                   required
@@ -351,6 +392,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
                 <select
                   className="block w-full bg-ring-light border border-ring-gold text-ring-dark py-3 px-4 rounded leading-tight focus:outline-none focus:bg-white"
                   id="serial-number"
+                  disabled={uploading || submitting}
                   value={selectedSerialId}
                   onChange={(e) => setSelectedSerialId(e.target.value)}
                   required
@@ -457,30 +499,12 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
               onChange={(e) => setLink(e.target.value)}
             />
           </div>
-          <div className="mt-6">
-              <label className="block uppercase tracking-wide text-ring-gold text-xs font-bold mb-2" htmlFor="image-url">
-              Primary Image URL
+          <div className="mt-6 space-y-3">
+            <label className="flex items-start gap-3 text-sm text-ring-light">
+              <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-1" required />
+              <span>I have permission to submit this evidence for safety checks and admin review. Approved evidence may be published. <Link href="/privacy" className="text-ring-gold underline">Privacy details</Link></span>
             </label>
-            <input
-              className="appearance-none block w-full bg-ring-light text-ring-dark border border-ring-gold rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white"
-              id="image-url"
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-            />
-          </div>
-          <div className="mt-6">
-            <label className="block uppercase tracking-wide text-ring-gold text-xs font-bold mb-2" htmlFor="evidence-image-urls">
-              Additional Evidence Image URLs
-            </label>
-            <textarea
-              className="appearance-none block w-full bg-ring-light text-ring-dark border border-ring-gold rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white"
-              id="evidence-image-urls"
-              rows={3}
-              placeholder="One URL per line"
-              value={evidenceImageUrls}
-              onChange={(e) => setEvidenceImageUrls(e.target.value)}
-            />
+            <SubmissionChallenge key={challengeVersion} onToken={setTurnstileToken} />
           </div>
           <div className="mt-6">
             <label className="block uppercase tracking-wide text-ring-gold text-xs font-bold mb-2" htmlFor="evidence-image-upload">
@@ -493,13 +517,13 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
               accept="image/jpeg,image/png,image/webp"
               multiple
               onChange={handleImageUpload}
-              disabled={uploading || submitting}
+              disabled={uploading || submitting || !consent || !selectedSlotId || !process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
             />
             <p className="mt-2 text-xs text-ring-light/70">
               JPEG, PNG, or WebP. Max 4 MB per image.
             </p>
             <p className="mt-2 text-xs text-ring-light/70">
-              Uploaded files have public links, including before review. Do not include private information.
+              Evidence remains private until safety checks and admin approval. Do not include private information.
             </p>
             {uploadMessage && (
               <p className="mt-2 text-sm text-ring-light">{uploadMessage}</p>
@@ -507,19 +531,22 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
             <p className={`mt-2 text-xs ${evidenceLimitExceeded ? 'text-red-300' : 'text-ring-light/70'}`}>
               Evidence images queued: {totalEvidenceImageCount}/{MAX_EVIDENCE_IMAGES}
             </p>
-            {uploadedEvidenceUrls.length > 0 && (
+            {uploadedEvidence.length > 0 && (
               <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {uploadedEvidenceUrls.map((url, index) => (
-                  <li key={url} className="relative min-w-0">
-                    <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`View uploaded evidence ${index + 1}`}>
-                      <ExternalImage src={url} alt={`Uploaded evidence ${index + 1}`} className="aspect-[3/4] w-full rounded border border-ring-light/30 object-contain" />
-                    </a>
+                {uploadedEvidence.map((asset, index) => (
+                  <li key={asset.id} className="relative min-w-0">
+                    <ExternalImage src={asset.preview} alt={`Uploaded evidence ${index + 1}`} className="aspect-[3/4] w-full rounded border border-ring-light/30 object-contain" />
+                    <p className="mt-1 text-xs text-ring-light/70">{asset.status === 'clean' ? 'Ready for review' : asset.status === 'flagged' ? 'Held by safety checks' : 'Awaiting safety checks'}</p>
                     <button
                       type="button"
                       disabled={submitting}
                       aria-label={`Remove evidence ${index + 1} from report`}
                       title="Remove from report"
-                      onClick={() => setUploadedEvidenceUrls((currentUrls) => currentUrls.filter((currentUrl) => currentUrl !== url))}
+                      onClick={() => {
+                        URL.revokeObjectURL(asset.preview);
+                        previews.current.delete(asset.preview);
+                        setUploadedEvidence((current) => current.filter((item) => item.id !== asset.id));
+                      }}
                       className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded border border-ring-light/50 bg-ring-dark text-ring-light"
                     >
                       <XMarkIcon className="h-5 w-5" />
@@ -544,7 +571,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
           <button
             className="mt-6 bg-ring-gold hover:bg-yellow-400 disabled:cursor-not-allowed disabled:bg-ring-light/40 text-ring-dark font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
             type="submit"
-            disabled={uploading || submitting || evidenceLimitExceeded}
+            disabled={uploading || submitting || evidenceLimitExceeded || !consent || !process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
           >
             {uploading ? 'Uploading...' : submitting ? 'Submitting...' : 'Submit'}
           </button>

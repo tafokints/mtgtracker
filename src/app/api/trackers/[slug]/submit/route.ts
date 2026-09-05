@@ -7,6 +7,10 @@ import { readJsonBody } from '@/lib/request-json';
 import { validateDiscoverySubmission } from '@/lib/submission-validation';
 import { formatTrackerSerial, getTrackerTotalSlots } from '@/lib/tracker-data';
 import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
+import { readSubmissionSession } from '@/lib/submission-session';
+import { getOwnedEvidence } from '@/lib/evidence-store';
+import { evidenceUrl } from '@/lib/evidence-policy';
+import { EvidenceUploadError } from '@/lib/evidence-upload';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -24,7 +28,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   try {
-    const body = await readJsonBody(request);
+    const body = await readJsonBody(request, 16384);
     if (!body.ok) return body.response;
 
     const validation = validateDiscoverySubmission(body.value, getTrackerTotalSlots(tracker));
@@ -34,6 +38,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     const redis = getRedis();
+    const session = readSubmissionSession(request, slug, validation.value.cardId);
     const clientIp = getClientIp(request);
     const rateLimit = await checkRateLimit(redis, {
       key: `rate-limit:${tracker.slug}:submit:${clientIp}`,
@@ -48,11 +53,23 @@ export async function POST(request: Request, { params }: RouteContext) {
       );
     }
 
+    for (const [key, limit, windowSeconds] of [
+      [`rate-limit:submit:${clientIp}`, 10, 3600],
+      ['rate-limit:submit:site', 1000, 86400],
+    ] as const) {
+      const budget = await checkRateLimit(redis, { key, limit, windowSeconds });
+      if (!budget.allowed) return NextResponse.json({ message: 'Submission capacity reached. Please try again later.' }, { status: 429, headers: { 'Retry-After': String(windowSeconds) } });
+    }
+
     const input = validation.value;
-    const submissionId = crypto.randomUUID();
+    const submissionId = session.id;
+    const assets = await getOwnedEvidence(redis, session, input.evidenceAssetIds);
+    const evidenceImages = assets.map((asset) => ({ url: evidenceUrl(asset.id), assetId: asset.id }));
     const submittedAt = new Date().toISOString();
     await mutateTrackerState(redis, tracker, (state) => {
       const { cards, submissions } = state;
+      // One session creates one immutable report, including after a lost response.
+      if (submissions.some((submission) => submission.id === submissionId)) return;
       const card = cards.find((item) => item.id === input.cardId);
 
       if (!card) {
@@ -77,11 +94,12 @@ export async function POST(request: Request, { params }: RouteContext) {
         sourceType: input.sourceType,
         requestedVerificationStatus: input.verificationStatus,
         price: input.price,
-        imageUrl: input.imageUrl,
-        evidenceImages: input.evidenceImages,
+        imageUrl: evidenceImages[0]?.url,
+        evidenceImages,
         notes: input.notes,
         status: 'pending',
         submittedAt,
+        consentAt: new Date(session.exp - 3600000).toISOString(),
         duplicateOf: duplicateCandidates[0]?.id,
         duplicateSubmissionIds: duplicateCandidates.map((candidate) => candidate.id),
       };
@@ -98,7 +116,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       { status: 202 }
     );
   } catch (error) {
-    if (error instanceof TrackerStoreError) return NextResponse.json({ message: error.message }, { status: error.status });
+    if (error instanceof TrackerStoreError || error instanceof EvidenceUploadError) return NextResponse.json({ message: error.message }, { status: error.status });
     console.error('Error queueing submission:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }

@@ -16,12 +16,11 @@ describe('validateDiscoverySubmission', () => {
       cardId: '7',
       foundBy: '  Collector One  ',
       dateFound: '2026-06-30',
-      link: 'https://example.com/source',
+      link: 'https://www.ebay.com/itm/123456789012?tracking=abc',
       sourceType: 'marketplace',
       verificationStatus: 'confirmed',
       price: '1234.56',
-      imageUrl: 'https://example.com/image-a.jpg',
-      evidenceImageUrls: 'https://example.com/image-b.jpg, https://example.com/image-a.jpg',
+      evidenceAssetIds: ['00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001'],
       notes: '  Looks legitimate.  ',
     }, 100);
 
@@ -30,17 +29,14 @@ describe('validateDiscoverySubmission', () => {
       cardId: 7,
       foundBy: 'Collector One',
       dateFound: '2026-06-30',
-      link: 'https://example.com/source',
+      link: 'https://www.ebay.com/itm/123456789012',
       sourceType: 'marketplace',
       verificationStatus: 'confirmed',
       price: 1234.56,
-      imageUrl: 'https://example.com/image-a.jpg',
       notes: 'Looks legitimate.',
     });
-    expect(result.value.evidenceImages).toEqual([
-      { url: 'https://example.com/image-a.jpg' },
-      { url: 'https://example.com/image-b.jpg' },
-    ]);
+    expect(result.value).not.toHaveProperty('evidenceImages');
+    expect(result.value.evidenceAssetIds).toEqual(['00000000-0000-4000-8000-000000000001']);
   });
 
   it('rejects invalid serials, urls, prices, and missing evidence', () => {
@@ -55,12 +51,10 @@ describe('validateDiscoverySubmission', () => {
 
     expect(result.errors).toEqual(expect.arrayContaining([
       'Serial slot must be between 1 and 100.',
-      'Source link must be a valid http(s) URL.',
       'Source type is not valid.',
       'Evidence level is not valid.',
       'Sale price must be a non-negative number.',
-      'Primary image URL must be a valid http(s) URL.',
-      'Evidence image URLs must be valid http(s) URLs.',
+      'External image URLs are not accepted. Upload evidence files instead.',
     ]));
   });
 
@@ -86,12 +80,12 @@ describe('validateDiscoverySubmission', () => {
   });
 
   it('caps evidence images', () => {
-    const evidenceImageUrls = Array.from({ length: 9 }, (_, index) => `https://example.com/${index}.jpg`).join('\n');
+    const evidenceAssetIds = Array.from({ length: 9 }, () => '00000000-0000-4000-8000-000000000001');
     const result = validateDiscoverySubmission({
       cardId: '10',
-      evidenceImageUrls,
+      evidenceAssetIds,
     }, 100);
 
-    expect(result.errors).toContain('Please submit no more than 8 evidence image URLs.');
+    expect(result.errors).toContain('Include no more than 8 valid uploaded evidence IDs.');
   });
 });

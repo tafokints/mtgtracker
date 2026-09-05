@@ -11,12 +11,14 @@ import { getPromoteNextRecommendation } from '@/lib/promotion-recommendations';
 import { getTrackerGrowthRecommendations } from '@/lib/tracker-growth-recommendations';
 import { getMarketplaceCtaRecommendations } from '@/lib/marketplace-cta-recommendations';
 import ExternalImage from '@/components/ExternalImage';
+import { evidenceIdFromUrl, normalizeSourceUrl } from '@/lib/evidence-policy';
+import ReviewSourceLink from '@/components/ReviewSourceLink';
 
 interface AdminPanelProps {
   tracker: TrackerSummary;
   cards: SerializedRingCard[];
   onPriceUpdate: (cardId: number, price: number) => void;
-  onImageUpdate: (cardId: number, imageUrl: string) => void;
+  onImageUpdate: (cardId: number, imageUrl: string) => Promise<void>;
   onGradingUpdate: (cardId: number, grading: GradingInfo) => void;
   onPriceHistoryAdd: (cardId: number, entry: PriceHistoryEntry) => void;
   onRefresh: () => void;
@@ -543,6 +545,7 @@ export default function AdminPanel({
   const [activeTab, setActiveTab] = useState<AdminTab>('review');
   const [submissions, setSubmissions] = useState<DiscoverySubmission[]>([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  const [retryingEvidence, setRetryingEvidence] = useState<string>();
   const [affiliateStats, setAffiliateStats] = useState<AffiliateStatsResponse | null>(null);
   const [affiliateStatsLoading, setAffiliateStatsLoading] = useState(false);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
@@ -919,28 +922,19 @@ export default function AdminPanel({
     setSelectedCard(null);
   };
 
-  const handleImageUpdate = () => {
+  const handleImageUpdate = async () => {
     if (!selectedCard || !imageUrl) {
-      setMessage('Please select a card and enter an image URL');
+      setMessage('Please select a card and approved evidence image');
       return;
     }
 
-    // Accept absolute URLs and relative URLs starting with '/' (v2)
-    const isValidUrl = (() => {
-      if (imageUrl.startsWith('/')) return true;
-      try {
-        new URL(imageUrl);
-        return true;
-      } catch {
-        return false;
-      }
-    })();
-    if (!isValidUrl) {
-      setMessage('Please enter a valid image URL');
+    if (!evidenceIdFromUrl(imageUrl)) {
+      setMessage('Choose an approved evidence image');
       return;
     }
 
-    onImageUpdate(selectedCard, imageUrl);
+    try { await onImageUpdate(selectedCard, imageUrl); }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Image update failed'); return; }
     const card = cards.find((candidate) => candidate.id === selectedCard);
     setMessage(`Image updated for ${card ? formatTrackerCardLabel(tracker, card) : serialLabel(formatTrackerSerial(tracker, selectedCard))}`);
     setImageUrl('');
@@ -1285,9 +1279,7 @@ export default function AdminPanel({
                     {submission.link && (
                       <p>
                         Source:{' '}
-                        <a href={submission.link} target="_blank" rel="noopener noreferrer" className="text-ring-gold hover:underline">
-                          Open
-                        </a>
+                        <ReviewSourceLink tracker={tracker.slug} reportId={submission.id} url={submission.link} />
                       </p>
                     )}
                     {submission.notes && <p>Notes: {submission.notes}</p>}
@@ -1295,16 +1287,26 @@ export default function AdminPanel({
 
                   {(submission.evidenceImages || []).length > 0 && (
                     <div className="grid grid-cols-2 gap-2">
-                      {(submission.evidenceImages || []).slice(0, 4).map((image) => (
-                        <a key={image.url} href={image.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded border border-ring-gold/30 bg-ring-light/10">
-                          <ExternalImage
-                            src={image.url}
-                            alt={`Evidence for ${submissionLabel(submission)}`}
-                            className="h-28 w-full object-cover"
-                            hideOnError
-                          />
-                        </a>
-                      ))}
+                      {(submission.evidenceImages || []).map((image) => {
+                        const id = evidenceIdFromUrl(image.url);
+                        const safety = submission.evidenceSafety?.find((item) => item.url === image.url);
+                        return <div key={image.url} className="min-w-0 rounded border border-ring-gold/30 p-2 text-xs">
+                          {id && safety?.status === 'clean' ? <a href={image.url} target="_blank" rel="noopener noreferrer">
+                            <ExternalImage src={image.url} alt={`Evidence for ${submissionLabel(submission)}`} className="h-28 w-full object-contain" />
+                          </a> : <p className="flex min-h-28 items-center justify-center text-amber-200">{safety?.status === 'flagged' ? 'Evidence held by safety checks' : 'Preview withheld until checks pass'}</p>}
+                          <p className="mt-2 break-words text-ring-light/70">{safety?.reason?.replaceAll('-', ' ') || 'Legacy evidence requires a new upload'}</p>
+                          {id && ['pending', 'error'].includes(safety?.status || '') && <button type="button" disabled={Boolean(retryingEvidence)} className="mt-2 text-ring-gold underline disabled:opacity-50" onClick={async () => {
+                            setRetryingEvidence(id);
+                            try {
+                              const response = await fetch(image.url, { method: 'POST' });
+                              const data = await response.json();
+                              if (response.ok) await fetchSubmissions();
+                              setMessage(response.ok ? `Safety check: ${data.scan?.status || 'pending'}` : data.message || 'Retry failed');
+                            } catch { setMessage('Retry unavailable'); }
+                            finally { setRetryingEvidence(undefined); }
+                          }}>{retryingEvidence === id ? 'Checking...' : 'Retry safety checks'}</button>}
+                        </div>;
+                      })}
                     </div>
                   )}
 
@@ -1325,9 +1327,7 @@ export default function AdminPanel({
                                 {new Date(candidate.submittedAt).toLocaleString()} - {(candidate.evidenceImages || []).length + (candidate.imageUrl ? 1 : 0)} image{(candidate.evidenceImages || []).length + (candidate.imageUrl ? 1 : 0) === 1 ? '' : 's'}
                               </span>
                               {candidate.link && (
-                                <a href={candidate.link} target="_blank" rel="noopener noreferrer" className="text-ring-gold hover:underline">
-                                  Open source
-                                </a>
+                                <span className="break-all text-ring-light/70">{candidate.link}</span>
                               )}
                             </span>
                           </label>
@@ -1337,14 +1337,15 @@ export default function AdminPanel({
                   )}
 
                   <div>
-                    <label className="block text-ring-gold text-xs font-bold mb-1">Primary image override</label>
-                    <input
-                      type="url"
+                    <label className="block text-ring-gold text-xs font-bold mb-1">Primary evidence image</label>
+                    <select
                       value={imageOverrides[submission.id] || ''}
                       onChange={(event) => setImageOverrides({ ...imageOverrides, [submission.id]: event.target.value })}
-                      placeholder={submission.imageUrl || submission.evidenceImages?.[0]?.url || 'Optional URL'}
                       className="w-full bg-ring-light text-ring-dark border border-ring-gold rounded py-2 px-3 text-sm"
-                    />
+                    >
+                      <option value="">First approved attachment</option>
+                      {(submission.evidenceImages || []).filter((image) => evidenceIdFromUrl(image.url)).map((image, index) => <option key={image.url} value={image.url}>Evidence {index + 1}</option>)}
+                    </select>
                   </div>
 
                   <div>
@@ -1373,6 +1374,7 @@ export default function AdminPanel({
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <button
                       onClick={() => reviewSubmission(submission, 'approve')}
+                      disabled={(submission.evidenceImages || []).some((image) => !evidenceIdFromUrl(image.url) || submission.evidenceSafety?.find((item) => item.url === image.url)?.status !== 'clean')}
                       className="bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-3 rounded text-sm"
                     >
                       Approve
@@ -1533,8 +1535,8 @@ export default function AdminPanel({
                           {SUBMISSION_STATUS_LABELS[submission.status]}
                         </span>
                       </div>
-                      {submission.link && (
-                        <a href={submission.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-ring-gold hover:underline">
+                      {submission.status === 'approved' && normalizeSourceUrl(submission.link) && (
+                        <a href={normalizeSourceUrl(submission.link)} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-ring-gold hover:underline">
                           Open source
                         </a>
                       )}
@@ -1887,15 +1889,16 @@ export default function AdminPanel({
           {activeTab === 'image' && (
             <div>
               <label className="block text-ring-gold text-sm font-bold mb-2">
-                Image URL
+                Approved evidence image
               </label>
-              <input
-                type="url"
+              <select
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://example.com/image.jpg"
                 className="w-full bg-ring-light text-ring-dark border border-ring-gold rounded py-2 px-3"
-              />
+              >
+                <option value="">Select evidence</option>
+                {(cards.find((card) => card.id === selectedCard)?.evidenceImages || []).filter((image) => evidenceIdFromUrl(image.url)).map((image, index) => <option key={image.url} value={image.url}>Evidence {index + 1}</option>)}
+              </select>
               <button
                 onClick={handleImageUpdate}
                 className="w-full bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-4 rounded mt-2"

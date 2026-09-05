@@ -1,15 +1,16 @@
-import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { getTracker } from '@/lib/trackers';
-import { randomUUID } from 'node:crypto';
 import { EvidenceUploadError, prepareEvidenceImage, readEvidenceFile } from '@/lib/evidence-upload';
+import { readSubmissionSession } from '@/lib/submission-session';
+import { storeEvidence } from '@/lib/evidence-store';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 type RouteContext = {
   params: Promise<{ slug: string }>;
@@ -27,6 +28,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   try {
+    const session = readSubmissionSession(request, slug);
     const redis = getRedis();
     const clientIp = getClientIp(request);
     const rateLimit = await checkRateLimit(redis, {
@@ -46,36 +48,31 @@ export async function POST(request: Request, { params }: RouteContext) {
       key: 'rate-limit:upload:site', limit: 500, windowSeconds: 24 * 60 * 60,
     });
     if (!budget.allowed) {
-      return NextResponse.json({ message: 'Daily upload capacity reached. Please use an evidence URL or try again later.' }, {
+      return NextResponse.json({ message: 'Daily upload capacity reached. Please try again later.' }, {
         status: 429, headers: { 'Retry-After': '86400' },
       });
     }
 
+    const sessionLimit = await checkRateLimit(redis, { key: `rate-limit:upload-session:${session.id}`, limit: 8, windowSeconds: 3600 });
+    if (!sessionLimit.allowed) return NextResponse.json({ message: 'This report has reached its upload limit. Submit it or verify a new report.' }, { status: 429 });
+
     const file = await readEvidenceFile(request);
     const image = await prepareEvidenceImage(file);
 
-    const blob = await put(
-      `trackers/${tracker.slug}/evidence/${randomUUID()}.${image.extension}`,
-      image.data,
-      {
-        access: 'public',
-        addRandomSuffix: true,
-        contentType: image.contentType,
-      }
-    );
+    const asset = await storeEvidence(redis, session, image);
 
     return NextResponse.json({
-      url: blob.url,
-      pathname: blob.pathname,
+      assetId: asset.id,
+      safetyStatus: asset.scan.status,
       contentType: image.contentType,
       size: image.data.byteLength,
       width: image.width,
       height: image.height,
       remaining: rateLimit.remaining,
-    });
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof EvidenceUploadError) return NextResponse.json({ message: error.message }, { status: error.status });
-    console.error('Error uploading evidence image:', error);
+    console.error('Evidence upload failed');
     return NextResponse.json({ message: 'Image upload failed' }, { status: 500 });
   }
 }

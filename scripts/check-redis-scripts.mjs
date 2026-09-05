@@ -8,8 +8,9 @@ import { Redis } from '@upstash/redis';
 const url = 'http://127.0.0.1:8079';
 assert.equal((await (await fetch(url)).json()).fixture, 'mtgtrackers-isolated-redis');
 const redis = new Redis({ url, token: 'fixture-only', enableAutoPipelining: false, responseEncoding: false });
-const source = ts.createSourceFile('tracker-store.ts', readFileSync(new URL('../src/lib/tracker-store.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
 const scripts = {};
+for (const file of ['tracker-store.ts', 'evidence-store.ts', 'rate-limit.ts']) {
+const source = ts.createSourceFile(file, readFileSync(new URL(`../src/lib/${file}`, import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
 for (const statement of source.statements) {
   if (!ts.isVariableStatement(statement)) continue;
   for (const declaration of statement.declarationList.declarations) {
@@ -18,8 +19,11 @@ for (const statement of source.statements) {
     }
   }
 }
+}
 const prefix = `fixture:${randomUUID()}`;
 const keys = [`${prefix}:cards`, `${prefix}:submissions`, `${prefix}:active`];
+const evidenceKey = `${prefix}:evidence`;
+const rateKey = `${prefix}:rate`;
 const slug = 'card-brr-98z';
 const oldCards = JSON.stringify([{ id: 1, found: false }]);
 const newCards = JSON.stringify([{ id: 1, found: true }]);
@@ -49,7 +53,20 @@ try {
 
   // Featured trackers have two keys and must retain the same CAS behavior.
   assert.equal(await redis.eval(scripts.COMMIT_TRACKER_STATE, keys.slice(0, 2), [oldCards, '[]', newCards, reports]), 1);
-  console.log('PASS: actual Upstash SDK + Lua read/CAS conflict/restore/activity index/type-error atomicity; isolated local data only.');
+  await redis.set(evidenceKey, { id: 'fixture', scan: { status: 'pending' }, sha256: 'immutable-hash' });
+  assert.equal(await redis.eval(scripts.COMMIT_EVIDENCE_SCAN, [evidenceKey], [JSON.stringify({ status: 'error' })]), 1);
+  assert.equal(await redis.eval(scripts.COMMIT_EVIDENCE_SCAN, [evidenceKey], [JSON.stringify({ status: 'clean' })]), 1);
+  assert.equal(await redis.eval(scripts.COMMIT_EVIDENCE_SCAN, [evidenceKey], [JSON.stringify({ status: 'flagged' })]), 0);
+  assert.deepEqual(await redis.get(evidenceKey), { id: 'fixture', scan: { status: 'clean' }, sha256: 'immutable-hash' });
+  await redis.set(evidenceKey, { scan: { status: 'flagged' } });
+  assert.equal(await redis.eval(scripts.COMMIT_EVIDENCE_SCAN, [evidenceKey], [JSON.stringify({ status: 'clean' })]), 0);
+  const counts = await Promise.all([0, 1, 2].map(() => redis.eval(scripts.BOUNDED_RATE_LIMIT, [rateKey], [3600])));
+  assert.deepEqual(counts.sort(), [1, 2, 3]);
+  assert.ok(await redis.ttl(rateKey) > 0);
+  await redis.persist(rateKey);
+  assert.equal(await redis.eval(scripts.BOUNDED_RATE_LIMIT, [rateKey], [3600]), 4);
+  assert.ok(await redis.ttl(rateKey) > 0);
+  console.log('PASS: actual Upstash SDK + Lua read/CAS/restore/activity index, immutable evidence scan results, and atomic rate-limit expiry; isolated local data only.');
 } finally {
-  await redis.del(...keys);
+  await redis.del(...keys, evidenceKey, rateKey);
 }

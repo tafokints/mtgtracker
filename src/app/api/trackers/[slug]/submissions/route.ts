@@ -4,16 +4,20 @@ import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
-import { isSafeImageUrl } from '@/lib/admin-validation';
+import { evidenceIdFromUrl } from '@/lib/evidence-policy';
+import { assertReportEvidenceClean, evidenceKey, type EvidenceAsset } from '@/lib/evidence-store';
+import { checkSourceReputation } from '@/lib/evidence-scanning';
+import { EvidenceUploadError } from '@/lib/evidence-upload';
 import {
   applyApprovedSubmission,
   getTrackerSubmissions,
   sortSubmissions,
 } from '@/lib/tracker-data';
-import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
+import { getTrackerState, mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const maxDuration = 60;
 
 const VERIFICATION_STATUSES: VerificationStatus[] = ['unverified', 'source-linked', 'confirmed'];
 const REVIEW_ACTION_TO_STATUS = {
@@ -53,7 +57,17 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       ? submissions.filter((submission) => submission.status === status)
       : submissions;
 
-    return NextResponse.json(sortSubmissions(filteredSubmissions));
+    const results = [];
+    for (const submission of sortSubmissions(filteredSubmissions)) {
+      const evidenceSafety = [];
+      for (const image of submission.evidenceImages || []) {
+        const id = evidenceIdFromUrl(image.url);
+        const asset = id ? await redis.get<EvidenceAsset>(evidenceKey(id)) : null;
+        evidenceSafety.push({ url: image.url, status: asset?.scan.status || 'pending', reason: asset?.scan.reason || 'legacy-evidence-requires-upload' });
+      }
+      results.push({ ...submission, evidenceSafety });
+    }
+    return NextResponse.json(results, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     console.error('Error fetching submissions:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
@@ -93,7 +107,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (
       (input.reviewedBy !== undefined && (typeof input.reviewedBy !== 'string' || input.reviewedBy.length > 120)) ||
       (input.reviewNotes !== undefined && (typeof input.reviewNotes !== 'string' || input.reviewNotes.length > 5000)) ||
-      (input.imageUrl !== undefined && !isSafeImageUrl(input.imageUrl)) ||
+      (input.imageUrl !== undefined && !evidenceIdFromUrl(input.imageUrl)) ||
       (input.verificationStatus !== undefined && !VERIFICATION_STATUSES.includes(input.verificationStatus as VerificationStatus)) ||
       (input.mergeSubmissionIds !== undefined && (
         !Array.isArray(input.mergeSubmissionIds) || input.mergeSubmissionIds.length > 100 ||
@@ -110,6 +124,27 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const mergeSubmissionIds = Array.isArray(input.mergeSubmissionIds)
       ? input.mergeSubmissionIds.filter((id): id is string => typeof id === 'string')
       : [];
+
+    const checkedReports = new Map<string, string>();
+    if (action === 'approve') {
+      if (mergeSubmissionIds.length > 8) return NextResponse.json({ message: 'Merge no more than eight reports at once' }, { status: 400 });
+      const snapshot = await getTrackerState(redis, tracker);
+      const primary = snapshot.submissions.find((report) => report.id === submissionId);
+      if (!primary) return NextResponse.json({ message: 'Submission not found' }, { status: 404 });
+      if (primary.status !== 'pending') return NextResponse.json({ message: 'Submission has already been reviewed' }, { status: 409 });
+      const reports = [primary, ...snapshot.submissions.filter((report) => report.id !== primary.id && mergeSubmissionIds.includes(report.id) && report.cardId === primary.cardId && report.status === 'pending')];
+      const allowedImages: string[] = [];
+      const checkedLinks = new Set<string>();
+      for (const report of reports) {
+        allowedImages.push(...await assertReportEvidenceClean(redis, slug, report));
+        if (report.link && !checkedLinks.has(report.link)) {
+          await checkSourceReputation(report.link);
+          checkedLinks.add(report.link);
+        }
+        checkedReports.set(report.id, JSON.stringify(report));
+      }
+      if (input.imageUrl && !allowedImages.includes(input.imageUrl as string)) return NextResponse.json({ message: 'Choose an image attached to these reports' }, { status: 400 });
+    }
 
     const reviewedSubmission = await mutateTrackerState(redis, tracker, ({ cards, submissions }) => {
       const submissionIndex = submissions.findIndex((submission) => submission.id === submissionId);
@@ -144,6 +179,9 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
           candidate.cardId === submission.cardId &&
           candidate.status === 'pending'
         ));
+        for (const candidate of [submission, ...mergedEvidenceSubmissions]) {
+          if (checkedReports.get(candidate.id) !== JSON.stringify(candidate)) throw new TrackerStoreError('Report changed during safety checks. Please retry.', 409);
+        }
         const applied = applyApprovedSubmission(tracker, cards, submission, {
           imageUrl: typeof input.imageUrl === 'string' ? input.imageUrl : undefined,
           verificationStatus,
@@ -176,7 +214,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     return NextResponse.json({ success: true, submission: reviewedSubmission });
   } catch (error) {
-    if (error instanceof TrackerStoreError) return NextResponse.json({ message: error.message }, { status: error.status });
+    if (error instanceof TrackerStoreError || error instanceof EvidenceUploadError) return NextResponse.json({ message: error.message }, { status: error.status });
     console.error('Error reviewing submission:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }

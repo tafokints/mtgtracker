@@ -4,6 +4,9 @@ import { ADMIN_COOKIE_NAME, createAdminSession } from '@/lib/admin-auth';
 import { buildAmazonSearchUrl, buildTrackerEbaySearchUrl, getSerialAffiliateLinks, getTracker } from '@/lib/trackers';
 import sharp from 'sharp';
 import { ACTIVE_PRINTING_TRACKERS_KEY } from '@/lib/tracker-store';
+import { createSubmissionSession } from '@/lib/submission-session';
+import { evidenceUrl } from '@/lib/evidence-policy';
+import { evidenceKey, type EvidenceAsset } from '@/lib/evidence-store';
 
 const redisFixture = vi.hoisted(() => {
   const store = new Map<string, unknown>();
@@ -25,6 +28,17 @@ const redisFixture = vi.hoisted(() => {
         return 'OK';
       },
       async eval(script: string, keys: string[], args: string[]) {
+        if (script.includes('-- bounded rate limit')) {
+          const count = (counters.get(keys[0]) || 0) + 1;
+          counters.set(keys[0], count);
+          return count;
+        }
+        if (script.includes('-- commit evidence scan')) {
+          const asset = store.get(keys[0]) as { scan: { status: string } } | undefined;
+          if (!asset || ['clean', 'flagged'].includes(asset.scan.status)) return 0;
+          asset.scan = JSON.parse(args[0]);
+          return 1;
+        }
         const raw = (key: string) => store.has(key) ? JSON.stringify(store.get(key)) : null;
         if (script.includes('-- restore printing')) {
           store.set(keys[0], JSON.parse(args[0]));
@@ -61,11 +75,24 @@ const redisFixture = vi.hoisted(() => {
   };
 });
 
-const blobFixture = vi.hoisted(() => ({
-  put: vi.fn(async (pathname: string) => ({
-    url: `https://blob.vercel-storage.com/${pathname}`,
-    pathname,
-  })),
+const blobFixture = vi.hoisted(() => {
+  const files = new Map<string, Buffer>();
+  return {
+    files,
+    put: vi.fn(async (pathname: string, data: Buffer) => {
+      files.set(pathname, data);
+      return { url: `https://fixture.private.blob.vercel-storage.com/${pathname}`, pathname };
+    }),
+    get: vi.fn(async (pathname: string) => {
+      const bytes = files.get(pathname);
+      if (!bytes) return null;
+      return { statusCode: 200, stream: new Response(new Uint8Array(bytes)).body, blob: { size: bytes.length } };
+    }),
+  };
+});
+const scanFixture = vi.hoisted(() => ({ scan: vi.fn(async () => ({ status: 'clean', reason: 'checks-passed', policyVersion: 1 })) }));
+vi.mock('@/lib/evidence-scanning', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/evidence-scanning')>(), scanEvidenceImage: scanFixture.scan,
 }));
 
 vi.mock('@/lib/redis', () => ({
@@ -74,6 +101,7 @@ vi.mock('@/lib/redis', () => ({
 
 vi.mock('@vercel/blob', () => ({
   put: blobFixture.put,
+  get: blobFixture.get,
 }));
 
 import { POST as submitDiscovery } from '@/app/api/trackers/[slug]/submit/route';
@@ -95,6 +123,9 @@ import { GET as readCards } from '@/app/api/trackers/[slug]/cards/route';
 import { GET as readSubmissions } from '@/app/api/trackers/[slug]/submissions/route';
 import { GET as readSession, DELETE as logoutAdmin } from '@/app/api/admin/login/route';
 import { createInitialTrackerCards } from '@/lib/tracker-data';
+import { GET as readEvidence, POST as retryEvidence } from '@/app/api/evidence/[id]/route';
+import { POST as startSubmissionSession } from '@/app/api/trackers/[slug]/submission-session/route';
+import { POST as checkReportSource } from '@/app/api/trackers/[slug]/submissions/[id]/source/route';
 
 const tracker = getTracker('one-ring');
 
@@ -108,18 +139,19 @@ function routeContext(slug = 'one-ring') {
   };
 }
 
-function submitRequest(body: unknown, ip = '203.0.113.7') {
+function submitRequest(body: unknown, ip = '203.0.113.7', token?: string, slug = 'one-ring') {
   return new Request('https://mtgtrackers.com/api/trackers/one-ring/submit', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       'x-forwarded-for': ip,
+      'x-submission-token': token ?? (process.env.ADMIN_SESSION_SECRET ? createSubmissionSession(slug, Number((body as { cardId?: unknown })?.cardId) || 7).token : ''),
     },
     body: typeof body === 'string' ? body : JSON.stringify(body),
   });
 }
 
-function uploadRequest(file: File, ip = '203.0.113.7') {
+function uploadRequest(file: File, ip = '203.0.113.7', token = createSubmissionSession('one-ring', 7).token) {
   const formData = new FormData();
   formData.set('file', file);
 
@@ -127,6 +159,7 @@ function uploadRequest(file: File, ip = '203.0.113.7') {
     method: 'POST',
     headers: {
       'x-forwarded-for': ip,
+      'x-submission-token': token,
     },
     body: formData,
   });
@@ -222,30 +255,34 @@ async function json(response: Response) {
   return response.json() as Promise<Record<string, unknown>>;
 }
 
-async function submitValidDiscovery(cardId = 7, ip = '203.0.113.7', overrides: Record<string, unknown> = {}) {
+async function submitValidDiscovery(cardId = 7, ip = '203.0.113.7', overrides: Record<string, unknown> = {}, token?: string) {
   const response = await submitDiscovery(submitRequest({
     cardId,
     foundBy: 'Collector',
     dateFound: '2026-06-30',
-    link: 'https://example.com/source',
+    link: 'https://www.ebay.com/itm/123456789012',
     sourceType: 'marketplace',
     verificationStatus: 'source-linked',
     price: '1200',
-    imageUrl: 'https://example.com/card.jpg',
     notes: 'Looks real.',
     ...overrides,
-  }, ip), routeContext());
+  }, ip, token), routeContext());
 
   const body = await json(response);
   return { response, body };
 }
 
 describe('tracker API routes', () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
   beforeEach(() => {
     redisFixture.store.clear();
     redisFixture.counters.clear();
     blobFixture.put.mockClear();
+    blobFixture.get.mockClear();
+    blobFixture.files.clear();
+    scanFixture.scan.mockReset().mockResolvedValue({ status: 'clean', reason: 'checks-passed', policyVersion: 1 });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 200 })));
+    process.env.GOOGLE_WEB_RISK_API_KEY = 'fixture-key';
     process.env.ADMIN_PASSWORD = 'test-admin-password';
     process.env.ADMIN_SESSION_SECRET = 'test-admin-secret';
     process.env.BLOB_READ_WRITE_TOKEN = 'test-blob-token';
@@ -274,6 +311,136 @@ describe('tracker API routes', () => {
       cardId: 7,
       status: 'pending',
     });
+  });
+
+  it('requires a verified report session for public submissions and uploads', async () => {
+    const report = submitRequest({ cardId: 7, notes: 'test' }, undefined, '');
+    expect((await submitDiscovery(report, routeContext())).status).toBe(403);
+    expect((await uploadEvidenceImage(uploadRequest(await realImage(), undefined, ''), routeContext())).status).toBe(403);
+    expect(blobFixture.put).not.toHaveBeenCalled();
+    expect(redisFixture.store.size).toBe(0);
+  });
+
+  it('issues report permissions only after server verification and explicit consent', async () => {
+    process.env.TURNSTILE_SECRET_KEY = 'fixture-key';
+    process.env.TURNSTILE_ALLOWED_HOSTNAMES = 'mtgtrackers.com';
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ success: true, hostname: 'mtgtrackers.com', action: 'discovery' })));
+    const missingConsent = await startSubmissionSession(submitRequest({ cardId: 7, turnstileToken: 'fixture' }), routeContext());
+    expect(missingConsent.status).toBe(400);
+    const valid = await startSubmissionSession(submitRequest({ cardId: 7, turnstileToken: 'fixture', consent: true }), routeContext());
+    expect(valid.status).toBe(200);
+    expect(await valid.json()).toMatchObject({ token: expect.any(String), expiresAt: expect.any(Number) });
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ success: false, 'error-codes': ['timeout-or-duplicate'] })));
+    expect((await startSubmissionSession(submitRequest({ cardId: 7, turnstileToken: 'fixture', consent: true }), routeContext())).status).toBe(403);
+  });
+
+  it('checks only the stored source for an authenticated moderator', async () => {
+    const { body } = await submitValidDiscovery();
+    const context = { params: Promise.resolve({ slug: 'one-ring', id: String(body.submissionId) }) };
+    expect((await checkReportSource(new Request('https://mtgtrackers.com', { method: 'POST' }), context)).status).toBe(401);
+    const response = await checkReportSource(reviewRequest({ url: 'https://evil.test' }), context);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ url: 'https://www.ebay.com/itm/123456789012' });
+  });
+
+  it('never serves a replaced Blob that does not match its content hash', async () => {
+    const upload = await (await uploadEvidenceImage(uploadRequest(await realImage()), routeContext())).json();
+    const asset = redisFixture.store.get(evidenceKey(upload.assetId)) as EvidenceAsset;
+    const changed = Buffer.from(blobFixture.files.get(asset.pathname)!);
+    changed[changed.length - 1] ^= 1;
+    blobFixture.files.set(asset.pathname, changed);
+    expect((await readEvidence(exportRequest(), { params: Promise.resolve({ id: asset.id }) })).status).toBe(503);
+  });
+
+  it('rejects arbitrary external images even from a verified session', async () => {
+    for (const fields of [{ imageUrl: 'https://example.com/a.jpg' }, { evidenceImageUrls: ['https://example.com/b.jpg'] }, { evidenceImages: [{ url: 'https://example.com/c.jpg' }] }]) {
+      expect((await submitValidDiscovery(7, undefined, fields)).response.status).toBe(400);
+    }
+    expect(redisFixture.store.size).toBe(0);
+  });
+
+  it('does not let another report claim an uploaded attachment', async () => {
+    const upload = await (await uploadEvidenceImage(uploadRequest(await realImage()), routeContext())).json();
+    expect((await submitValidDiscovery(7, undefined, { evidenceAssetIds: [upload.assetId] })).response.status).toBe(403);
+    expect(redisFixture.store.has(tracker.storage.submissionsKey)).toBe(false);
+  });
+
+  it('deduplicates retries with the same report session', async () => {
+    const token = createSubmissionSession('one-ring', 7).token;
+    const first = await submitValidDiscovery(7, undefined, {}, token);
+    const second = await submitValidDiscovery(7, undefined, {}, token);
+    expect(second.response.status).toBe(202);
+    expect(first.body.submissionId).toBe(second.body.submissionId);
+    expect(redisFixture.store.get(tracker.storage.submissionsKey)).toHaveLength(1);
+  });
+
+  it.each(['pending', 'error', 'flagged'])('keeps %s images private and blocks approval', async (status) => {
+    scanFixture.scan.mockResolvedValueOnce({ status, reason: 'fixture-hold', policyVersion: 1 });
+    const token = createSubmissionSession('one-ring', 7).token;
+    const upload = await (await uploadEvidenceImage(uploadRequest(await realImage(), undefined, token), routeContext())).json();
+    const report = await submitValidDiscovery(7, undefined, { evidenceAssetIds: [upload.assetId] }, token);
+    const context = { params: Promise.resolve({ id: upload.assetId }) };
+    expect((await readEvidence(exportRequest(), context)).status).toBe(404);
+    expect((await readEvidence(new Request('https://mtgtrackers.com'), context)).status).toBe(404);
+    expect((await reviewSubmission(reviewRequest({ submissionId: report.body.submissionId, action: 'approve' }), routeContext())).status).toBe(409);
+    expect((redisFixture.store.get(tracker.storage.cardsKey) as Array<{ found: boolean }>)[6].found).toBe(false);
+    expect((redisFixture.store.get(tracker.storage.submissionsKey) as Array<{ status: string }>)[0].status).toBe('pending');
+  });
+
+  it('retries unavailable scans only for admins and cannot override a terminal flag', async () => {
+    scanFixture.scan.mockResolvedValueOnce({ status: 'error', reason: 'fixture-outage', policyVersion: 1 });
+    const upload = await (await uploadEvidenceImage(uploadRequest(await realImage()), routeContext())).json();
+    const context = { params: Promise.resolve({ id: upload.assetId }) };
+    expect((await retryEvidence(new Request('https://mtgtrackers.com', { method: 'POST' }), context)).status).toBe(401);
+    const response = await retryEvidence(reviewRequest({}), context);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ scan: { status: 'clean' } });
+    expect((redisFixture.store.get(evidenceKey(upload.assetId)) as EvidenceAsset).scan.status).toBe('clean');
+    scanFixture.scan.mockClear();
+    await retryEvidence(reviewRequest({}), context);
+    expect(scanFixture.scan).not.toHaveBeenCalled();
+  });
+
+  it('does not publish a report when source screening is unavailable or flagged', async () => {
+    const { body } = await submitValidDiscovery();
+    delete process.env.GOOGLE_WEB_RISK_API_KEY;
+    expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext())).status).toBe(503);
+    process.env.GOOGLE_WEB_RISK_API_KEY = 'fixture-key';
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ threat: { threatTypes: ['MALWARE'] } })));
+    expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext())).status).toBe(409);
+    expect((redisFixture.store.get(tracker.storage.submissionsKey) as Array<{ status: string }>)[0].status).toBe('pending');
+  });
+
+  it('blocks stale approval if report evidence changes during source checks', async () => {
+    const { body } = await submitValidDiscovery();
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      const reports = redisFixture.store.get(tracker.storage.submissionsKey) as Array<{ link: string }>;
+      reports[0].link = 'https://evil.test/new-source';
+      return Response.json({});
+    }));
+    expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext())).status).toBe(409);
+    expect((redisFixture.store.get(tracker.storage.cardsKey) as Array<{ found: boolean }>)[6].found).toBe(false);
+  });
+
+  it('blocks cross-origin moderation requests even with a valid admin cookie', async () => {
+    const request = reviewRequest({ submissionId: 'test', action: 'approve' });
+    request.headers.set('origin', 'https://evil.test');
+    expect((await reviewSubmission(request, routeContext())).status).toBe(403);
+  });
+
+  it('enforces site-wide submission limits across different trackers', async () => {
+    redisFixture.counters.set('rate-limit:submit:203.0.113.7', 10);
+    const request = submitRequest({ cardId: 7, notes: 'test' }, undefined, undefined, 'edgar-markov');
+    expect((await submitDiscovery(request, routeContext('edgar-markov'))).status).toBe(429);
+    expect(redisFixture.store.has(getTracker('edgar-markov')!.storage.submissionsKey)).toBe(false);
+  });
+
+  it('bounds uploads for each signed session independently of IP changes', async () => {
+    const token = createSubmissionSession('one-ring', 7).token;
+    const id = JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString()).id;
+    redisFixture.counters.set(`rate-limit:upload-session:${id}`, 8);
+    expect((await uploadEvidenceImage(uploadRequest(await realImage(), '203.0.113.199', token), routeContext())).status).toBe(429);
+    expect(blobFixture.put).not.toHaveBeenCalled();
   });
 
   it.each([null, [], 'text', 1])('rejects non-object JSON bodies: %j', async (value) => {
@@ -305,13 +472,18 @@ describe('tracker API routes', () => {
   });
 
   it('preserves concurrent price and image edits', async () => {
+    const token = createSubmissionSession('one-ring', 7).token;
+    const uploaded = await (await uploadEvidenceImage(uploadRequest(await realImage(), undefined, token), routeContext())).json();
+    const url = evidenceUrl(uploaded.assetId);
+    const { body } = await submitValidDiscovery(7, undefined, { evidenceAssetIds: [uploaded.assetId] }, token);
+    expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext())).status).toBe(200);
     const responses = await Promise.all([
       updatePrice(reviewRequest({ cardId: 7, price: 1800 }), routeContext()),
-      updateImage(reviewRequest({ cardId: 7, imageUrl: 'https://example.com/new.jpg' }), routeContext()),
+      updateImage(reviewRequest({ cardId: 7, imageUrl: url }), routeContext()),
     ]);
     expect(responses.map((response) => response.status)).toEqual([200, 200]);
     const cards = redisFixture.store.get(tracker.storage.cardsKey) as unknown[];
-    expect(cards[6]).toMatchObject({ price: 1800, image: 'https://example.com/new.jpg' });
+    expect(cards[6]).toMatchObject({ price: 1800, image: url });
   });
 
   it('does not partially approve when the atomic commit fails', async () => {
@@ -370,7 +542,8 @@ describe('tracker API routes', () => {
 
     expect(response.status).toBe(200);
     expect(body).toMatchObject({
-      url: expect.stringContaining('https://blob.vercel-storage.com/trackers/one-ring/evidence/'),
+      assetId: expect.any(String),
+      safetyStatus: 'clean',
       contentType: 'image/webp',
       size: expect.any(Number),
       width: 24,
@@ -378,11 +551,11 @@ describe('tracker API routes', () => {
       remaining: 9,
     });
     expect(blobFixture.put).toHaveBeenCalledWith(
-      expect.stringMatching(/^trackers\/one-ring\/evidence\/[a-f0-9-]+\.webp$/),
+      expect.stringMatching(/^quarantine\/one-ring\/[a-f0-9-]+\.webp$/),
       expect.any(Buffer),
       expect.objectContaining({
-        access: 'public',
-        addRandomSuffix: true,
+        access: 'private',
+        addRandomSuffix: false,
         contentType: 'image/webp',
       })
     );
@@ -391,7 +564,10 @@ describe('tracker API routes', () => {
   it.each(['png', 'jpeg', 'webp'] as const)('decodes and stores real %s image bytes', async (format) => {
     const response = await uploadEvidenceImage(uploadRequest(await realImage(format)), routeContext());
     expect(response.status).toBe(200);
-    expect((await response.json()).pathname).not.toContain('private-owner-name');
+    const body = await response.json();
+    expect(body).not.toHaveProperty('pathname');
+    expect(body).not.toHaveProperty('url');
+    expect(blobFixture.put.mock.calls[0][0]).not.toContain('private-owner-name');
   });
 
   it.each([
@@ -409,7 +585,7 @@ describe('tracker API routes', () => {
     expect((await uploadEvidenceImage(uploadRequest(mismatch), routeContext())).status).toBe(400);
     const oversized = new File([new Uint8Array(4 * 1024 * 1024 + 1)], 'large.png', { type: 'image/png' });
     expect((await uploadEvidenceImage(uploadRequest(oversized), routeContext())).status).toBe(413);
-    const malformed = new Request('https://mtgtrackers.com/upload', { method: 'POST', headers: { 'content-type': 'multipart/form-data; boundary=missing' }, body: 'not multipart' });
+    const malformed = new Request('https://mtgtrackers.com/upload', { method: 'POST', headers: { 'content-type': 'multipart/form-data; boundary=missing', 'x-submission-token': createSubmissionSession('one-ring', 7).token }, body: 'not multipart' });
     expect((await uploadEvidenceImage(malformed, routeContext())).status).toBe(400);
     expect(blobFixture.put).not.toHaveBeenCalled();
   });
@@ -418,7 +594,7 @@ describe('tracker API routes', () => {
     const form = new FormData();
     const file = await realImage();
     form.append('file', file); form.append('file', file);
-    const duplicate = new Request('https://mtgtrackers.com/upload', { method: 'POST', body: form });
+    const duplicate = new Request('https://mtgtrackers.com/upload', { method: 'POST', headers: { 'x-submission-token': createSubmissionSession('one-ring', 7).token }, body: form });
     expect((await uploadEvidenceImage(duplicate, routeContext())).status).toBe(400);
     expect((await uploadEvidenceImage(submitRequest({ file: 'fake' }), routeContext())).status).toBe(415);
     expect(blobFixture.put).not.toHaveBeenCalled();
@@ -436,7 +612,7 @@ describe('tracker API routes', () => {
 
   it('enforces cross-tracker IP and site-wide upload limits', async () => {
     redisFixture.counters.set('rate-limit:upload:203.0.113.7', 10);
-    const response = await uploadEvidenceImage(uploadRequest(await realImage()), routeContext('card-brr-64z'));
+    const response = await uploadEvidenceImage(uploadRequest(await realImage(), undefined, createSubmissionSession('card-brr-64z', 7).token), routeContext('card-brr-64z'));
     expect(response.status).toBe(429);
     expect(response.headers.get('Retry-After')).toBe('3600');
     redisFixture.counters.clear();
@@ -446,8 +622,13 @@ describe('tracker API routes', () => {
   });
 
   it('runs upload -> pending report -> private review -> public read -> edits -> backup restore', async () => {
-    const uploaded = await (await uploadEvidenceImage(uploadRequest(await realImage()), routeContext())).json();
-    const { body } = await submitValidDiscovery(7, '203.0.113.7', { imageUrl: uploaded.url });
+    const token = createSubmissionSession('one-ring', 7).token;
+    const uploaded = await (await uploadEvidenceImage(uploadRequest(await realImage(), undefined, token), routeContext())).json();
+    uploaded.url = evidenceUrl(uploaded.assetId);
+    const { body } = await submitValidDiscovery(7, '203.0.113.7', { evidenceAssetIds: [uploaded.assetId] }, token);
+    const assetContext = { params: Promise.resolve({ id: uploaded.assetId }) };
+    expect((await readEvidence(new Request('https://mtgtrackers.com' + uploaded.url), assetContext)).status).toBe(404);
+    expect((await readEvidence(exportRequest(), assetContext)).status).toBe(200);
     const before = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
     expect(before[6]).toMatchObject({ found: false, pendingReports: 1 });
     const queueRequest = new NextRequest('https://mtgtrackers.com/submissions?status=pending', { headers: { cookie: `${ADMIN_COOKIE_NAME}=${createAdminSession()}` } });
@@ -455,6 +636,10 @@ describe('tracker API routes', () => {
     expect(queue).toHaveLength(1);
     expect(queue[0].id).toBe(body.submissionId);
     expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve', verificationStatus: 'confirmed' }), routeContext())).status).toBe(200);
+    const publicImage = await readEvidence(new Request('https://mtgtrackers.com' + uploaded.url), assetContext);
+    expect(publicImage.status).toBe(200);
+    expect(publicImage.headers.get('cache-control')).toContain('no-store');
+    expect(publicImage.headers.get('content-type')).toBe('image/webp');
     expect((await updateGrading(reviewRequest({ cardId: 7, grading: { service: 'PSA', grade: 9, dateGraded: '2026-08-01' } }), routeContext())).status).toBe(200);
     expect((await addPriceHistory(reviewRequest({ cardId: 7, entry: { price: 1200, date: '2026-08-02', soldBy: 'Fixture seller' } }), routeContext())).status).toBe(200);
     expect((await updatePrice(reviewRequest({ cardId: 7, price: '1250.50' }), routeContext())).status).toBe(200);
@@ -467,12 +652,15 @@ describe('tracker API routes', () => {
     expect((await importTrackerBackup(importRequest({ confirm: 'RESTORE_TRACKER_BACKUP', backup }), routeContext())).status).toBe(200);
     const restored = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
     expect(restored).toEqual(after);
+    const storedCards = redisFixture.store.get(tracker.storage.cardsKey) as Array<{ evidenceImages: unknown[] }>;
+    storedCards[6].evidenceImages = [];
+    expect((await readEvidence(new Request('https://mtgtrackers.com' + uploaded.url), assetContext)).status).toBe(404);
   });
 
   it('keeps generated printing records isolated and indexes activity on mutation/restore', async () => {
     const generated = getTracker('card-brr-64z')!;
     const other = getTracker('card-brr-65z')!;
-    const response = await submitDiscovery(submitRequest({ cardId: 500, notes: 'Isolated fixture' }), routeContext(generated.slug));
+    const response = await submitDiscovery(submitRequest({ cardId: 500, notes: 'Isolated fixture' }, undefined, undefined, generated.slug), routeContext(generated.slug));
     expect(response.status).toBe(202);
     expect(redisFixture.store.get(ACTIVE_PRINTING_TRACKERS_KEY)).toEqual([generated.slug]);
     expect(redisFixture.store.has(other.storage.cardsKey)).toBe(false);
@@ -1741,14 +1929,17 @@ describe('tracker API routes', () => {
   });
 
   it('approves a pending submission and updates the target card', async () => {
-    const { body } = await submitValidDiscovery(7);
+    const token = createSubmissionSession('one-ring', 7).token;
+    const upload = await (await uploadEvidenceImage(uploadRequest(await realImage(), undefined, token), routeContext())).json();
+    const url = evidenceUrl(upload.assetId);
+    const { body } = await submitValidDiscovery(7, undefined, { evidenceAssetIds: [upload.assetId] }, token);
     const response = await reviewSubmission(reviewRequest({
       submissionId: body.submissionId,
       action: 'approve',
       reviewedBy: 'admin',
       reviewNotes: 'Verified against source.',
       verificationStatus: 'confirmed',
-      imageUrl: 'https://example.com/admin-image.jpg',
+      imageUrl: url,
     }), routeContext());
     const cards = redisFixture.store.get(tracker.storage.cardsKey) as Array<{ id: number; found: boolean; verificationStatus: string; image?: string; price?: number }>;
     const submissions = redisFixture.store.get(tracker.storage.submissionsKey) as Array<{ id: string; status: string; reviewedBy?: string }>;
@@ -1758,7 +1949,7 @@ describe('tracker API routes', () => {
       id: 7,
       found: true,
       verificationStatus: 'confirmed',
-      image: 'https://example.com/admin-image.jpg',
+      image: url,
       price: 1200,
     });
     expect(submissions[0]).toMatchObject({
@@ -1769,14 +1960,18 @@ describe('tracker API routes', () => {
   });
 
   it('merges selected duplicate evidence when approving a submission', async () => {
+    const primaryToken = createSubmissionSession('one-ring', 10).token;
+    const duplicateToken = createSubmissionSession('one-ring', 10).token;
+    const uploads = [];
+    for (const token of [primaryToken, primaryToken, duplicateToken, duplicateToken]) {
+      uploads.push(await (await uploadEvidenceImage(uploadRequest(await realImage(), undefined, token), routeContext())).json());
+    }
     const primary = await submitValidDiscovery(10, '203.0.113.10', {
-      imageUrl: 'https://example.com/primary-card.jpg',
-      evidenceImageUrls: ['https://example.com/primary-evidence.jpg'],
-    });
+      evidenceAssetIds: uploads.slice(0, 2).map((asset) => asset.assetId),
+    }, primaryToken);
     const duplicate = await submitValidDiscovery(10, '203.0.113.11', {
-      imageUrl: 'https://example.com/duplicate-card.jpg',
-      evidenceImageUrls: ['https://example.com/duplicate-evidence.jpg'],
-    });
+      evidenceAssetIds: uploads.slice(2).map((asset) => asset.assetId),
+    }, duplicateToken);
     const response = await reviewSubmission(reviewRequest({
       submissionId: primary.body.submissionId,
       action: 'approve',
@@ -1797,19 +1992,19 @@ describe('tracker API routes', () => {
     expect(response.status).toBe(200);
     expect(cards[9].evidenceImages).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        url: 'https://example.com/primary-card.jpg',
+        url: evidenceUrl(uploads[0].assetId),
         sourceSubmissionId: primary.body.submissionId,
       }),
       expect.objectContaining({
-        url: 'https://example.com/primary-evidence.jpg',
+        url: evidenceUrl(uploads[1].assetId),
         sourceSubmissionId: primary.body.submissionId,
       }),
       expect.objectContaining({
-        url: 'https://example.com/duplicate-card.jpg',
+        url: evidenceUrl(uploads[2].assetId),
         sourceSubmissionId: duplicate.body.submissionId,
       }),
       expect.objectContaining({
-        url: 'https://example.com/duplicate-evidence.jpg',
+        url: evidenceUrl(uploads[3].assetId),
         sourceSubmissionId: duplicate.body.submissionId,
       }),
     ]));

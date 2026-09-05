@@ -390,12 +390,13 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
         body: JSON.stringify({ cardId, imageUrl }),
       });
 
-      if (response.ok) {
-        // Refresh the cards data
-        fetchCards();
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message || 'Image update failed');
       }
+      await fetchCards();
     } catch (error) {
-      console.error('Error updating image:', error);
+      throw error instanceof Error ? error : new Error('Image update failed');
     }
   };
 

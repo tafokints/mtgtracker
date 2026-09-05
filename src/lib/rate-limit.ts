@@ -6,6 +6,13 @@ interface RateLimitOptions {
   windowSeconds: number;
 }
 
+export const BOUNDED_RATE_LIMIT = `
+  -- bounded rate limit: increment and expiry must commit together
+  local count = redis.call('INCR', KEYS[1])
+  if redis.call('TTL', KEYS[1]) < 0 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
+  return count
+`;
+
 export function getClientIp(request: Request) {
   const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
 
@@ -18,11 +25,7 @@ export function getClientIp(request: Request) {
 }
 
 export async function checkRateLimit(redis: Redis, options: RateLimitOptions) {
-  const count = await redis.incr(options.key);
-
-  if (count === 1) {
-    await redis.expire(options.key, options.windowSeconds);
-  }
+  const count = await redis.eval<number[], number>(BOUNDED_RATE_LIMIT, [options.key], [options.windowSeconds]);
 
   return {
     allowed: count <= options.limit,

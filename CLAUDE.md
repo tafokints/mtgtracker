@@ -32,11 +32,12 @@ Read `TODO.md` for the current priority queue, `ARCHITECTURE.md` for invariants,
 - Preserve existing data and legacy keys. Never run destructive reset/import/restore tests against production.
 - Require admin authentication for privileged routes. Missing production credentials must fail closed.
 - Do not commit credentials, cookies, local environment files, database dumps, or private evidence.
-- Upload files are decoded/re-encoded and metadata-stripped before public Blob storage. Mocked storage tests do not prove cloud upload/read/delete. Detaching evidence is not deletion; retention is pending.
+- Upload files are decoded/re-encoded into private Blob storage, bound to a signed report session and exact serial. Reject arbitrary external evidence URLs. Pending/error/flagged safety checks must never be bypassed in review, merged evidence, or admin image overrides. The public evidence route additionally requires canonical approval and matching report ownership. See docs/EVIDENCE_SECURITY.md.
+- Mocked storage/scanner tests do not prove real cloud upload/read/delete or real content classification. Detaching evidence is not deletion; retention and asset/file backups are pending.
 
 ## Configuration
 
-Vercel uses the standalone Git repository root (`.`). Redis accepts either UPSTASH_REDIS_REST_URL/TOKEN or KV_REST_API_URL/TOKEN; use a write-capable REST token. Production admin sessions need ADMIN_PASSWORD and ADMIN_SESSION_SECRET. Uploads need BLOB_READ_WRITE_TOKEN.
+Vercel uses the standalone Git repository root (`.`). Redis accepts either UPSTASH_REDIS_REST_URL/TOKEN or KV_REST_API_URL/TOKEN; use a write-capable REST token. Production admin sessions need ADMIN_PASSWORD and ADMIN_SESSION_SECRET. Public reports require configured Turnstile; uploads require a private BLOB_READ_WRITE_TOKEN; image approval requires both scanners and source-linked approval requires Web Risk. Use .env.example and docs/EVIDENCE_SECURITY.md. Never enable public fallback uploads or a production challenge/scanner bypass.
 
 The user-approved TCGplayer redirect is generic: label it accordingly. Preserve affiliate IDs in configuration; do not invent tracking IDs or claim link checks prove commission credit. eBay/Amazon product queries must match the printing and distribution product. Official merchant reports are needed for earned revenue.
 

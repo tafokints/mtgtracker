@@ -4,7 +4,8 @@ import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
 import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
-import { isSafeImageUrl, parseCardId } from '@/lib/admin-validation';
+import { parseCardId } from '@/lib/admin-validation';
+import { evidenceIdFromUrl } from '@/lib/evidence-policy';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -32,8 +33,8 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     const numericCardId = parseCardId(cardId);
     if (!numericCardId) return NextResponse.json({ message: 'Valid card ID is required' }, { status: 400 });
-    if (!isSafeImageUrl(imageUrl)) {
-      return NextResponse.json({ message: 'Valid image URL is required' }, { status: 400 });
+    if (!evidenceIdFromUrl(imageUrl)) {
+      return NextResponse.json({ message: 'Choose approved uploaded evidence for this card' }, { status: 400 });
     }
 
     await mutateTrackerState(redis, tracker, ({ cards }) => {
@@ -43,7 +44,8 @@ export async function POST(request: Request, { params }: RouteContext) {
         throw new TrackerStoreError('Card not found', 404);
       }
 
-      cards[cardIndex].image = imageUrl;
+      if (!cards[cardIndex].evidenceImages?.some((image) => image.url === imageUrl)) throw new TrackerStoreError('Image must already be approved evidence for this card', 409);
+      cards[cardIndex].image = imageUrl as string;
     });
 
     return NextResponse.json({ message: 'Image updated successfully' });

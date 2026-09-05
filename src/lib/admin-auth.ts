@@ -86,6 +86,12 @@ export function isAdminRequest(request: Request) {
 }
 
 export function requireAdmin(request: Request) {
+  if (!['GET', 'HEAD'].includes(request.method)) {
+    const origin = request.headers.get('origin');
+    if (request.headers.get('sec-fetch-site') === 'cross-site' || (origin && origin !== new URL(request.url).origin)) {
+      return NextResponse.json({ message: 'Cross-origin admin requests are not allowed' }, { status: 403 });
+    }
+  }
   if (isAdminRequest(request)) return null;
 
   return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });

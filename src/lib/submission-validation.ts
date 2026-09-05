@@ -1,10 +1,10 @@
-import { EvidenceImage, SourceType, VerificationStatus } from './types';
+import { SourceType, VerificationStatus } from './types';
+import { EVIDENCE_ID, MAX_EVIDENCE_IMAGES, normalizeSourceUrl } from './evidence-policy';
 
 const SOURCE_TYPES: SourceType[] = ['marketplace', 'grading-pop', 'social', 'article', 'private-sale', 'other'];
 const VERIFICATION_STATUSES: VerificationStatus[] = ['unverified', 'source-linked', 'confirmed'];
 const MAX_NOTE_LENGTH = 1200;
 const MAX_NAME_LENGTH = 120;
-const MAX_EVIDENCE_IMAGES = 8;
 
 export interface ValidatedSubmissionInput {
   cardId: number;
@@ -14,35 +14,12 @@ export interface ValidatedSubmissionInput {
   sourceType: SourceType;
   verificationStatus: VerificationStatus;
   price?: number;
-  imageUrl?: string;
-  evidenceImages: EvidenceImage[];
+  evidenceAssetIds: string[];
   notes?: string;
 }
 
 function cleanString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
-}
-
-function isValidHttpUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
-function parseEvidenceUrls(rawValue: unknown, primaryImageUrl?: string) {
-  const values = Array.isArray(rawValue)
-    ? rawValue
-    : typeof rawValue === 'string'
-      ? rawValue.split(/\r?\n|,/)
-      : [];
-
-  return Array.from(new Set([
-    primaryImageUrl,
-    ...values.map((value) => cleanString(value)),
-  ].filter(Boolean) as string[]));
 }
 
 export function validateDiscoverySubmission(input: unknown, totalCards: number) {
@@ -65,9 +42,10 @@ export function validateDiscoverySubmission(input: unknown, totalCards: number) 
     errors.push('Date found must be a valid date.');
   }
 
-  const link = cleanString(body.link);
-  if (link && !isValidHttpUrl(link)) {
-    errors.push('Source link must be a valid http(s) URL.');
+  const rawLink = cleanString(body.link);
+  const link = normalizeSourceUrl(rawLink);
+  if (rawLink && !link) {
+    errors.push('Use a direct HTTPS eBay listing, TCGplayer product, Reddit/X/Instagram post, PSA/CGC certificate, or Wizards article. For other sources, leave this blank and include context in notes.');
   }
 
   const sourceType = cleanString(body.sourceType) || 'other';
@@ -86,22 +64,16 @@ export function validateDiscoverySubmission(input: unknown, totalCards: number) 
     errors.push('Sale price must be a non-negative number.');
   }
 
-  const imageUrl = cleanString(body.imageUrl);
-  if (imageUrl && !isValidHttpUrl(imageUrl)) {
-    errors.push('Primary image URL must be a valid http(s) URL.');
+  if (body.imageUrl || (Array.isArray(body.evidenceImageUrls) ? body.evidenceImageUrls.length : body.evidenceImageUrls) || body.evidenceImages) {
+    errors.push('External image URLs are not accepted. Upload evidence files instead.');
+  }
+  const rawIds = body.evidenceAssetIds ?? [];
+  const evidenceAssetIds = Array.isArray(rawIds) ? [...new Set(rawIds)] : [];
+  if (!Array.isArray(rawIds) || rawIds.length > MAX_EVIDENCE_IMAGES || evidenceAssetIds.some((id) => typeof id !== 'string' || !EVIDENCE_ID.test(id))) {
+    errors.push(`Include no more than ${MAX_EVIDENCE_IMAGES} valid uploaded evidence IDs.`);
   }
 
-  const evidenceUrls = parseEvidenceUrls(body.evidenceImageUrls, imageUrl);
-  if (evidenceUrls.length > MAX_EVIDENCE_IMAGES) {
-    errors.push(`Please submit no more than ${MAX_EVIDENCE_IMAGES} evidence image URLs.`);
-  }
-
-  const invalidEvidenceUrl = evidenceUrls.find((url) => !isValidHttpUrl(url));
-  if (invalidEvidenceUrl) {
-    errors.push('Evidence image URLs must be valid http(s) URLs.');
-  }
-
-  if (verificationStatus === 'confirmed' && !link && evidenceUrls.length === 0) {
+  if (verificationStatus === 'confirmed' && !link && evidenceAssetIds.length === 0) {
     errors.push('Looks confirmed reports need a source link or evidence image.');
   }
 
@@ -110,7 +82,7 @@ export function validateDiscoverySubmission(input: unknown, totalCards: number) 
     errors.push(`Notes must be ${MAX_NOTE_LENGTH} characters or fewer.`);
   }
 
-  if (!link && evidenceUrls.length === 0 && !notes) {
+  if (!link && evidenceAssetIds.length === 0 && !notes) {
     errors.push('Please include a source link, evidence image, or note for review.');
   }
 
@@ -122,8 +94,7 @@ export function validateDiscoverySubmission(input: unknown, totalCards: number) 
     sourceType: sourceType as SourceType,
     verificationStatus: verificationStatus as VerificationStatus,
     price,
-    imageUrl: imageUrl || undefined,
-    evidenceImages: evidenceUrls.map((url) => ({ url })),
+    evidenceAssetIds: evidenceAssetIds as string[],
     notes: notes || undefined,
   };
 

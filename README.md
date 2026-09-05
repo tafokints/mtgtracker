@@ -54,7 +54,7 @@ Featured trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - Shareable tracker view links through `q`, `filter`, `sort`, and `cardFilter` URL parameters, with one-click copy from tracker headers
 - Card-level public filtering for multi-card serialized treatments
 - Card activity summaries for multi-card tracker pages
-- Public report flow with source type, evidence level, price, image uploads, image URLs, and notes
+- Protected report flow with source type, evidence level, price, private image uploads, and notes
 - Public verification guide linked from report forms so crowd-sourced submissions include stronger evidence
 - Report form evidence image count guardrails and removal controls before submission
 - Serial detail report links preselect the matching card and serial in the report form
@@ -106,7 +106,7 @@ For local development only, the admin password falls back to `dev-admin` if `ADM
 2. Use the standalone repository root (`.`) as the Vercel project root. The nested folder name is only its location in this local workspace.
 3. Add an Upstash Redis database.
 4. Add Redis REST env vars. Vercel may provide `KV_REST_API_URL` and `KV_REST_API_TOKEN`; those are supported. Manual Upstash envs can use `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
-5. Add a Vercel Blob store and connect it to the project. Vercel should provide `BLOB_READ_WRITE_TOKEN`.
+5. Add a **private** Vercel Blob store and connect its `BLOB_READ_WRITE_TOKEN`. Never use a public store for new submissions. Complete the Turnstile and scanning setup in `docs/EVIDENCE_SECURITY.md` before opening intake.
 6. Add `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` after creating the property in Google Search Console.
 7. Deploy.
 
@@ -170,7 +170,8 @@ Admin backups are tracker-scoped:
 - Report form: use the `Report a Find` link on any live tracker page to send a discovery into admin review.
 - Evidence checklist: public report pages show live guidance for serial selection, source links, image evidence, and admin-review context.
 - Evidence level: public reports can request `Looks Confirmed` only when they include a source link or evidence image.
-- Evidence uploads: report forms accept JPEG, PNG, or WebP uploads up to 4 MB and 25 million decoded pixels. The server validates actual image contents, removes metadata, and stores a re-encoded WebP under a UUID path in Vercel Blob. Uploads are limited to 10/IP/hour and 500/site/day. Uploaded URLs are public before review. Attachment removal does not physically delete the file; orphan retention is still pending.
+- Evidence uploads: JPEG/PNG/WebP up to 4 MB and 25 million decoded pixels are validated, metadata-stripped, and stored privately. A server-verified Turnstile challenge grants a one-hour permission bound to one tracker, serial slot, and report. Uploads are limited to 8/session, 10/IP/hour and 500/site/day. External image URLs are rejected. Only scanned evidence attached to an approved discovery is publicly readable through the app; Blob URLs are never returned to submitters. Attachment removal does not physically delete the file; orphan retention is still pending.
+- Safety checks: Cloudmersive scans the stored WebP for malware; Azure AI Content Safety screens a PNG derivative for sexual content; Google Web Risk checks supported source URLs. Missing credentials, malformed results, timeouts, and flagged results never count as a pass. See `docs/EVIDENCE_SECURITY.md` for setup, source-domain restrictions, test evidence, and remaining launch gates.
 - Admin panel: press `Ctrl + Alt + A` on `/trackers/one-ring`.
 - Production authentication requires both `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET`; neither may fall back to a development credential. Login allows ten attempts per IP per fifteen minutes and requires Redis for rate limiting.
 - Review queue: use the admin panel `Review` tab to approve or reject pending reports.
