@@ -33,7 +33,7 @@ Production uses the owner's existing site key `0x4AAAAAAEp4P0nETpWGpEVE`. Do not
 
 The owner separately approved persisting the canonical Spin bundle at `.claude/skills/turnstile-spin/SKILL.md`. Cloudflare's `persist-skill.sh` was downloaded outside the project, its SHA-256 verified against the hosted prompt (`4fea0bcda9fded16dd63f77dad196474d3c15c1fe93ac4718b50517fa834330c`), inspected, then run in the existing Ubuntu runtime. It installed the canonical instructions, framework references and helper scripts. The skill validator and shell syntax checks pass. No authentication, widget-creation or secret-retrieval helpers were run. Do not run the saved project-local helpers with credentials on a later task; follow the hosted guide's external-tool trust checks.
 
-The shared report form uses action `discovery` and POST `/api/trackers/[slug]/submission-session`. That existing backend calls Siteverify before issuing a one-hour, exact-card report permission. Upload and report persistence remain separate protected handlers. Nothing is automatically approved.
+The shared report form uses action `discovery` and POST `/api/trackers/[slug]/submission-session`. That existing backend calls Siteverify before issuing a one-hour, exact-card report permission. Upload and report persistence remain separate protected handlers. Nothing is automatically approved. The owner subsequently confirms the widget completed; that is a frontend confirmation, not a recorded backend success/replay result.
 
 | Application setting | Source |
 | --- | --- |

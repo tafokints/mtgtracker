@@ -10,7 +10,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 390, height: 1000 } });
   await page.goto('https://mtgtrackers.com/trackers/one-ring/submit?serial=007');
   try {
-    await page.locator('iframe[title*="security challenge"]').scrollIntoViewIfNeeded({ timeout: 30000 });
+    await page.getByRole('checkbox', { name: /I have permission/ }).scrollIntoViewIfNeeded({ timeout: 30000 });
     await page.waitForFunction(() => {
       try { return Boolean(window.turnstile?.getResponse()); }
       catch { return false; }
@@ -38,7 +38,7 @@ try {
     console.log(JSON.stringify(result));
     assert.deepEqual(result, { first: 200, permissionIssued: true, replay: 403, replayPermissionIssued: false });
     await mkdir('node_modules/.cache', { recursive: true });
-    await page.locator('iframe[title*="security challenge"]').scrollIntoViewIfNeeded();
+    await page.getByRole('checkbox', { name: /I have permission/ }).scrollIntoViewIfNeeded();
     await page.screenshot({ path: 'node_modules/.cache/turnstile-live-390.png' });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     console.log('PASS: Real Cloudflare challenge accepted once and replay rejected by the hosted handler. No upload/report/discovery was created.');
