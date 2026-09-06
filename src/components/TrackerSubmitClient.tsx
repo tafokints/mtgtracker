@@ -132,16 +132,20 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
     if (session.current?.cardId === selectedSlotId && session.current.expiresAt > Date.now()) return session.current.token;
     if (uploadedEvidence.length) throw new Error('This report permission expired. Remove its attachments and upload them again after verification.');
     if (!turnstileToken) throw new Error('Complete the verification check first.');
-    const response = await fetch(`/api/trackers/${tracker.slug}/submission-session`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cardId: selectedSlotId, turnstileToken, consent: true }),
-    });
-    setTurnstileToken('');
-    setChallengeVersion((version) => version + 1);
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || 'Verification failed.');
-    session.current = { ...data, cardId: selectedSlotId };
-    return data.token as string;
+    try {
+      const response = await fetch(`/api/trackers/${tracker.slug}/submission-session`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: selectedSlotId, turnstileToken, consent: true }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Verification failed.');
+      session.current = { ...data, cardId: selectedSlotId };
+      return data.token as string;
+    } finally {
+      // Verification may have consumed the token even if its response never reached us.
+      setTurnstileToken('');
+      setChallengeVersion((version) => version + 1);
+    }
   }
 
   useEffect(() => {
@@ -542,7 +546,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
               <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-1" required />
               <span>I have permission to submit this evidence for safety checks and admin review. Approved evidence may be published. <Link href="/privacy" className="text-ring-gold underline">Privacy details</Link></span>
             </label>
-            <SubmissionChallenge key={challengeVersion} onToken={setTurnstileToken} />
+            <SubmissionChallenge resetVersion={challengeVersion} onToken={setTurnstileToken} />
           </div>
           <div className="mt-6">
             <label className="block uppercase tracking-wide text-ring-gold text-xs font-bold mb-2" htmlFor="evidence-image-upload">

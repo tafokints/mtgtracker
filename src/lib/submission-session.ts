@@ -1,6 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { EVIDENCE_ID } from './evidence-policy';
 import { EvidenceUploadError } from './evidence-upload';
+import { getTurnstileConfig } from './turnstile-config';
 
 export interface SubmissionSession { id: string; tracker: string; cardId: number; exp: number }
 
@@ -33,10 +34,10 @@ export function readSubmissionSession(request: Request, tracker: string, cardId?
 }
 
 export async function verifyTurnstile(token: unknown) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  const hosts = (process.env.TURNSTILE_ALLOWED_HOSTNAMES || '').split(',').map((host) => host.trim()).filter(Boolean);
-  if (!secret || hosts.length === 0) throw new EvidenceUploadError('Submission protection is not configured', 503);
-  if (typeof token !== 'string' || !token || token.length > 2048) throw new EvidenceUploadError('Complete the verification check', 400);
+  const config = getTurnstileConfig();
+  if (!config) throw new EvidenceUploadError('Submission protection is not configured', 503);
+  const { secret, hosts } = config;
+  if (typeof token !== 'string' || !token.trim() || token.length > 2048) throw new EvidenceUploadError('Complete the verification check', 400);
   try {
     const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST', body: new URLSearchParams({ secret, response: token }), redirect: 'error',
