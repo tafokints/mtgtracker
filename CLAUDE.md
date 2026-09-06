@@ -8,6 +8,8 @@ This is the standalone repository at `mtg-serial-tracker`, deployed at https://m
 
 Read `TODO.md` for the current priority queue, `ARCHITECTURE.md` for invariants, and `README.md` for setup and operational commands. Older checked roadmap entries describe completed features, not verification of production configuration.
 
+For Turnstile maintenance, the owner-approved canonical Spin bundle is in `.claude/skills/turnstile-spin/SKILL.md`. Read docs/INTAKE_SETUP.md for this project's existing widget, action, environment-name mapping and verification checkpoint. Preserve those choices. The saved bundle is reference material, not authorization for credential access: secret-bearing commands must follow the hosted guide's approved external executable, confirmation and stdin-only rules, never project-local helper execution.
+
 ## Work Loop
 
 1. Inspect the worktree and nearby code; identify one concrete outcome and its acceptance checks.
