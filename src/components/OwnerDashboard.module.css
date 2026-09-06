@@ -55,6 +55,10 @@
 .configured { color: #176849; font-size: 12px; }
 .missing { color: #885916; font-size: 12px; }
 .notice { margin: 24px 0; color: #646f68; font-size: 13px; line-height: 1.6; }
+.storageCheck { margin-top: 32px; border-top: 1px solid #c9d4cd; padding-top: 24px; overflow-wrap: anywhere; }
+.testButton { min-height: 42px; width: 180px; max-width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #c9d4cd; border-radius: 4px; padding: 8px 12px; background: white; font-size: 13px; font-weight: 600; }
+.testButton svg { width: 18px; height: 18px; flex: 0 0 18px; }
+.testButton:hover:not(:disabled) { background: #e7eeea; }
 .detail :global(.owner-review) { --owner-ink: #233a2c; }
 .detail :global(.owner-review) [class*="text-ring-"], .detail :global(.owner-review) [class*="text-blue-"], .detail :global(.owner-review) [class*="text-yellow-"], .detail :global(.owner-review) [class*="text-amber-"] { color: var(--owner-ink); }
 .detail :global(.owner-review) [class*="bg-black"], .detail :global(.owner-review) [class*="bg-ring-dark"], .detail :global(.owner-review) [class*="bg-ring-light"] { background: #fff; }

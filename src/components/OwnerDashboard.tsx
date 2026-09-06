@@ -9,6 +9,7 @@ import type { AdminPrincipal } from '@/lib/admin-auth';
 import type { SerializedRingCard } from '@/lib/types';
 import AdminPanel from './AdminPanel';
 import ExternalImage from './ExternalImage';
+import StorageCheck from './StorageCheck';
 import styles from './OwnerDashboard.module.css';
 
 const trackers = allTrackers.filter((tracker) => tracker.status === 'live').sort((a, b) => a.title.localeCompare(b.title));
@@ -159,6 +160,7 @@ export default function OwnerDashboard() {
           {configuration?.services.map((service) => <div className={styles.service} key={service.name}><span>{service.name}</span><span className={service.configured ? styles.configured : styles.missing}>{service.configured ? 'Configured' : 'Missing configuration'}</span></div>)}
           <p className={styles.notice}>Configuration is not a successful service test. Hosted upload, scanning, approval, and recovery checks remain required.</p>
           <div className={styles.service}><span>Scheduled backups and restore drill</span><span className={styles.missing}>Not verified here</span></div>
+          {configuration && <StorageCheck configured={configuration.services.some((service) => service.name === 'Private image storage' && service.configured)} onSessionLost={clearSession} />}
         </section> : <>
           <div className={styles.filters}>
             <div><label htmlFor="inbox-status">Status</label><select id="inbox-status" value={status} onChange={(event) => { setStatus(event.target.value); setCursors([null]); setSelected(null); }}>{statuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>

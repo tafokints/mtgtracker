@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, createAdminSession } from '@/lib/admin-auth';
+import { POST as checkOwnerStorage } from '@/app/api/admin/storage-check/route';
 import { buildAmazonSearchUrl, buildTrackerEbaySearchUrl, getSerialAffiliateLinks, getTracker } from '@/lib/trackers';
 import sharp from 'sharp';
 import { TOTP } from 'otpauth';
@@ -323,6 +324,7 @@ describe('tracker API routes', () => {
     process.env.ADMIN_PASSWORD_FRONTEND = 'test-admin-password';
     process.env.ADMIN_SESSION_SECRET = 'test-admin-secret';
     process.env.BLOB_READ_WRITE_TOKEN = 'test-blob-token';
+    vi.stubEnv('BLOB_STORE_ID', '');
     delete process.env.ADMIN_TOTP_SECRET;
     delete process.env.ADMIN_OWNER_ID;
     adminSession = await createAdminSession();
@@ -341,6 +343,19 @@ describe('tracker API routes', () => {
     await logoutAdmin(new Request('https://mtgtrackers.com/api/admin/login', { method: 'DELETE', headers: { origin: 'https://mtgtrackers.com', cookie: `${ADMIN_COOKIE_NAME}=${adminSession}` } }));
     expect((await readOwnerInbox(request())).status).toBe(401);
     expect((await readOwnerConfiguration(request())).status).toBe(401);
+  });
+
+  it('protects storage diagnostics with the real session and same-origin guards before Blob writes', async () => {
+    const check = (cookie: string, origin: string) => checkOwnerStorage(new Request('https://mtgtrackers.com/api/admin/storage-check', {
+      method: 'POST', headers: { cookie: `${ADMIN_COOKIE_NAME}=${cookie}`, origin, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirm: 'TEST_PRIVATE_STORAGE' }),
+    }));
+    expect((await check('', 'https://mtgtrackers.com')).status).toBe(401);
+    expect((await check(adminSession, 'https://attacker.example')).status).toBe(403);
+    expect(blobFixture.put).not.toHaveBeenCalled();
+    vi.stubEnv('BLOB_READ_WRITE_TOKEN', '');
+    expect((await check(adminSession, 'https://mtgtrackers.com')).status).toBe(503);
+    expect(blobFixture.put).not.toHaveBeenCalled();
   });
 
   it('returns 400 for malformed public submission JSON', async () => {
@@ -692,6 +707,18 @@ describe('tracker API routes', () => {
     const allowed = await loginAdmin(submitRequest({ password: 'test-admin-password' }, '203.0.113.8'));
     expect(allowed.status).toBe(200);
     expect(allowed.headers.get('set-cookie')).toContain('HttpOnly');
+  });
+
+  it('supports connected OIDC storage while still quarantining unscanned evidence', async () => {
+    vi.stubEnv('BLOB_READ_WRITE_TOKEN', ''); vi.stubEnv('BLOB_STORE_ID', 'store_fixture');
+    scanFixture.scan.mockResolvedValueOnce({ status: 'pending', reason: 'scanners-not-configured', policyVersion: 1 });
+    const response = await uploadEvidenceImage(uploadRequest(await realImage()), routeContext());
+    expect(response.status).toBe(200);
+    const uploaded = await response.json();
+    expect(uploaded.safetyStatus).toBe('pending');
+    expect(blobFixture.put.mock.calls[0][2]).toMatchObject({ access: 'private', allowOverwrite: false });
+    expect(blobFixture.put.mock.calls[0][2].oidcToken).toBeUndefined();
+    expect((await readEvidence(exportRequest(), { params: Promise.resolve({ id: uploaded.assetId }) })).status).toBe(404);
   });
 
   it('uploads a valid evidence image to blob storage', async () => {

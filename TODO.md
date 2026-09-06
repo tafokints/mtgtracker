@@ -10,7 +10,7 @@ Standing affiliate requirement: preserve a clear top-of-page disclosure before t
 
 ### Now: Audit And Reliability
 
-- [x] Switch the sole owner password source to `ADMIN_PASSWORD_FRONTEND` at the owner's request, including password checks and session/replay fingerprints. Keep it server-only, reject legacy-password fallback and retain production MFA. Vercel Production variable presence was confirmed without reading its value; 343 tests, lint and build pass, and compiled browser assets contain no admin secret-variable references. Actual owner login remains the gate below.
+- [x] Switch the sole owner password source to `ADMIN_PASSWORD_FRONTEND` at the owner's request, including password checks and session/replay fingerprints. Keep it server-only, reject legacy-password fallback and retain production MFA. Release `0058bc3` passed 343 tests, lint, build, CI and 62 production smoke checks; the owner subsequently confirmed the complete sign-in flow below.
 - [x] Push the five pending application commits through GitHub -> Vercel and verify the live custom domain. Release `7ad9ceb` passed GitHub Verify and is live at `/admin`; the owner only changed environment variables before this source push.
 - [x] Refresh outdated privacy smoke expectations; verify minimal health, private/noindex admin responses, mandatory-MFA anonymous status, denial of private APIs and no admin sitemap entry. The production smoke suite passes 62 checks.
 - [x] Add owner-only `/admin` with a cross-tracker paginated inbox, focused in-page review, safe source rechecks, configuration indicators, session-loss handling and no analytics/indexing/private caching. Reuse existing review APIs and scan gates.
@@ -18,7 +18,8 @@ Standing affiliate requirement: preserve a clear top-of-page disclosure before t
 - [x] Add encrypted recovery archives for shared tracker snapshots, journals, asset metadata/files and reconciliation archives, with integrity verification and isolated empty-target restore; add a disabled-until-configured nightly workflow.
 - [x] Rate-limit telemetry and image reads, bound analytics context and retention, make public health read-only, and remove production CSP unsafe-eval.
 - [x] Owner reports enrolling the regenerated Base32 key and updating Vercel. Production variable names for owner ID, TOTP, password and session secret were confirmed without reading values.
-- [ ] Complete the real owner login/logout check at `https://mtgtrackers.com/admin` using `ADMIN_PASSWORD_FRONTEND` and the enrolled authenticator. Anonymous MFA status and access denial pass, but the matching secret/password and successful authenticated session still require the owner's test. Preview has no new password/owner ID/TOTP variables and needs separate test credentials before hosted admin QA.
+- [x] Owner confirms real production password/TOTP login, logout and re-login at `https://mtgtrackers.com/admin`. This is user-reported verification; the agent did not receive passwords, seeds, codes or cookies.
+- [ ] Configure separate Preview password/owner ID/TOTP settings and isolated Redis/Blob stores before hosted workflow QA; current connections must not be mistaken for a sandbox.
 - [ ] Activate the protected backup environment/failure notifications and perform a real hosted restore drill; retain the encryption key offline.
 - [ ] Add idempotency IDs to admin price/grading/image writes to avoid repeated history after lost responses.
 - [ ] Include active generated trackers in efficient whole-site affiliate rollups; unscoped reports currently default to featured trackers.
@@ -50,6 +51,9 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 
 ### Now: Protected Evidence Intake
 
+- [x] Recognize connected private Blob stores through `BLOB_STORE_ID` and SDK-managed Vercel OIDC, while retaining static-token support and fail-closed private uploads. No identity token is copied or passed manually.
+- [x] Add an owner-confirmed, rate-limited storage diagnostic to Service setup: private upload, bounded exact read-back, anonymous denial and generated-file-only cleanup. No collector records or scans are changed; failed cleanup remains visible. See docs/INTAKE_SETUP.md.
+- [ ] Run the real owner storage diagnostic on the connected private store and record its four results. Local provider tests and browser fixtures do not prove hosted Blob access.
 - [x] Replace public uploads with private Blob intake and individually addressable asset metadata; protect reads with scan status, canonical approval, ownership, and content hashes.
 - [x] Add server-verified Turnstile and one-hour, card-bound report sessions; cap uploads per session and submissions across trackers; deduplicate report retries.
 - [x] Reject external image URLs and restrict source links to supported direct HTTPS pages; strip query/fragment parameters and do not fetch arbitrary destinations.
@@ -57,7 +61,7 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 - [x] Prevent unsafe previews/approval/merge/image overrides; show review safety states, check source links before opening, and preserve atomic approval after asynchronous checks.
 - [x] Make rate-limit increment/expiry atomic; bound public JSON bodies; reject cross-origin admin mutations.
 - [ ] Configure private Blob, Turnstile, both image scanners, and Web Risk in isolated Preview/Development, then Production. No real scanner credentials or external moderation calls were used for the local tests. See docs/EVIDENCE_SECURITY.md.
-  Production environment-name inspection confirms these settings are absent. Live upload/submit controls are disabled; do not claim intake is enabled or tested. No secrets were downloaded and no provider settings changed during deployment.
+  The owner reports creating private Blob; Vercel now lists its store connection for Production and Preview. Turnstile and screening settings remain absent. Public intake remains disabled without Turnstile. No secrets were downloaded and the agent did not change provider settings. Separate Preview stores/credentials before full workflow tests.
 - [ ] Verify real private upload/read/scan/approve/revoke/delete in an isolated hosted environment before enabling intake broadly; never seed production with QA discoveries.
 - [ ] Add durable scanning jobs with authenticated delivery, retry/backoff, and reconciliation for interrupted requests. Current scanning is synchronous and supports admin retry only.
 - [x] Add an all-tracker owner inbox with status/tracker filters and bounded cursor pages. Featured trackers plus active generated printings are read without initializing empty card arrays; original report storage avoids shared-view duplicates.

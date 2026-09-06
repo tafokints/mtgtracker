@@ -19,7 +19,8 @@ Use separate Redis/Blob stores and credentials for isolated testing and producti
 
 | Variable | Value/source |
 | --- | --- |
-| `BLOB_READ_WRITE_TOKEN` | Token for a **private** Vercel Blob store. An existing public store cannot simply be switched to private; create a separate private store. |
+| `BLOB_STORE_ID` | Connected **private** Vercel Blob store. The installed SDK obtains/refreshes Vercel OIDC automatically; do not manually copy a Vercel identity token. |
+| `BLOB_READ_WRITE_TOKEN` | Optional static-token alternative for a **private** store, still required by the separate off-Vercel recovery runner. An existing public store cannot simply be switched to private. |
 | `ADMIN_SESSION_SECRET` | Strong server-side secret; owner credential rotation invalidates sessions. Also used with a separate signing context for report permissions. |
 | `ADMIN_OWNER_ID` / `ADMIN_TOTP_SECRET` | Owner identifier and enrolled authenticator seed; production owner login requires both. See docs/SECURITY_OPERATIONS.md. |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Public Cloudflare Turnstile site key. Configure before building the frontend. |
@@ -32,7 +33,9 @@ Use separate Redis/Blob stores and credentials for isolated testing and producti
 
 Do not paste secret values into chat or commit local environment files. Review providers' current billing, data processing, region/retention terms, and account limits before activating them. The privacy notice discloses sharing sanitized files, image derivatives, URLs, and challenge signals with these providers. No accounts, paid plans, or live scanner calls were created by this implementation.
 
-No Turnstile configuration means public intake is unavailable, with a visible form notice. No Blob token means uploads return 503. Missing image scanners allow private quarantine only: no preview or approval. Missing Web Risk means source opening and source-linked approval return 503. Notes-only reports still require Turnstile and human review. There is no production bypass.
+No Turnstile configuration means public intake is unavailable, with a visible form notice. No Blob store connection or static token means uploads return 503; provider authentication failures also deny uploads. Missing image scanners allow private quarantine only: no preview or approval. Missing Web Risk means source opening and source-linked approval return 503. Notes-only reports still require Turnstile and human review. There is no production bypass.
+
+The owner reports creating a private Blob store, and the Vercel connection now includes `BLOB_STORE_ID` for Production and Preview. This is not yet an isolated Preview environment. The owner dashboard has an explicit storage diagnostic for private upload/read/anonymous-denial/delete; passing it does not verify image scanning or the report workflow. Follow docs/INTAKE_SETUP.md before activating the remaining services.
 
 ## Link Policy
 

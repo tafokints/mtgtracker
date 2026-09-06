@@ -1,6 +1,6 @@
 # Owner Security And Recovery
 
-Implemented and deployed on 2026-09-05. This is an operations guide, not a claim that every provider is configured or a penetration-test certification. The owner dashboard and security code are live; hosted owner login, evidence-provider setup and restore verification remain gates. See docs/DEPLOYMENT_2026-09-05.md. The Golden Chocobo project and affiliate destinations/disclosures are unchanged.
+Implemented and deployed on 2026-09-05. This is an operations guide, not a claim that every provider is configured or a penetration-test certification. The owner confirmed production password/TOTP login, logout and re-login after release `0058bc3`; evidence-provider setup and restore verification remain gates. See docs/DEPLOYMENT_2026-09-05.md. The Golden Chocobo project and affiliate destinations/disclosures are unchanged.
 
 ## Owner Access
 
@@ -33,9 +33,11 @@ The Reports view supports status/tracker filters, cursor navigation and focused 
 
 The inbox reads original storage, not projected alias queues, and selects featured trackers plus the existing active-printing index. A page returns at most 20 summaries and reads at most eight report arrays. It is grouped by tracker slug, then oldest submission timestamp/report ID, not globally chronological. Cursors bind to filters and use a stable last-report key, so approving an earlier row does not shift subsequent offsets. New/changed records before the cursor appear on refresh; this is not an immutable snapshot. Empty batches may have a continuation. No total-count or completeness claim is made from a partial page. Independent report/event records, index audits and fully bounded per-report reads remain the scaling milestone.
 
-Service setup returns only presence/configuration booleans, never credentials. Configured does not prove private-store access, valid provider credentials, scan quality or successful cloud tests. Scheduled backup/restore verification cannot be inferred from the application environment and is explicitly not verified in this view.
+The Service setup configuration endpoint returns only presence/configuration booleans, never credentials. Blob supports a connected `BLOB_STORE_ID` with SDK-managed Vercel OIDC or an explicit static `BLOB_READ_WRITE_TOKEN`. Configured does not prove private-store access, valid provider credentials, scan quality or successful cloud tests. Scheduled backup/restore verification cannot be inferred from the application environment and is explicitly not verified in this view.
 
-The owner reports enrolling a regenerated Base32 seed in Google Authenticator and updating Vercel. Production owner variable names were confirmed without reading values. Application release `7ad9ceb` is live at `https://mtgtrackers.com/admin`; anonymous MFA status, access denial and browser rendering passed. Actual password/TOTP login and logout are awaiting the owner test. Do not confuse the local preview with production or infer secret validity from variable presence. Local review checks use intercepted browser APIs and benign synthetic reports; no production reports were created.
+The separate owner-confirmed storage test uses `POST /api/admin/storage-check`, an awaited owner/same-origin guard, a 1 KiB exact confirmation body and a site-wide budget of three tests per 15 minutes. It writes a tiny benign text file to a fresh `_diagnostics/storage/{runId}.txt`, checks exact private read-back and anonymous access denial, then deletes only that generated path and checks metadata absence. Timeouts and unexpected responses never pass; cleanup is attempted even after an upload failure. No reports, discoveries, existing files or scanner settings change. The response contains only per-step statuses, a run ID and timestamp, never provider URLs, tokens or raw exceptions. Results are transient and no-store, not a persisted certification. The page warns about provider operations before execution. See docs/INTAKE_SETUP.md for setup and cleanup limits.
+
+The owner reports enrolling a regenerated Base32 seed in Google Authenticator and updating Vercel. Production owner variable names were confirmed without reading values. After deploying `0058bc3`, the owner confirmed successful password/TOTP login, logout and re-login at `https://mtgtrackers.com/admin`. This is owner-reported hosted verification, not an agent credential test. Local review checks use intercepted browser APIs and benign synthetic reports; no production reports were created.
 
 ## Public Request Budgets
 
@@ -80,7 +82,7 @@ After restore, verify shared-copy counts/history, owner login, private pending-i
 
 ## Remaining Release Gates
 
-- Complete the owner production login/logout test and configure separate isolated Preview secrets; Preview owner ID/TOTP are currently absent. The owner reports enrollment and Production variables exist, but successful hosted authentication has not yet been observed.
+- Configure separate isolated Preview credentials and stores. The owner confirmed Production login/logout/re-login; Preview password/owner ID/TOTP are absent. The new Blob connection includes Production and Preview, so Preview must not be treated as an isolated evidence-test environment yet.
 - Activate and validate hosted backups, test actual restoration, and configure spend/failure alerts.
 - Complete actual private Blob, Turnstile, malware/sexual-content scanners and Web Risk setup/tests. Known-threat link screening is not adult-content classification or authenticity verification.
 - Add durable scan jobs, cleanup/retention and false-positive/takedown handling; keep scans fail-closed.

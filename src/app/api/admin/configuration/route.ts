@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, isAdminConfigured } from '@/lib/admin-auth';
 import { getRedisEnvStatus } from '@/lib/redis';
+import { isBlobStorageConfigured } from '@/lib/blob-config';
 
 export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
@@ -12,7 +13,7 @@ export async function GET(request: Request) {
     { name: 'Owner authentication', configured: isAdminConfigured() },
     { name: 'Authenticator', configured: configured('ADMIN_TOTP_SECRET') },
     { name: 'Redis', configured: getRedisEnvStatus().provider !== 'missing' },
-    { name: 'Private image storage', configured: configured('BLOB_READ_WRITE_TOKEN') },
+    { name: 'Private image storage', configured: isBlobStorageConfigured() },
     { name: 'Bot challenge', configured: configured('NEXT_PUBLIC_TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY', 'TURNSTILE_ALLOWED_HOSTNAMES') },
     { name: 'Malware scanner', configured: configured('CLOUDMERSIVE_API_KEY') },
     { name: 'Sexual-content scanner', configured: configured('AZURE_CONTENT_SAFETY_ENDPOINT', 'AZURE_CONTENT_SAFETY_KEY') },

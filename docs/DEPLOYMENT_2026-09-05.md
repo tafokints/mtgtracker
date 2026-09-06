@@ -1,5 +1,9 @@
 # Production Deployment Checkpoint
 
+## Subsequent Owner Confirmation
+
+Release `0058bc3` switched the server-only password source to `ADMIN_PASSWORD_FRONTEND`. The owner then confirmed successful production password/TOTP login, logout and re-login. The owner also created a private Blob store; Vercel now lists its connection for both Production and Preview using `BLOB_STORE_ID`, rather than a static read-write token. The later storage-readiness work is documented in docs/INTAKE_SETUP.md. The historical deployment evidence below predates those confirmations; do not treat its missing-login/Blob notes as current status.
+
 ## Released
 
 The owner updated Vercel environment variables. The five application commits were still local, so the earlier environment-only redeploy did not include the owner dashboard. The agent pushed `main` from `92ff6a7` to `7ad9ceb`, triggering the existing Vercel Git integration. No manual production data migration, seed, approval, import, restore or provider configuration change was performed.

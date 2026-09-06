@@ -5,6 +5,7 @@ import { getTracker } from '@/lib/trackers';
 import { EvidenceUploadError, prepareEvidenceImage, readEvidenceFile } from '@/lib/evidence-upload';
 import { readSubmissionSession } from '@/lib/submission-session';
 import { storeEvidence } from '@/lib/evidence-store';
+import { isBlobStorageConfigured } from '@/lib/blob-config';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -23,7 +24,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ message: 'Tracker not found' }, { status: 404 });
   }
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  if (!isBlobStorageConfigured()) {
     return NextResponse.json({ message: 'Image uploads are not configured' }, { status: 503 });
   }
 

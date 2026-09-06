@@ -83,4 +83,13 @@ describe('owner inbox and configuration', () => {
       expect(Object.keys(data)).toEqual(['services']); expect(response.headers.get('cache-control')).toContain('no-store');
     } finally { vi.unstubAllEnvs(); }
   });
+  it('recognizes a connected Blob store without exposing its ID or requiring a static token', async () => {
+    vi.stubEnv('BLOB_READ_WRITE_TOKEN', ''); vi.stubEnv('BLOB_STORE_ID', 'store_private-fixture-id');
+    try {
+      const response = await configuration(new Request('https://mtgtrackers.com/api/admin/configuration'));
+      const data = await response.json();
+      expect(data.services.find((service: { name: string }) => service.name === 'Private image storage')).toEqual({ name: 'Private image storage', configured: true });
+      expect(JSON.stringify(data)).not.toContain('store_private-fixture-id');
+    } finally { vi.unstubAllEnvs(); }
+  });
 });

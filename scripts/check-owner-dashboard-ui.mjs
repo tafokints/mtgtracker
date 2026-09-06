@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { mkdir } from 'node:fs/promises';
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.argv[2] || 'playwright');
-const base = 'http://127.0.0.1:3103';
+const base = process.env.OWNER_UI_BASE_URL || 'http://127.0.0.1:3103';
 await mkdir('node_modules/.cache', { recursive: true });
 const browser = await chromium.launch({ channel: 'msedge', headless: true });
 try {
@@ -11,6 +11,7 @@ try {
     const page = await browser.newPage({ viewport: { width, height: 1000 } });
     const errors = []; const requests = []; const actions = [];
     let authenticated = false; let failLogin = true; let failInbox = false; let failLogout = false;
+    let storageConfigured = false; let failCleanup = true; let storageChecks = 0; let storageAuthExpired = false;
     const report = { id: 'fixture-report', cardId: 7, serialNumber: '007', serialTotal: 100, cardTitle: 'The One Ring', status: 'pending', kind: 'discovery', submittedAt: '2026-09-05T10:00:00.000Z', sourceType: 'other', requestedVerificationStatus: 'unverified', evidenceImages: [], notes: 'Private fixture collector note', reviewHistory: [] };
     const held = { ...report, id: 'held-report', cardId: 8, serialNumber: '008', evidenceImages: [{ url: '/api/evidence/11111111-1111-4111-8111-111111111111' }], evidenceSafety: [{ url: '/api/evidence/11111111-1111-4111-8111-111111111111', status: 'flagged', reason: 'sexual-content' }] };
     const row = (item) => ({ id: item.id, tracker: 'one-ring', trackerTitle: 'The One Ring', cardTitle: 'The One Ring', serial: `${item.serialNumber}/100`, status: item.status, kind: item.kind, submittedAt: item.submittedAt, imageCount: item.evidenceImages.length, hasSource: false });
@@ -28,7 +29,17 @@ try {
         return route.fulfill({ json: { authenticated, mfaRequired: true, principal: authenticated ? { id: 'fixture-owner', role: 'owner' } : null } });
       }
       if (!authenticated) return route.fulfill({ status: 401, json: { message: 'Unauthorized' } });
-      if (url.pathname === '/api/admin/configuration') return route.fulfill({ json: { services: [{ name: 'Malware scanner', configured: false }, { name: 'Redis', configured: true }] } });
+      if (url.pathname === '/api/admin/configuration') return route.fulfill({ json: { services: [{ name: 'Malware scanner', configured: false }, { name: 'Redis', configured: true }, { name: 'Private image storage', configured: storageConfigured }] } });
+      if (url.pathname === '/api/admin/storage-check') {
+        assert.equal(method, 'POST');
+        assert.deepEqual(route.request().postDataJSON(), { confirm: 'TEST_PRIVATE_STORAGE' });
+        storageChecks++;
+        if (storageAuthExpired) { authenticated = false; return route.fulfill({ status: 401, json: { message: 'Unauthorized' } }); }
+        return route.fulfill({ status: failCleanup ? 503 : 200, json: {
+          ok: !failCleanup, runId: '11111111-1111-4111-8111-111111111111', checkedAt: '2026-09-05T10:00:00Z',
+          checks: { upload: 'passed', read: 'passed', privacy: 'passed', cleanup: failCleanup ? 'failed' : 'passed' },
+        } });
+      }
       if (url.pathname === '/api/admin/inbox') {
         if (failInbox) return route.fulfill({ status: 503, json: { message: 'Inbox temporarily unavailable' } });
         const status = url.searchParams.get('status');
@@ -75,16 +86,44 @@ try {
     await page.getByRole('alert').filter({ hasText: 'Inbox temporarily unavailable' }).waitFor();
     assert.equal(await page.getByRole('heading', { name: 'No matching reports' }).count(), 0);
     await page.getByRole('button', { name: 'Service setup' }).click();
-    await page.getByText('Missing configuration', { exact: true }).waitFor();
+    await page.getByText('Missing configuration', { exact: true }).first().waitFor();
     await page.getByText('Not verified here', { exact: true }).waitFor();
+    assert.equal(storageChecks, 0);
+    assert.equal(await page.getByRole('button', { name: 'Test storage', exact: true }).isDisabled(), true);
+    storageConfigured = true;
+    await page.getByRole('button', { name: 'Refresh configuration' }).click();
+    await page.waitForFunction(() => [...document.querySelectorAll('button')].some((button) => button.textContent === 'Test storage' && !button.disabled));
+    page.once('dialog', (dialog) => dialog.dismiss());
+    await page.getByRole('button', { name: 'Test storage', exact: true }).click();
+    assert.equal(storageChecks, 0);
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.getByRole('button', { name: 'Test storage', exact: true }).click();
+    await page.getByText('Storage checks incomplete', { exact: true }).waitFor();
+    await page.getByRole('alert').filter({ hasText: 'Cleanup needs review' }).waitFor();
+    assert.equal(storageChecks, 1);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await page.screenshot({ path: `node_modules/.cache/storage-check-${width}.png`, fullPage: true });
+    failCleanup = false;
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.getByRole('button', { name: 'Test storage', exact: true }).click();
+    await page.getByText('Storage checks passed', { exact: true }).waitFor();
+    assert.equal(await page.getByRole('alert').filter({ hasText: 'Cleanup needs review' }).count(), 0);
+    assert.equal(storageChecks, 2);
     failLogout = true; await page.getByRole('button', { name: 'Sign out' }).click();
     await page.getByRole('alert').filter({ hasText: 'Sign-out could not be confirmed' }).waitFor();
     failLogout = false; await page.getByRole('button', { name: 'Sign out' }).click();
     await page.getByRole('heading', { name: 'Owner sign-in' }).waitFor();
+    assert.equal(await page.getByText('Storage checks passed', { exact: true }).count(), 0);
     assert.equal(await page.getByText('Private fixture collector note', { exact: false }).count(), 0);
+    await signIn();
+    await page.getByRole('button', { name: 'Test storage', exact: true }).waitFor();
+    storageAuthExpired = true;
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.getByRole('button', { name: 'Test storage', exact: true }).click();
+    await page.getByRole('heading', { name: 'Owner sign-in' }).waitFor();
     assert.equal(requests.some((url) => /vercel-scripts|vercel-insights|_vercel\/insights|_vercel\/speed-insights/.test(url)), false);
     assert.deepEqual(errors, []);
-    console.log(`PASS: ${width}px private dashboard login, review, held evidence, filtering, outage, configuration and logout (mocked APIs)`);
+    console.log(`PASS: ${width}px private dashboard login, review, held evidence, filtering, outage, storage checks, expired access and logout (mocked APIs)`);
     await page.close();
   }
 } finally { await browser.close(); }
