@@ -3,7 +3,7 @@
 ## Current Checkpoint
 
 - Owner confirms successful production password/TOTP login, logout and re-login after `0058bc3`.
-- Owner reports an existing private Blob store. Vercel now lists a store connection for Production and Preview. No secret values were retrieved or copied.
+- Owner confirms `mtgtracker-blob` is private and connected to `mtgtracker`, and reports a successful production Test storage run after release `7b664b9`. The diagnostic's success requires all four checks: private upload, exact read-back, anonymous denial and cleanup. Vercel independently confirms that release is Ready at `mtgtrackers.com`; the test result is owner-reported. No secret values were retrieved or copied.
 - The application supports that connection's SDK-managed OIDC authentication as well as the existing static-token alternative. A configured connection is not proof of a working private store.
 - Turnstile, Cloudmersive, Azure Content Safety and Google Web Risk are not configured in the last Production environment-name check. No real provider scans or complete hosted report lifecycle have been run.
 
@@ -52,4 +52,4 @@ Malware/link screening does not establish card authenticity, and Web Risk does n
 
 This change passes 398 tests across 30 files, lint and a production build. The storage checks use mocked provider responses, including write/read failures, bad content, unexpected destinations, anonymous successes/redirects, failed deletion and non-authoritative metadata errors. Route coverage includes real owner/same-origin guards, exact bounded confirmation, request budgets and OIDC configuration without manually passing an identity token. Existing quarantined-image and approval tests remain enabled.
 
-Headless Edge/Playwright fixtures pass at 320, 390 and 1,440 pixels: missing configuration disables testing; cancellation makes no request; incomplete cleanup stays visible; a later complete check clears the warning; logout and expired access remove results. Screenshots were inspected for overflow and overlapping content. Provider requests and owner credentials in these local browser tests are fixtures, not real cloud verification. The actual hosted storage test and complete evidence lifecycle remain pending.
+Headless Edge/Playwright fixtures pass at 320, 390 and 1,440 pixels: missing configuration disables testing; cancellation makes no request; incomplete cleanup stays visible; a later complete check clears the warning; logout and expired access remove results. Screenshots were inspected for overflow and overlapping content. Provider requests and owner credentials in these local browser tests are fixtures, not real cloud verification. The owner subsequently reported a successful hosted storage diagnostic as recorded above. Real screening-provider tests and the complete isolated evidence lifecycle remain pending.

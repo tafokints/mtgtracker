@@ -53,7 +53,7 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 
 - [x] Recognize connected private Blob stores through `BLOB_STORE_ID` and SDK-managed Vercel OIDC, while retaining static-token support and fail-closed private uploads. No identity token is copied or passed manually.
 - [x] Add an owner-confirmed, rate-limited storage diagnostic to Service setup: private upload, bounded exact read-back, anonymous denial and generated-file-only cleanup. No collector records or scans are changed; failed cleanup remains visible. See docs/INTAKE_SETUP.md.
-- [ ] Run the real owner storage diagnostic on the connected private store and record its four results. Local provider tests and browser fixtures do not prove hosted Blob access.
+- [x] Owner reports the production storage diagnostic passed for `mtgtracker-blob`, confirmed private and connected to `mtgtracker`. The diagnostic requires private upload, exact read-back, anonymous denial and cleanup to succeed. Vercel confirms release `7b664b9` is Ready on the custom domain. This is owner-reported hosted storage verification, not an agent-observed scan or report lifecycle test.
 - [x] Replace public uploads with private Blob intake and individually addressable asset metadata; protect reads with scan status, canonical approval, ownership, and content hashes.
 - [x] Add server-verified Turnstile and one-hour, card-bound report sessions; cap uploads per session and submissions across trackers; deduplicate report retries.
 - [x] Reject external image URLs and restrict source links to supported direct HTTPS pages; strip query/fragment parameters and do not fetch arbitrary destinations.
