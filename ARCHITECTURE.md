@@ -53,7 +53,7 @@ Orphan cleanup, retention, automated backups of the new asset records/files, and
 
 ## Security
 
-Admin routes require a Redis-backed, revocable owner session with an opaque random token and HTTP-only strict same-site cookie. Production requires ADMIN_OWNER_ID, a strong ADMIN_PASSWORD/ADMIN_SESSION_SECRET and an enrolled ADMIN_TOTP_SECRET. Missing configuration fails closed. Logout, idle/absolute expiry and credential changes invalidate sessions; mutations require same-origin requests. Login has IP/site budgets and TOTP replay protection. See docs/SECURITY_OPERATIONS.md. Separate moderators and comprehensive protected auditing remain future work.
+Admin routes require a Redis-backed, revocable owner session with an opaque random token and HTTP-only strict same-site cookie. Production requires ADMIN_OWNER_ID, a strong ADMIN_PASSWORD_FRONTEND/ADMIN_SESSION_SECRET and an enrolled ADMIN_TOTP_SECRET. ADMIN_PASSWORD_FRONTEND is server-only despite its name; ADMIN_PASSWORD is no longer accepted. Missing configuration fails closed. Logout, idle/absolute expiry and credential changes invalidate sessions; mutations require same-origin requests. Login has IP/site budgets and TOTP replay protection. See docs/SECURITY_OPERATIONS.md. Separate moderators and comprehensive protected auditing remain future work.
 
 JSON endpoints require object bodies. Public reports validate slot bounds, source/evidence URLs, prices, and text lengths before storage. Baseline headers are in next.config.mjs. Do not expose secrets or raw database errors to public clients.
 

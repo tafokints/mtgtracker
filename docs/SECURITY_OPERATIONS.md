@@ -9,11 +9,13 @@ The current permission model is one owner, not a shared moderator pool. The serv
 Production requires:
 
 - `ADMIN_OWNER_ID`: stable non-secret identifier, for example your chosen owner handle. This is attribution, not an email-verification system.
-- `ADMIN_PASSWORD`: independently generated password of at least 16 characters. Keep it in a password manager.
+- `ADMIN_PASSWORD_FRONTEND`: independently generated password of at least 16 characters. Keep it in a password manager. This is server-only despite the name; never add `NEXT_PUBLIC_`, include it in Next.js `env` configuration, or send its configured value to the browser.
 - `ADMIN_SESSION_SECRET`: independently generated secret of at least 32 characters. This existing secret also signs collector report permissions/receipts.
 - `ADMIN_TOTP_SECRET`: random base32 authenticator seed, 32-128 characters, enrolled in your authenticator before deployment. The supported standard is TOTP, SHA-1, six digits, 30-second period. Keep an offline recovery copy in your password manager. Never put it in chat, Git, screenshots, or a third-party QR generation website.
 
 For enrollment, the installed OTPAuth library can generate a seed locally: `node --input-type=module -e "import { Secret } from 'otpauth'; console.log(new Secret({ size: 20 }).base32)"`. Run this yourself in a private terminal, enter the seed in your authenticator and the matching Vercel environment variable, and remove the terminal output from shared records. This command is documentation only; no owner seed has been generated or shown by the agent.
+
+Password-variable migration: `ADMIN_PASSWORD_FRONTEND` replaces `ADMIN_PASSWORD` as the sole login password source. Set the new variable in Vercel Production before deploying this code, and separately in Preview/Development wherever owner login is needed. The old variable is ignored, including when the new value is missing or too short. Password comparison, session invalidation and TOTP replay protection all use the new value. Do not change the authenticator seed or session secret just to switch password variables.
 
 Development still requires an explicit password and session secret; the old `dev-admin` fallback is removed. An explicitly configured TOTP seed is checked in every environment, and production has no password-only bypass. Preview production builds therefore also require enrolled MFA, with separate preview secrets.
 

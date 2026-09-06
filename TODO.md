@@ -10,6 +10,7 @@ Standing affiliate requirement: preserve a clear top-of-page disclosure before t
 
 ### Now: Audit And Reliability
 
+- [x] Switch the sole owner password source to `ADMIN_PASSWORD_FRONTEND` at the owner's request, including password checks and session/replay fingerprints. Keep it server-only, reject legacy-password fallback and retain production MFA. Vercel Production variable presence was confirmed without reading its value; 343 tests, lint and build pass, and compiled browser assets contain no admin secret-variable references. Actual owner login remains the gate below.
 - [x] Push the five pending application commits through GitHub -> Vercel and verify the live custom domain. Release `7ad9ceb` passed GitHub Verify and is live at `/admin`; the owner only changed environment variables before this source push.
 - [x] Refresh outdated privacy smoke expectations; verify minimal health, private/noindex admin responses, mandatory-MFA anonymous status, denial of private APIs and no admin sitemap entry. The production smoke suite passes 62 checks.
 - [x] Add owner-only `/admin` with a cross-tracker paginated inbox, focused in-page review, safe source rechecks, configuration indicators, session-loss handling and no analytics/indexing/private caching. Reuse existing review APIs and scan gates.
@@ -17,7 +18,7 @@ Standing affiliate requirement: preserve a clear top-of-page disclosure before t
 - [x] Add encrypted recovery archives for shared tracker snapshots, journals, asset metadata/files and reconciliation archives, with integrity verification and isolated empty-target restore; add a disabled-until-configured nightly workflow.
 - [x] Rate-limit telemetry and image reads, bound analytics context and retention, make public health read-only, and remove production CSP unsafe-eval.
 - [x] Owner reports enrolling the regenerated Base32 key and updating Vercel. Production variable names for owner ID, TOTP, password and session secret were confirmed without reading values.
-- [ ] Complete the real owner login/logout check at `https://mtgtrackers.com/admin`. Anonymous MFA status and access denial pass, but the matching secret/password and successful authenticated session still require the owner's test. Preview has no owner ID/TOTP variables and needs separate test credentials before hosted admin QA.
+- [ ] Complete the real owner login/logout check at `https://mtgtrackers.com/admin` using `ADMIN_PASSWORD_FRONTEND` and the enrolled authenticator. Anonymous MFA status and access denial pass, but the matching secret/password and successful authenticated session still require the owner's test. Preview has no new password/owner ID/TOTP variables and needs separate test credentials before hosted admin QA.
 - [ ] Activate the protected backup environment/failure notifications and perform a real hosted restore drill; retain the encryption key offline.
 - [ ] Add idempotency IDs to admin price/grading/image writes to avoid repeated history after lost responses.
 - [ ] Include active generated trackers in efficient whole-site affiliate rollups; unscoped reports currently default to featured trackers.

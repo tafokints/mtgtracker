@@ -320,7 +320,7 @@ describe('tracker API routes', () => {
     scanFixture.scan.mockReset().mockResolvedValue({ status: 'clean', reason: 'checks-passed', policyVersion: 1 });
     vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 200 })));
     process.env.GOOGLE_WEB_RISK_API_KEY = 'fixture-key';
-    process.env.ADMIN_PASSWORD = 'test-admin-password';
+    process.env.ADMIN_PASSWORD_FRONTEND = 'test-admin-password';
     process.env.ADMIN_SESSION_SECRET = 'test-admin-secret';
     process.env.BLOB_READ_WRITE_TOKEN = 'test-blob-token';
     delete process.env.ADMIN_TOTP_SECRET;
@@ -936,16 +936,22 @@ describe('tracker API routes', () => {
   it('requires production MFA end-to-end and rejects reused codes and cross-site login/logout', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('ADMIN_OWNER_ID', 'test-owner');
-    vi.stubEnv('ADMIN_PASSWORD', 'fixture-password-at-least-16');
+    vi.stubEnv('ADMIN_PASSWORD_FRONTEND', 'fixture-password-at-least-16');
+    vi.stubEnv('ADMIN_PASSWORD', 'fixture-obsolete-password-strong');
     vi.stubEnv('ADMIN_SESSION_SECRET', 'fixture-only-strong-session-secret-at-least-32');
     vi.stubEnv('ADMIN_TOTP_SECRET', 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP');
     const code = new TOTP({ secret: process.env.ADMIN_TOTP_SECRET! }).generate();
-    const login = (value?: string, origin = 'https://mtgtrackers.com') => new Request('https://mtgtrackers.com/api/admin/login', {
-      method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify({ password: process.env.ADMIN_PASSWORD, code: value }),
+    const login = (value?: string, origin = 'https://mtgtrackers.com', password = process.env.ADMIN_PASSWORD_FRONTEND) => new Request('https://mtgtrackers.com/api/admin/login', {
+      method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify({ password, code: value }),
     });
+    const obsolete = await loginAdmin(login(code, 'https://mtgtrackers.com', process.env.ADMIN_PASSWORD));
+    expect(obsolete.status).toBe(401);
+    expect(await obsolete.json()).toEqual({ message: 'Invalid password or authenticator code' });
+    expect(obsolete.headers.get('set-cookie')).toBeNull();
     expect((await loginAdmin(login())).status).toBe(401);
     expect((await loginAdmin(login(code, 'https://attacker.example'))).status).toBe(403);
     const response = await loginAdmin(login(code)); expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ authenticated: true });
     const cookie = response.headers.get('set-cookie')!.split(';')[0];
     expect(response.headers.get('set-cookie')).toContain('Secure');
     expect(await (await readSession(new Request('https://mtgtrackers.com/api/admin/login', { headers: { cookie } }))).json()).toMatchObject({ authenticated: true, principal: { id: 'test-owner', role: 'owner' } });

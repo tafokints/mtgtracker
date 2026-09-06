@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TOTP } from 'otpauth';
 import { ADMIN_COOKIE_NAME, adminCookieOptions, adminSessionKey, createAdminSession, getAdminSessionFromRequest, isAdminConfigured,
-  requireAdmin, revokeAdminSession, verifyAdminSession, verifyAdminTotp } from '@/lib/admin-auth';
+  requireAdmin, revokeAdminSession, verifyAdminPassword, verifyAdminSession, verifyAdminTotp } from '@/lib/admin-auth';
 
 const fixture = vi.hoisted(() => ({ store: new Map<string, Record<string, unknown> | string>(), unavailable: false }));
 vi.mock('@/lib/redis', () => ({ getRedis: () => ({
@@ -27,7 +27,8 @@ function request(token: string, method = 'GET', origin = 'https://mtgtrackers.co
 describe('revocable owner authentication', () => {
   beforeEach(() => {
     fixture.store.clear(); fixture.unavailable = false;
-    vi.stubEnv('ADMIN_PASSWORD', 'fixture-owner-password-strong');
+    vi.stubEnv('ADMIN_PASSWORD_FRONTEND', 'fixture-owner-password-strong');
+    vi.stubEnv('ADMIN_PASSWORD', 'fixture-legacy-password-strong');
     vi.stubEnv('ADMIN_SESSION_SECRET', 'fixture-only-session-secret-32-characters');
     vi.stubEnv('ADMIN_OWNER_ID', 'fixture-owner');
     vi.stubEnv('ADMIN_TOTP_SECRET', 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP');
@@ -47,7 +48,7 @@ describe('revocable owner authentication', () => {
     const token = await createAdminSession(); await revokeAdminSession(request(token, 'DELETE'));
     expect(await verifyAdminSession(token)).toBeNull();
   });
-  it.each(['ADMIN_PASSWORD', 'ADMIN_SESSION_SECRET', 'ADMIN_OWNER_ID', 'ADMIN_TOTP_SECRET'])('invalidates sessions when %s changes', async (name) => {
+  it.each(['ADMIN_PASSWORD_FRONTEND', 'ADMIN_SESSION_SECRET', 'ADMIN_OWNER_ID', 'ADMIN_TOTP_SECRET'])('invalidates sessions when %s changes', async (name) => {
     const token = await createAdminSession(); vi.stubEnv(name, `${process.env[name]}A`);
     expect(await verifyAdminSession(token)).toBeNull();
   });
@@ -58,13 +59,31 @@ describe('revocable owner authentication', () => {
     for (let i = 0; i < 47; i++) { vi.advanceTimersByTime(10 * 60000); expect(await verifyAdminSession(active)).not.toBeNull(); }
     vi.advanceTimersByTime(10 * 60000); expect(await verifyAdminSession(active)).toBeNull();
   });
-  it.each(['ADMIN_PASSWORD', 'ADMIN_SESSION_SECRET', 'ADMIN_OWNER_ID', 'ADMIN_TOTP_SECRET'])('requires %s in production', async (name) => {
+  it.each(['ADMIN_PASSWORD_FRONTEND', 'ADMIN_SESSION_SECRET', 'ADMIN_OWNER_ID', 'ADMIN_TOTP_SECRET'])('requires %s in production', async (name) => {
     vi.stubEnv('NODE_ENV', 'production'); vi.stubEnv(name, ''); expect(isAdminConfigured()).toBe(false);
     await expect(createAdminSession()).rejects.toThrow('not configured');
   });
   it('rejects weak production credentials and has no development password fallback', () => {
-    vi.stubEnv('NODE_ENV', 'production'); vi.stubEnv('ADMIN_PASSWORD', 'short'); expect(isAdminConfigured()).toBe(false);
-    vi.stubEnv('NODE_ENV', 'development'); vi.stubEnv('ADMIN_PASSWORD', ''); expect(isAdminConfigured()).toBe(false);
+    vi.stubEnv('NODE_ENV', 'production'); vi.stubEnv('ADMIN_PASSWORD_FRONTEND', 'short'); expect(isAdminConfigured()).toBe(false);
+    vi.stubEnv('NODE_ENV', 'development'); vi.stubEnv('ADMIN_PASSWORD_FRONTEND', ''); expect(isAdminConfigured()).toBe(false);
+  });
+  it('accepts only the new password and compares it exactly', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    expect(verifyAdminPassword('fixture-owner-password-strong')).toBe(true);
+    for (const value of ['fixture-legacy-password-strong', 'wrong-password', 'fixture-owner-password-strong ', '', null, 123456, 'x'.repeat(1025)]) {
+      expect(verifyAdminPassword(value)).toBe(false);
+    }
+  });
+  it.each([undefined, '', 'short'])('never falls back to the legacy password when the new value is %s', async (value) => {
+    vi.stubEnv('NODE_ENV', 'production'); vi.stubEnv('ADMIN_PASSWORD_FRONTEND', value);
+    expect(isAdminConfigured()).toBe(false);
+    expect(verifyAdminPassword('fixture-legacy-password-strong')).toBe(false);
+    await expect(createAdminSession()).rejects.toThrow('not configured');
+  });
+  it('does not use the obsolete password for session validity', async () => {
+    const token = await createAdminSession();
+    vi.stubEnv('ADMIN_PASSWORD', 'fixture-changed-legacy-password');
+    expect(await verifyAdminSession(token)).toEqual({ id: 'fixture-owner', role: 'owner' });
   });
   it('validates TOTP and rejects repeated and stale codes', async () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-05T12:00:00Z'));

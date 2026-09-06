@@ -16,7 +16,7 @@ export function ownerIdentity(): AdminPrincipal {
 }
 
 export function isAdminConfigured() {
-  const { ADMIN_PASSWORD: password, ADMIN_SESSION_SECRET: secret, ADMIN_TOTP_SECRET: otp } = process.env;
+  const { ADMIN_PASSWORD_FRONTEND: password, ADMIN_SESSION_SECRET: secret, ADMIN_TOTP_SECRET: otp } = process.env;
   const validOtp = Boolean(otp && /^[A-Z2-7]{32,128}$/.test(otp));
   return Boolean(password && secret && /^[a-zA-Z0-9._@-]{1,120}$/.test(ownerIdentity().id) &&
     (!otp || validOtp) && (process.env.NODE_ENV !== 'production' ||
@@ -26,13 +26,13 @@ export function isAdminConfigured() {
 export function verifyAdminPassword(value: unknown) {
   if (!isAdminConfigured() || typeof value !== 'string' || value.length > 1024) return false;
   return crypto.timingSafeEqual(crypto.createHash('sha256').update(value).digest(),
-    crypto.createHash('sha256').update(process.env.ADMIN_PASSWORD!).digest());
+    crypto.createHash('sha256').update(process.env.ADMIN_PASSWORD_FRONTEND!).digest());
 }
 
 function fingerprint() {
   if (!isAdminConfigured()) throw new Error('Admin authentication is not configured');
   return crypto.createHmac('sha256', process.env.ADMIN_SESSION_SECRET!).update(JSON.stringify([
-    'owner-session-v2', ownerIdentity().id, process.env.ADMIN_PASSWORD, process.env.ADMIN_TOTP_SECRET || '',
+    'owner-session-v2', ownerIdentity().id, process.env.ADMIN_PASSWORD_FRONTEND, process.env.ADMIN_TOTP_SECRET || '',
   ])).digest('hex');
 }
 
