@@ -232,7 +232,8 @@ async function main() {
     checkSourceFile('src/components/TrackerPageClient.tsx', [
       'TrackerMarketTrustStrip',
       'PrimaryAffiliateCtas',
-      'tracker-filtered-cta',
+      'TrackerPagination',
+      'AffiliateDisclosureNotice',
       'tracker-marketplace',
     ]),
     checkSourceFileExcludes('src/components/TrackerPageClient.tsx', ['WebApplication', 'next/head']),

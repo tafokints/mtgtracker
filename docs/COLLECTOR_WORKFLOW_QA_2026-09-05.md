@@ -25,6 +25,12 @@ Existing `scripts/check-owner-dashboard-ui.mjs` covers isolated owner sign-in, a
 
 Screenshots are local, ignored test artifacts under `node_modules/.cache/collector-*.png`. Read-only live smoke checks are a separate post-deployment check, not proof of hosted CRUD.
 
+## Release Check
+
+Application commit `fb76009` was pushed to `main`. GitHub Local verification passed tests, lint, build and dependency audit. Vercel deployment `mtgtracker-hzypboof0-daniellee912-gmailcoms-projects.vercel.app` is Ready with the `mtgtrackers.com` alias. All 62 live smoke checks pass after replacing the obsolete source assertion requiring the intentionally removed `tracker-filtered-cta` placement with pagination/disclosure assertions.
+
+Read-only live browser checks at 390/1440px pass on `one-ring`, `lotr-poster-cards`, and generated `card-brr-98z`: second-page restoration, bounded 48-card rendering, exact serial filters, modal open/Escape, loaded reference artwork, no horizontal overflow, and top eBay disclosure preceding sponsored links. These checks blocked non-GET/HEAD browser requests. No production report, upload, review or scanner request was made. Offline affiliate checks pass for 819 configured, 1,740 serial-boundary, 66 catalog and 894 printing links; they do not prove merchant commission credit.
+
 ## Still Required
 
 - Configure the deferred screening accounts; do not approve or expose unscanned images in the meantime.
