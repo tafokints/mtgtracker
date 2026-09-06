@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { loadProjectModule as loadTsModule } from './lib/load-project-module.mjs';
+import { assertMinimalHealth, checkOwnerBoundary } from './lib/security-smoke.mjs';
 
 const rootDir = process.cwd();
 const trackerPath = path.join(rootDir, 'src', 'lib', 'trackers.ts');
@@ -24,6 +25,8 @@ function loadSerializedCatalogModule() {
 async function fetchText(pathname, expectedStatus = 200) {
   const url = `${baseUrl}${pathname}`;
   const response = await fetch(url, {
+    redirect: 'manual',
+    signal: AbortSignal.timeout(20000),
     headers: {
       'User-Agent': 'MTGTrackers/0.1 smoke-check contact mtgtrackers.com',
     },
@@ -91,9 +94,7 @@ async function checkHealth() {
   const { text } = await fetchText('/api/health');
   const health = JSON.parse(text);
 
-  if (health.ok !== true) {
-    throw new Error('/api/health did not return ok: true');
-  }
+  assertMinimalHealth(health);
 
   return { path: '/api/health', ok: true };
 }
@@ -139,6 +140,8 @@ async function checkSitemap(liveTrackers, catalogEntries, printingModule) {
   for (const url of requiredUrls) {
     assertIncludes(text, url, '/sitemap.xml');
   }
+
+  if (text.includes(`${canonicalBaseUrl}/admin`)) throw new Error('/admin must not appear in the public sitemap');
 
   return { path: '/sitemap.xml', ok: true };
 }
@@ -213,7 +216,7 @@ async function main() {
     ]),
     checkPage('/about', ['About MTG Trackers', 'BreadcrumbList']),
     checkPage('/contact', ['Contact', 'Open GitHub Issue', 'BreadcrumbList']),
-    checkPage('/privacy', ['Privacy', 'rate limiting', 'BreadcrumbList']),
+    checkPage('/privacy', ['Privacy', 'IP-based rate limits', 'stored privately in Vercel Blob', 'sexual-content screening', 'BreadcrumbList']),
     checkPage('/affiliate-disclosure', ['Affiliate Disclosure', 'eBay Partner Network', 'Amazon Associate', 'BreadcrumbList']),
     ...(skipHealth ? [] : [checkHealth()]),
     ...(skipHealth ? [] : [...liveTrackers, allTrackers.find((tracker) => tracker.slug === 'card-brr-98z')].map(checkTrackerData)),
@@ -270,9 +273,13 @@ async function main() {
     ]),
   ];
 
-  const results = await Promise.all(checks);
+  const outcomes = await Promise.allSettled(checks);
+  const results = outcomes.flatMap((outcome) => outcome.status === 'fulfilled' ? [outcome.value] : []);
+  const failures = outcomes.flatMap((outcome) => outcome.status === 'rejected' ? [outcome.reason] : []);
+  try { results.push(...await checkOwnerBoundary(baseUrl)); } catch (error) { failures.push(error); }
 
   console.table(results.map((result) => ({ path: result.path, ok: result.ok })));
+  if (failures.length) throw new Error(failures.map((error) => error instanceof Error ? error.message : String(error)).join('\n'));
   console.log(`Smoke checks passed for ${baseUrl}`);
 }
 

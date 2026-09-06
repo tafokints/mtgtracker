@@ -10,11 +10,14 @@ Standing affiliate requirement: preserve a clear top-of-page disclosure before t
 
 ### Now: Audit And Reliability
 
+- [x] Push the five pending application commits through GitHub -> Vercel and verify the live custom domain. Release `7ad9ceb` passed GitHub Verify and is live at `/admin`; the owner only changed environment variables before this source push.
+- [x] Refresh outdated privacy smoke expectations; verify minimal health, private/noindex admin responses, mandatory-MFA anonymous status, denial of private APIs and no admin sitemap entry. The production smoke suite passes 62 checks.
 - [x] Add owner-only `/admin` with a cross-tracker paginated inbox, focused in-page review, safe source rechecks, configuration indicators, session-loss handling and no analytics/indexing/private caching. Reuse existing review APIs and scan gates.
 - [x] Add revocable owner sessions, idle/absolute expiry, credential-rotation invalidation, strict cookies/origin checks and production TOTP with replay protection; record server-derived owner IDs on reviews.
 - [x] Add encrypted recovery archives for shared tracker snapshots, journals, asset metadata/files and reconciliation archives, with integrity verification and isolated empty-target restore; add a disabled-until-configured nightly workflow.
 - [x] Rate-limit telemetry and image reads, bound analytics context and retention, make public health read-only, and remove production CSP unsafe-eval.
-- [ ] Verify owner MFA enrollment before deployment. Owner reports adding `ADMIN_OWNER_ID`/`ADMIN_TOTP_SECRET` in Vercel; actual seed format, matching authenticator enrollment, environment scope and hosted login are not verified. Production login fails closed without these; see docs/SECURITY_OPERATIONS.md.
+- [x] Owner reports enrolling the regenerated Base32 key and updating Vercel. Production variable names for owner ID, TOTP, password and session secret were confirmed without reading values.
+- [ ] Complete the real owner login/logout check at `https://mtgtrackers.com/admin`. Anonymous MFA status and access denial pass, but the matching secret/password and successful authenticated session still require the owner's test. Preview has no owner ID/TOTP variables and needs separate test credentials before hosted admin QA.
 - [ ] Activate the protected backup environment/failure notifications and perform a real hosted restore drill; retain the encryption key offline.
 - [ ] Add idempotency IDs to admin price/grading/image writes to avoid repeated history after lost responses.
 - [ ] Include active generated trackers in efficient whole-site affiliate rollups; unscoped reports currently default to featured trackers.
@@ -53,6 +56,7 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 - [x] Prevent unsafe previews/approval/merge/image overrides; show review safety states, check source links before opening, and preserve atomic approval after asynchronous checks.
 - [x] Make rate-limit increment/expiry atomic; bound public JSON bodies; reject cross-origin admin mutations.
 - [ ] Configure private Blob, Turnstile, both image scanners, and Web Risk in isolated Preview/Development, then Production. No real scanner credentials or external moderation calls were used for the local tests. See docs/EVIDENCE_SECURITY.md.
+  Production environment-name inspection confirms these settings are absent. Live upload/submit controls are disabled; do not claim intake is enabled or tested. No secrets were downloaded and no provider settings changed during deployment.
 - [ ] Verify real private upload/read/scan/approve/revoke/delete in an isolated hosted environment before enabling intake broadly; never seed production with QA discoveries.
 - [ ] Add durable scanning jobs with authenticated delivery, retry/backoff, and reconciliation for interrupted requests. Current scanning is synchronous and supports admin retry only.
 - [x] Add an all-tracker owner inbox with status/tracker filters and bounded cursor pages. Featured trackers plus active generated printings are read without initializing empty card arrays; original report storage avoids shared-view duplicates.
@@ -80,7 +84,7 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 
 Infrastructure acceptance: reports remain pending until authenticated review; overlapping views agree on card identity and discovery counts; image ingestion and telemetry have abuse/cost limits; backups can be restored in isolation; new trackers reuse validated configuration; affiliate destinations, attribution parameters, fallbacks, and disclosures pass checks. No minimum production discovery count is required.
 
-Backend relationship/workflow details and reconciliation instructions are in docs/DATA_MODEL.md. The owner-dashboard checkpoint has 335 passing tests across 26 files and successful lint/build. The preceding security checkpoint also passed dependency audit and actual-SDK/Lua checks for revocation/expiry, telemetry retention, recovery snapshots, shared-copy CAS and reconciliation. Dashboard Playwright checks at 320/390/1440px verify login, in-page review, held-image denial, status filtering, outages, setup indicators and logout with intercepted APIs. Route fixtures use the real session guard to verify inbox/configuration access, approval and denial after logout. See docs/SECURITY_OPERATIONS.md for enrollment, recovery and deployment gates. Hosted provider/Blob verification remains outstanding. The parent tracker and affiliate configuration/disclosures were not changed.
+Backend relationship/workflow details and reconciliation instructions are in docs/DATA_MODEL.md. The deployment checkpoint has 338 passing tests across 27 files, successful lint/build, and no known dependency vulnerabilities. Production smoke passes 62 checks; actual hosted browser checks at 390/1440px validate the anonymous owner login UI, and a hosted 390px check confirms uploads/submissions remain disabled without service configuration. The preceding actual-SDK/Lua checks cover revocation/expiry, telemetry retention, recovery snapshots, shared-copy CAS and reconciliation. Dashboard review/held-image/filter/outage/logout browser fixtures remain intercepted tests, not successful owner login or hosted scanner proof. See docs/SECURITY_OPERATIONS.md and docs/DEPLOYMENT_2026-09-05.md for release evidence and remaining gates. The parent tracker and affiliate configuration/disclosures were not changed.
 
 ### Later: Content And Growth
 

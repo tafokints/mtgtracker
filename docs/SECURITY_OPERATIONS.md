@@ -1,6 +1,6 @@
 # Owner Security And Recovery
 
-Implemented locally on 2026-09-05. This is a release gate and operations guide, not a claim of production configuration or a penetration-test certification. The Golden Chocobo project and affiliate destinations/disclosures are unchanged.
+Implemented and deployed on 2026-09-05. This is an operations guide, not a claim that every provider is configured or a penetration-test certification. The owner dashboard and security code are live; hosted owner login, evidence-provider setup and restore verification remain gates. See docs/DEPLOYMENT_2026-09-05.md. The Golden Chocobo project and affiliate destinations/disclosures are unchanged.
 
 ## Owner Access
 
@@ -33,7 +33,7 @@ The inbox reads original storage, not projected alias queues, and selects featur
 
 Service setup returns only presence/configuration booleans, never credentials. Configured does not prove private-store access, valid provider credentials, scan quality or successful cloud tests. Scheduled backup/restore verification cannot be inferred from the application environment and is explicitly not verified in this view.
 
-The owner reports adding `ADMIN_OWNER_ID` and `ADMIN_TOTP_SECRET` to Vercel. Confirm a randomly generated base32 seed, matching time-based authenticator enrollment, Sensitive storage, and correct environment scope before deployment; variable presence alone is not enrollment. The current changes are local, not live. Local dashboard checks use intercepted browser APIs and benign synthetic reports; no production reports were created.
+The owner reports enrolling a regenerated Base32 seed in Google Authenticator and updating Vercel. Production owner variable names were confirmed without reading values. Application release `7ad9ceb` is live at `https://mtgtrackers.com/admin`; anonymous MFA status, access denial and browser rendering passed. Actual password/TOTP login and logout are awaiting the owner test. Do not confuse the local preview with production or infer secret validity from variable presence. Local review checks use intercepted browser APIs and benign synthetic reports; no production reports were created.
 
 ## Public Request Budgets
 
@@ -78,7 +78,7 @@ After restore, verify shared-copy counts/history, owner login, private pending-i
 
 ## Remaining Release Gates
 
-- Enroll owner MFA and configure isolated Preview/Production secrets before deploying; this release intentionally disables production owner login without MFA configuration.
+- Complete the owner production login/logout test and configure separate isolated Preview secrets; Preview owner ID/TOTP are currently absent. The owner reports enrollment and Production variables exist, but successful hosted authentication has not yet been observed.
 - Activate and validate hosted backups, test actual restoration, and configure spend/failure alerts.
 - Complete actual private Blob, Turnstile, malware/sexual-content scanners and Web Risk setup/tests. Known-threat link screening is not adult-content classification or authenticity verification.
 - Add durable scan jobs, cleanup/retention and false-positive/takedown handling; keep scans fail-closed.
