@@ -210,7 +210,7 @@ export function normalizeTrackerCard(tracker: TrackerSummary, card: Partial<Seri
 
 export function withPendingReportCounts(cards: SerializedRingCard[], submissions: DiscoverySubmission[]) {
   const pendingCounts = submissions
-    .filter((submission) => submission.status === 'pending')
+    .filter(isOpenDiscoveryReport)
     .reduce((counts, submission) => {
       counts[submission.cardId] = (counts[submission.cardId] || 0) + 1;
       return counts;
@@ -220,6 +220,11 @@ export function withPendingReportCounts(cards: SerializedRingCard[], submissions
     ...card,
     pendingReports: pendingCounts[card.id] || 0,
   }));
+}
+
+// Public counts include unresolved requests for information, never private report details.
+function isOpenDiscoveryReport(submission: DiscoverySubmission) {
+  return submission.status === 'pending' || submission.status === 'needs-more-info';
 }
 
 export function getTrackerDirectoryStats(cards: SerializedRingCard[], submissions: DiscoverySubmission[]) {
@@ -233,7 +238,7 @@ export function getTrackerDirectoryStats(cards: SerializedRingCard[], submission
   return {
     foundCount: foundCards.length,
     confirmedCount: foundCards.filter((card) => card.verificationStatus === 'confirmed').length,
-    pendingReportCount: submissions.filter((submission) => submission.status === 'pending').length,
+    pendingReportCount: submissions.filter(isOpenDiscoveryReport).length,
     latestDiscovery: latestDiscovery ? {
       cardId: latestDiscovery.id,
       label: latestDiscovery.name,

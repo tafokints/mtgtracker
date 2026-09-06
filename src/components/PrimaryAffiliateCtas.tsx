@@ -1,6 +1,7 @@
 import type { AffiliatePlacement } from '@/lib/affiliate-placements';
 import { AffiliateLink, defaultAffiliateLinks } from '@/lib/trackers';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 interface PrimaryAffiliateCtasProps {
   links?: AffiliateLink[];
@@ -8,6 +9,7 @@ interface PrimaryAffiliateCtasProps {
   placement?: AffiliatePlacement;
   title?: string;
   description?: string;
+  compact?: boolean;
 }
 
 const merchantCopy: Record<AffiliateLink['merchant'], { eyebrow: string; detail: string }> = {
@@ -49,12 +51,22 @@ export default function PrimaryAffiliateCtas({
   placement = 'tracker-top-cta',
   title,
   description,
+  compact = false,
 }: PrimaryAffiliateCtasProps) {
   const resolvedLinks = orderLinks(links && links.length > 0 ? links : defaultAffiliateLinks);
 
   if (resolvedLinks.length === 0) {
     return null;
   }
+
+  if (compact) return (
+    <nav aria-label="Primary marketplace links" className="mb-4 flex flex-wrap gap-3 font-sans">
+      {resolvedLinks.slice(0, 3).map((link) => <AffiliateOutboundLink key={`${link.merchant}-${link.href}`} link={link} trackerSlug={trackerSlug} placement={placement}
+        className="inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-ring-gold underline decoration-ring-gold/40 underline-offset-4 hover:text-ring-light">
+        {link.label}<ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+      </AffiliateOutboundLink>)}
+    </nav>
+  );
 
   return (
     <section className="mb-5 rounded-lg border border-ring-gold/30 bg-black/20 p-4" aria-label="Primary marketplace links">

@@ -8,7 +8,20 @@ Current phase: infrastructure readiness. Zero production discoveries is acceptab
 
 Standing affiliate requirement: preserve a clear top-of-page disclosure before the first affiliate link on every page containing affiliate links, on desktop and mobile. The owner reports prior eBay compliance feedback, which is why this placement is intentional. Future layout work must not remove, collapse, or relocate it to the footer; see ARCHITECTURE.md.
 
-### Now: Audit And Reliability
+### Now: Collector Workflow And Browsing
+
+The owner has deferred screening-service account setup and requested a core workflow/usability pass. Do not bypass existing safety gates: pending uploads remain private and unapprovable until real checks pass. Public "under review" means an unresolved report exists, not that a discovery is verified.
+
+- [x] Keep needs-more-info reports in public open-report counts, including reports about already located copies. Publish counts only, not reporter details, review notes or pending evidence.
+- [x] Add consistent Under Review / Unreported labels, visible update reporting on located cards, and a report confirmation with the private receipt and a return-to-serial link.
+- [x] Add labeled search/card/status/sort controls, quick status counts, exact stamped-number/range search and 48-card pagination. Preserve shareable filters/page state and stop clearing filters when opening details.
+- [x] Move serial browsing ahead of FAQ/market explanations, collapse the long card activity overview, and add previous/next serial controls with native modal keyboard handling.
+- [x] Finish local desktop/mobile collector and owner review regression checks, including affiliate disclosure placement. 450 tests across 32 files, lint, build and collector/owner/workflow browser fixtures at 320/390/1440px pass. See docs/COLLECTOR_WORKFLOW_QA_2026-09-05.md. Release through the existing GitHub -> Vercel pipeline; read-only live checks remain separate from hosted intake verification.
+- [ ] Complete a real hosted upload -> scan -> approve/reject lifecycle after isolated stores and scanner accounts are ready. Intercepted browser fixtures and local route tests are not hosted service proof.
+
+Deferred local service-diagnostic work is preserved in the Git stash named `Deferred service diagnostics before collector workflow pass`; it is not in this release or pushed to GitHub. It includes the optional owner Turnstile acceptance/replay diagnostic and scanner configuration validation. Screening accounts are not configured; the real backend challenge acceptance/replay check is still pending.
+
+### Audit And Reliability
 
 - [x] Switch the sole owner password source to `ADMIN_PASSWORD_FRONTEND` at the owner's request, including password checks and session/replay fingerprints. Keep it server-only, reject legacy-password fallback and retain production MFA. Release `0058bc3` passed 343 tests, lint, build, CI and 62 production smoke checks; the owner subsequently confirmed the complete sign-in flow below.
 - [x] Push the five pending application commits through GitHub -> Vercel and verify the live custom domain. Release `7ad9ceb` passed GitHub Verify and is live at `/admin`; the owner only changed environment variables before this source push.
@@ -49,7 +62,7 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 - [x] Reuse existing One Ring, Edgar, and poster trackers; keep Golden Chocobo migration deferred.
 - [x] Validate affiliate attribution and query relevance for all generated printing/serial links; retain generic TCGplayer and top/bottom disclosures.
 
-### Now: Protected Evidence Intake
+### Deferred Setup: Protected Evidence Intake
 
 - [x] Recognize connected private Blob stores through `BLOB_STORE_ID` and SDK-managed Vercel OIDC, while retaining static-token support and fail-closed private uploads. No identity token is copied or passed manually.
 - [x] Add an owner-confirmed, rate-limited storage diagnostic to Service setup: private upload, bounded exact read-back, anonymous denial and generated-file-only cleanup. No collector records or scans are changed; failed cleanup remains visible. See docs/INTAKE_SETUP.md.
@@ -85,7 +98,7 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 - [x] Bound/rate-limit new public telemetry and add retention; arbitrary dimensions no longer create unlimited persistent keys. Historic untouched keys still need reviewed cleanup.
 - [ ] Enable the implemented encrypted recovery backup workflow and perform an isolated hosted restore drill. New recovery archives include asset metadata/files; tracker JSON exports alone still do not.
 - [ ] Validate the existing tracker scaffold across single-card and multi-card sets, different serialized quantities, shared identities, themes, and relevant affiliate defaults/fallbacks.
-- [ ] Add mobile/browser regression checks for empty trackers and isolated populated fixtures: serial selection, submission, image preview, review, and filters; improve the 2,000-slot browsing experience.
+- [x] Add mobile/browser regression checks for empty trackers and isolated populated fixtures: serial selection, submission, image preview, review, and filters; improve the 2,000-slot browsing experience with 48-card result pages. Real hosted service verification remains a separate gate.
 - [ ] Locate primary distribution documentation for the two Secret Lair serialized promos; their pages currently disclose the source limitation. Refresh the printing snapshot for new releases and manually review newly encountered sets.
 - [ ] Add per-tracker aesthetics through shared theme tokens and verify contrast/readability.
 - [ ] Confirm mtgtrackers.com is registered/approved in eBay, Amazon Associates, and TCGplayer/Impact accounts; verify configured IDs against each dashboard and retain prominent disclosures.

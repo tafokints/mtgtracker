@@ -10,33 +10,49 @@ import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 import ExternalImage from '@/components/ExternalImage';
 import { normalizeSourceUrl } from '@/lib/evidence-policy';
+import { getCardStatusLabel } from '@/lib/tracker-browse';
+import { ChevronLeftIcon, ChevronRightIcon, LinkIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface CardDetailsProps {
   card: SerializedRingCard;
   tracker: TrackerSummary;
   isOpen: boolean;
   onClose: () => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
 }
 
-export default function CardDetails({ card, tracker, isOpen, onClose }: CardDetailsProps) {
+export default function CardDetails({ card, tracker, isOpen, onClose, onPrevious, onNext }: CardDetailsProps) {
   const [copyMessage, setCopyMessage] = useState('');
   const copyMessageTimeoutRef = useRef<number | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isOpen) return;
-
-    setCopyMessage('');
-    if (copyMessageTimeoutRef.current) {
-      window.clearTimeout(copyMessageTimeoutRef.current);
-      copyMessageTimeoutRef.current = null;
-    }
+    if (!isOpen) return;
+    const dialog = dialogRef.current;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const overflow = document.body.style.overflow;
+    dialog?.showModal();
+    document.body.style.overflow = 'hidden';
+    return () => {
+      dialog?.close();
+      document.body.style.overflow = overflow;
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+      if (copyMessageTimeoutRef.current) window.clearTimeout(copyMessageTimeoutRef.current);
+    };
   }, [isOpen]);
+  useEffect(() => {
+    contentRef.current?.scrollTo(0, 0);
+    setCopyMessage('');
+  }, [card.id]);
 
   if (!isOpen) return null;
 
   const serialLabel = formatTrackerCardLabel(tracker, card);
   const marketplaceLinks = getSerialAffiliateLinks(tracker, card);
   const reportParams = getTrackerCardDeepLinkParams(tracker, card);
+  if (card.found) reportParams.set('kind', 'sighting');
   const reportHref = `${tracker.href}/submit?${reportParams.toString()}`;
   const getDetailUrl = () => (
     typeof window === 'undefined'
@@ -179,21 +195,29 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
-      <div className="bg-ring-dark border border-ring-gold rounded-lg p-6 w-[min(90vw,42rem)] max-h-[90vh] overflow-y-auto divide-y divide-ring-gold/20">
+    <dialog ref={dialogRef} aria-labelledby="serial-details-title" onCancel={(event) => { event.preventDefault(); onClose(); }}
+      className="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-2xl max-h-none overflow-visible bg-transparent p-0 text-ring-light backdrop:bg-black/70">
+      <div ref={contentRef} className="bg-ring-dark border border-ring-gold rounded-lg p-4 sm:p-6 w-full max-h-[90dvh] overflow-y-auto divide-y divide-ring-gold/20">
         <div className="flex flex-wrap justify-between items-center pb-4 gap-4">
-          <h2 className="text-xl font-bold text-ring-gold">
+          <h2 id="serial-details-title" className="min-w-0 break-words text-xl font-bold text-ring-gold">
             {tracker.title} {serialLabel} Details
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2">
+            <button type="button" onClick={onPrevious} disabled={!onPrevious} aria-label="Previous serial" title="Previous serial" className="flex h-10 w-10 items-center justify-center rounded border border-ring-gold/40 text-ring-gold disabled:opacity-30">
+              <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <button type="button" onClick={onNext} disabled={!onNext} aria-label="Next serial" title="Next serial" className="flex h-10 w-10 items-center justify-center rounded border border-ring-gold/40 text-ring-gold disabled:opacity-30">
+              <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
+            </button>
             {copyMessage && (
               <span className="text-xs font-bold text-ring-light/70" role="status">{copyMessage}</span>
             )}
             <button
               onClick={copyDetailLink}
-              className="rounded border border-ring-gold/40 px-3 py-1.5 text-xs font-bold text-ring-gold transition-colors hover:border-ring-gold hover:bg-ring-gold hover:text-ring-dark"
+              aria-label="Copy link" title="Copy link"
+              className="flex h-10 w-10 items-center justify-center rounded border border-ring-gold/40 text-ring-gold hover:bg-ring-gold/10"
             >
-              Copy Link
+              <LinkIcon className="h-5 w-5" aria-hidden="true" />
             </button>
             {card.found && (
               <button
@@ -207,14 +231,15 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
               href={reportHref}
               className="rounded bg-ring-gold px-3 py-1.5 text-xs font-bold text-ring-dark transition-colors hover:bg-yellow-400"
             >
-              Report This Serial
+              {card.found ? 'Report an Update' : 'Report This Serial'}
             </Link>
             <button
               onClick={onClose}
-              className="text-ring-gold hover:text-yellow-400 rounded px-2 py-1"
+              className="ml-auto flex h-10 w-10 items-center justify-center text-ring-gold hover:text-yellow-400 rounded"
               aria-label="Close details"
+              title="Close details"
             >
-              x
+              <XMarkIcon className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -224,9 +249,9 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
             <h3 className="text-lg font-bold text-ring-gold mb-2">Basic Information</h3>
             <div className="bg-ring-light bg-opacity-20 p-4 rounded space-y-1">
               <p className="text-ring-light">
-                <span className="font-bold">Status:</span> {card.found ? 'Located' : 'Not Found'}
+                <span className="font-bold">Status:</span> {getCardStatusLabel(card)}
               </p>
-              {!card.found && (card.pendingReports || 0) > 0 && (
+              {(card.pendingReports || 0) > 0 && (
                 <p className="text-ring-light">
                   <span className="font-bold">Pending reports:</span> {card.pendingReports}
                 </p>
@@ -510,6 +535,6 @@ export default function CardDetails({ card, tracker, isOpen, onClose }: CardDeta
           )}
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

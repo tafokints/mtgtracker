@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import ExternalImage from '@/components/ExternalImage';
 import SubmissionChallenge from '@/components/SubmissionChallenge';
 import Link from 'next/link';
@@ -9,6 +9,7 @@ import type { TrackerSummary } from '@/lib/trackers';
 import {
   formatTrackerSerial,
   getTrackerCardDefinitions,
+  getTrackerCardDeepLinkParams,
   getTrackerCardSlot,
   getTrackerSlotId,
   getTrackerSlotIdFromDeepLinkParams,
@@ -48,6 +49,8 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
   const [dateGraded, setDateGraded] = useState('');
   const [certificateNumber, setCertificateNumber] = useState('');
   const [followUpPath, setFollowUpPath] = useState('');
+  const [completedReport, setCompletedReport] = useState<{ label: string; href: string }>();
+  const receiptHeadingRef = useRef<HTMLHeadingElement>(null);
   const [uploadedEvidence, setUploadedEvidence] = useState<Array<{ id: string; preview: string; status: string }>>([]);
   const previews = useRef(new Set<string>());
   const session = useRef<{ token: string; expiresAt: number; cardId: number }>();
@@ -125,6 +128,12 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
     const current = previews.current;
     return () => { for (const preview of current) URL.revokeObjectURL(preview); };
   }, []);
+  useEffect(() => {
+    if (completedReport) {
+      window.scrollTo(0, 0);
+      receiptHeadingRef.current?.focus();
+    }
+  }, [completedReport]);
 
   async function ensureSession() {
     if (!consent) throw new Error('Please confirm permission to submit this evidence.');
@@ -150,6 +159,7 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get('kind') === 'sighting' || params.get('kind') === 'correction') setKind(params.get('kind') as ReportKind);
     const slotId = getTrackerSlotIdFromDeepLinkParams(tracker, params);
     if (!slotId) return;
 
@@ -208,6 +218,9 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
     if (response.ok) {
       const receipt = await response.json();
       setFollowUpPath(receipt.followUpPath || '');
+      const slot = getTrackerCardSlot(tracker, selectedSlotId || 0);
+      setCompletedReport({ label: selectedSerialSummary || tracker.title,
+        href: slot ? `${trackerPath}?${getTrackerCardDeepLinkParams(tracker, slot)}` : trackerPath });
       setMessage('Submission queued for review. Thank you!');
       setIsError(false);
       setCardId('');
@@ -226,6 +239,9 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
       session.current = undefined;
       setUploadMessage('');
       setNotes('');
+      setConsent(false);
+      setTurnstileToken('');
+      setChallengeVersion((version) => version + 1);
     } else {
       const data = await response.json().catch(() => null);
       setMessage(data?.message || 'Submission failed. Please check the serial and source details.');
@@ -309,16 +325,30 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
     setUploading(false);
   };
 
+  if (completedReport) return (
+    <main className="mx-auto min-h-screen max-w-2xl px-4 py-12 sm:px-8">
+      <CheckCircleIcon className="mb-4 h-10 w-10 text-ring-teal" aria-hidden="true" />
+      <h1 ref={receiptHeadingRef} tabIndex={-1} className="text-2xl font-bold text-ring-gold">Report queued</h1>
+      <p className="mt-3 break-words text-lg text-ring-light">{completedReport.label}</p>
+      <p className="mt-3 text-sm text-ring-light/75">Awaiting admin review. This is a potential find, not a confirmed discovery. Uploaded evidence stays private until safety checks and approval are complete.</p>
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        {followUpPath && <a href={followUpPath} className="rounded bg-ring-gold px-4 py-3 font-semibold text-ring-dark">View private report status</a>}
+        <Link href={completedReport.href} className="inline-flex items-center gap-2 py-3 text-ring-teal"><ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />Back to serial</Link>
+      </div>
+      <button type="button" onClick={() => { setCompletedReport(undefined); setFollowUpPath(''); setMessage(''); setKind('discovery'); }} className="mt-6 rounded border border-ring-gold/40 px-4 py-2 text-sm text-ring-gold">Report another find</button>
+    </main>
+  );
+
   return (
     <>
       <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8 sm:px-8">
-        <div className="w-full max-w-2xl mb-6 flex items-center justify-between">
+        <div className="w-full max-w-2xl mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-ring-gold">Report a Find</h1>
             <p className="mt-2 text-sm text-ring-light/70">Reports are queued for admin review before they appear as located.</p>
           </div>
-          <Link href={trackerPath} className="text-ring-gold hover:text-yellow-400 transition-colors">
-            Back
+          <Link href={`${trackerPath}#serials`} className="inline-flex items-center gap-2 text-ring-gold hover:text-yellow-400 transition-colors">
+            <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />Back to tracker
           </Link>
         </div>
         <form onSubmit={handleSubmit} className="w-full max-w-2xl bg-ring-dark p-4 sm:p-8 rounded-lg border border-ring-gold">

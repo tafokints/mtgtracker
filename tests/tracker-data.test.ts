@@ -100,6 +100,24 @@ describe('tracker data helpers', () => {
     });
   });
 
+  it('counts unresolved reports across public views without publishing report details', () => {
+    const cards = createInitialTrackerCards(tracker).slice(0, 3);
+    cards[0].found = true;
+    const reports = [
+      submission({ cardId: 1, status: 'needs-more-info' }),
+      submission({ cardId: 2, status: 'pending' }),
+      ...(['approved', 'rejected', 'duplicate', 'cannot-verify', 'revoked'] as const)
+        .map((status) => submission({ cardId: 3, status })),
+    ];
+    const counted = withPendingReportCounts(cards, reports);
+    expect(counted.map((card) => card.pendingReports)).toEqual([1, 1, 0]);
+    expect(counted[0].found).toBe(true);
+    expect(getTrackerDirectoryStats(cards, reports).pendingReportCount).toBe(2);
+    expect(JSON.stringify(counted)).not.toContain('Submitted note');
+    expect(JSON.stringify(counted)).not.toContain('example.com');
+    expect(counted[1].found).toBe(false);
+  });
+
   it('reads directory stats from stored data without initializing tracker slots', async () => {
     const cards = createInitialTrackerCards(tracker).slice(0, 2);
     cards[0] = { ...cards[0], found: true, verificationStatus: 'confirmed' };

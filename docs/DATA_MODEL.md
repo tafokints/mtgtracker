@@ -40,6 +40,8 @@ These are logical one-to-many relationships, still persisted inside the existing
 
 ## Review And Follow-Up
 
+Public `pendingReports` / directory `pendingReportCount` aggregate unresolved `pending` and `needs-more-info` reports. They include updates to located copies, and never include private reporter text, review notes, receipt tokens, or pending images. An unlocated copy with an open report is **Under Review**, not found; one without an open report is **Unreported**. Located/confirmed copies keep their approved status while showing a separate update-review count. Closed statuses leave this count. This is a read-time projection, not a stored status migration.
+
 1. A signed, card-bound submission session creates one report. Identical retries return the same receipt; a different payload for that session returns 409 instead of silently losing edits.
 2. File safety and source screening remain separate from factual verification. Missing or flagged checks do not acquire an override through the new workflows.
 3. Moderators can approve, reject, request information, mark duplicate, or mark cannot verify. Merged evidence must belong to the same copy and all selected reports must remain unchanged and pending until the atomic commit. Merged price/grading observations and context are retained as child events governed by the parent approval; corrections must be reviewed separately.

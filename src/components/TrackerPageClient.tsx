@@ -9,6 +9,7 @@ import {
   formatTrackerCardLabel,
   getTrackerCardDeepLinkParams,
   getTrackerCardDefinitions,
+  getTrackerTotalSlots,
 } from '@/lib/tracker-data';
 import AffiliateLinks from "@/components/AffiliateLinks";
 import AffiliateDisclosureNotice from "@/components/AffiliateDisclosureNotice";
@@ -22,6 +23,8 @@ import ReportButton from '@/components/ReportButton';
 import AdminPanel from '@/components/AdminPanel';
 import ProgressBar from '@/components/ProgressBar';
 import FilterControls from '@/components/FilterControls';
+import TrackerPagination from '@/components/TrackerPagination';
+import { browseTrackerCards, getCardStatusLabel, getTrackerPage, matchesTrackerStatus, VALID_SORT_ORDERS, VALID_STATUS_FILTERS } from '@/lib/tracker-browse';
 import CardDetails from '@/components/CardDetails';
 import ExternalImage from '@/components/ExternalImage';
 import Lightbox from "yet-another-react-lightbox";
@@ -41,35 +44,10 @@ interface CardSummaryRow {
 
 type ActiveFilterChipId = 'search' | 'card' | 'status' | 'sort';
 
-const VALID_STATUS_FILTERS = new Set([
-  'all',
-  'found',
-  'pending',
-  'confirmed',
-  'source-linked',
-  'has-evidence',
-  'source-marketplace',
-  'source-grading-pop',
-  'source-social',
-  'source-article',
-  'source-private-sale',
-  'source-other',
-  'not-found',
-]);
-
-const VALID_SORT_ORDERS = new Set([
-  'id-asc',
-  'id-desc',
-  'price-desc',
-  'price-asc',
-  'date-desc',
-  'date-asc',
-  'evidence-desc',
-]);
-
 const STATUS_FILTER_LABELS: Record<string, string> = {
   found: 'located serials',
   pending: 'pending reports',
+  unreported: 'unreported serials',
   confirmed: 'confirmed discoveries',
   'source-linked': 'source-linked discoveries',
   'has-evidence': 'proof-backed discoveries',
@@ -105,7 +83,10 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   const [cardFilter, setCardFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState('id-asc');
-  const viewStateInitializedRef = useRef(false);
+  const [viewStateInitialized, setViewStateInitialized] = useState(false);
+  const filterKey = JSON.stringify([searchQuery, cardFilter, statusFilter, sortOrder]);
+  const [pageSelection, setPageSelection] = useState({ filters: '', page: 1 });
+  const browseHeadingRef = useRef<HTMLHeadingElement>(null);
   
   // State for lightbox
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -189,11 +170,17 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     setStatusFilter(VALID_STATUS_FILTERS.has(nextStatusFilter) ? nextStatusFilter : 'all');
     setSortOrder(VALID_SORT_ORDERS.has(nextSortOrder) ? nextSortOrder : 'id-asc');
     setCardFilter(isKnownCardFilter ? nextCardFilter : 'all');
+    setPageSelection({
+      filters: JSON.stringify([params.get('q') || '', isKnownCardFilter ? nextCardFilter : 'all',
+        VALID_STATUS_FILTERS.has(nextStatusFilter) ? nextStatusFilter : 'all',
+        VALID_SORT_ORDERS.has(nextSortOrder) ? nextSortOrder : 'id-asc']),
+      page: Number(params.get('page') || 1),
+    });
   }, [cardDefinitions]);
 
   useEffect(() => {
     syncViewStateFromUrl();
-    viewStateInitializedRef.current = true;
+    setViewStateInitialized(true);
 
     window.addEventListener('popstate', syncViewStateFromUrl);
 
@@ -205,8 +192,26 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     };
   }, [syncViewStateFromUrl]);
 
+  const filteredAndSortedCards = useMemo(() => browseTrackerCards(cards, {
+    cardFilter, searchQuery, statusFilter, sortOrder,
+  }), [cards, cardFilter, searchQuery, statusFilter, sortOrder]);
+  const requestedPage = pageSelection.filters === filterKey ? pageSelection.page : 1;
+  const pagination = getTrackerPage(filteredAndSortedCards.length, requestedPage);
+  const visibleCards = useMemo(() => filteredAndSortedCards.slice(pagination.start, pagination.end),
+    [filteredAndSortedCards, pagination.start, pagination.end]);
+  const statusCounts = useMemo(() => {
+    const matching = browseTrackerCards(cards, { cardFilter, searchQuery, statusFilter: 'all', sortOrder });
+    return Object.fromEntries(['all', 'found', 'pending', 'unreported'].map((status) =>
+      [status, matching.filter((card) => matchesTrackerStatus(card, status)).length]));
+  }, [cards, cardFilter, searchQuery, sortOrder]);
+  const changePage = (page: number) => {
+    setPageSelection({ filters: filterKey, page });
+    browseHeadingRef.current?.focus({ preventScroll: true });
+    browseHeadingRef.current?.scrollIntoView({ block: 'start' });
+  };
+
   useEffect(() => {
-    if (!viewStateInitializedRef.current) return;
+    if (!viewStateInitialized || loading || dataError) return;
 
     const params = new URLSearchParams(window.location.search);
     const trimmedSearchQuery = searchQuery.trim();
@@ -235,6 +240,9 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
       params.delete('cardFilter');
     }
 
+    if (pagination.page > 1) params.set('page', String(pagination.page));
+    else params.delete('page');
+
     const query = params.toString();
     const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}`;
     const currentUrl = `${window.location.pathname}${window.location.search}`;
@@ -242,7 +250,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     if (nextUrl !== currentUrl) {
       window.history.replaceState(null, '', nextUrl);
     }
-  }, [cardFilter, searchQuery, sortOrder, statusFilter]);
+  }, [cardFilter, searchQuery, sortOrder, statusFilter, pagination.page, viewStateInitialized, loading, dataError]);
 
   const clearCopyViewMessageSoon = () => {
     if (copyViewMessageTimeoutRef.current) {
@@ -279,7 +287,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     }
   };
 
-  const openCardDetails = useCallback((card: SerializedRingCard) => {
+  const openCardDetails = useCallback((card: SerializedRingCard, replace = false) => {
     setSelectedCardForDetails(card);
 
     const params = new URLSearchParams(window.location.search);
@@ -295,7 +303,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     }
 
     const query = params.toString();
-    window.history.pushState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+    window.history[replace ? 'replaceState' : 'pushState'](null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
   }, [tracker]);
 
   const closeCardDetails = useCallback(() => {
@@ -346,11 +354,6 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
       const card = findTrackerCardByDeepLinkParams(tracker, cards, params);
 
       setSelectedCardForDetails(card || null);
-
-      if (card?.cardSlug) {
-        setCardFilter(card.cardSlug);
-        setSearchQuery('');
-      }
     };
 
     syncDetailsFromUrl();
@@ -431,59 +434,6 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
       throw error instanceof Error ? error : new Error('Price history update failed');
     }
   };
-
-  const filteredAndSortedCards = useMemo(() => {
-    return cards
-      .filter(card => {
-        const matchesCard = cardFilter === 'all' || card.cardSlug === cardFilter;
-
-        // Search query filter
-        const normalizedSearch = searchQuery.trim().toLowerCase();
-        const matchesSearch =
-          normalizedSearch === '' ||
-          card.serialNumber.includes(searchQuery.trim()) ||
-          card.id.toString().includes(searchQuery.trim()) ||
-          Boolean(card.cardTitle?.toLowerCase().includes(normalizedSearch));
-
-        // Status filter
-        const matchesStatus =
-          statusFilter === 'all' ||
-          (statusFilter === 'found' && card.found) ||
-          (statusFilter === 'pending' && !card.found && (card.pendingReports || 0) > 0) ||
-          (statusFilter === 'confirmed' && card.verificationStatus === 'confirmed') ||
-          (statusFilter === 'source-linked' && card.verificationStatus === 'source-linked') ||
-          (statusFilter === 'has-evidence' && (card.evidenceImages || []).length > 0) ||
-          (statusFilter === 'source-marketplace' && card.sourceType === 'marketplace') ||
-          (statusFilter === 'source-grading-pop' && card.sourceType === 'grading-pop') ||
-          (statusFilter === 'source-social' && card.sourceType === 'social') ||
-          (statusFilter === 'source-article' && card.sourceType === 'article') ||
-          (statusFilter === 'source-private-sale' && card.sourceType === 'private-sale') ||
-          (statusFilter === 'source-other' && card.sourceType === 'other') ||
-          (statusFilter === 'not-found' && !card.found);
-
-        return matchesCard && matchesSearch && matchesStatus;
-      })
-      .sort((a, b) => {
-        switch (sortOrder) {
-          case 'id-desc':
-            return b.id - a.id;
-          case 'price-asc':
-            return (a.price ?? Infinity) - (b.price ?? Infinity);
-          case 'price-desc':
-            return (b.price ?? -1) - (a.price ?? -1);
-          case 'date-asc':
-            return new Date(a.dateFound ?? 0).getTime() - new Date(b.dateFound ?? 0).getTime();
-          case 'date-desc':
-            return new Date(b.dateFound ?? 0).getTime() - new Date(a.dateFound ?? 0).getTime();
-          case 'evidence-desc':
-            return (b.evidenceImages?.length || 0) - (a.evidenceImages?.length || 0) || a.id - b.id;
-          case 'id-asc':
-          default:
-            return a.id - b.id;
-        }
-      });
-  }, [cards, cardFilter, searchQuery, statusFilter, sortOrder]);
-
   const cardFilterOptions = useMemo(() => {
     const countsBySlug = new Map<string, number>();
 
@@ -520,10 +470,10 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   }, [cards, cardDefinitions]);
 
   const lightboxSlides = useMemo(() => {
-    return filteredAndSortedCards
+    return visibleCards
       .map(card => card.image || referenceImage)
       .map(src => ({ src }));
-  }, [filteredAndSortedCards, referenceImage]);
+  }, [visibleCards, referenceImage]);
   const filteredQualitySummary = useMemo(() => {
     const locatedCount = filteredAndSortedCards.filter((card) => card.found).length;
     const confirmedInViewCount = filteredAndSortedCards.filter((card) => card.verificationStatus === 'confirmed').length;
@@ -541,7 +491,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   const foundCards = cards.filter((card) => card.found);
   const confirmedCount = cards.filter((card) => card.verificationStatus === 'confirmed').length;
   const foundCount = foundCards.length;
-  const totalCount = cards.length || tracker.total || 0;
+  const totalCount = cards.length || getTrackerTotalSlots(tracker);
   const pendingReportCount = cards.reduce((total, card) => total + (card.pendingReports || 0), 0);
   const hasActiveViewFilters =
     searchQuery.trim() !== '' ||
@@ -620,7 +570,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
 
   return (
     <>
-      <main className="flex min-h-screen flex-col items-center p-8 md:p-12">
+      <main className="flex min-h-screen flex-col items-center px-4 py-6 sm:p-8 md:p-12">
         <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
           <h1 className={`mb-4 min-w-0 break-words text-2xl font-bold md:text-4xl lg:mb-0 ${tracker.theme.accentClass}`}>
             {tracker.title}
@@ -630,6 +580,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
               Home
             </Link>
             <Link href="/sets" className="text-ring-teal hover:underline">Sets</Link>
+            <a href="#serials" className="text-ring-teal hover:underline">Browse serials</a>
             <Link href={`${trackerPath}/stats`} className="text-ring-gold hover:text-yellow-400 transition-colors">
               Stats
             </Link>
@@ -645,17 +596,15 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
           </div>
         </div>
 
-        <div className="w-full max-w-5xl mt-6 text-center bg-ring-dark bg-opacity-75 p-6 rounded-lg">
+        <div className="w-full max-w-5xl mt-6 border-y border-ring-gold/25 py-5 text-left font-sans">
           <div className="mb-5 text-left">
             <AffiliateDisclosureNotice links={tracker.affiliateLinks} compact />
           </div>
-          <PrimaryAffiliateCtas links={tracker.affiliateLinks} trackerSlug={tracker.slug} />
-          <TrackerMarketTrustStrip summary={marketSummary} />
+          <PrimaryAffiliateCtas links={tracker.affiliateLinks} trackerSlug={tracker.slug} compact />
           <ProgressBar current={foundCount} total={totalCount} />
           <p className="text-ring-light mt-3 text-sm">
             Tracking {totalCount} {tracker.cardType || 'serialized cards'}{cardDefinitions.length > 1 ? ` across ${cardDefinitions.length} cards` : ''} from {tracker.setName || 'Magic: The Gathering'}. {confirmedCount} confirmed, {foundCount - confirmedCount} source-linked or unverified.
           </p>
-          <ReferenceLinks links={tracker.referenceLinks} compact />
           {dataError && (
             <p className="text-ring-light mt-4 text-sm">{dataError}</p>
           )}
@@ -669,7 +618,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
               >
                 {formatTrackerCardLabel(tracker, lastFoundCard)}
               </button>{' '}
-              by {lastFoundCard.foundBy} on {lastFoundCard.dateFound}
+              {lastFoundCard.foundBy ? `by ${lastFoundCard.foundBy}` : ''}{lastFoundCard.dateFound ? ` on ${lastFoundCard.dateFound}` : ''}
             </p>
           )}
           {!lastFoundCard && !dataError && (
@@ -680,16 +629,9 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
           )}
         </div>
 
-        <div className="mt-6 w-full max-w-5xl">
-          <TrackerMarketInsights tracker={tracker} />
-        </div>
-
-        <div className="mt-6 w-full max-w-5xl">
-          <TrackerFaq tracker={tracker} />
-        </div>
-
         {!dataError && (
           <>
+            <h2 id="serials" ref={browseHeadingRef} tabIndex={-1} className="mb-3 mt-8 w-full max-w-5xl scroll-mt-4 text-xl font-bold text-ring-gold">Serials</h2>
             <CardSummarySection
               rows={cardSummaryRows}
               selectedCardSlug={cardFilter}
@@ -709,12 +651,13 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
               setStatusFilter={setStatusFilter}
               sortOrder={sortOrder}
               setSortOrder={setSortOrder}
+              statusCounts={statusCounts}
             />
 
-            <div className="mt-3 flex w-full max-w-5xl flex-wrap items-center justify-between gap-2 rounded border border-ring-gold/25 bg-ring-dark/70 px-4 py-3 text-sm text-ring-light">
+            <div className="mt-3 flex w-full max-w-5xl flex-wrap items-center justify-between gap-2 py-2 font-sans text-sm text-ring-light" role="status">
               <p>
-                Showing <span className="font-bold text-ring-gold">{filteredAndSortedCards.length}</span> of{' '}
-                <span className="font-bold text-ring-gold">{totalCount}</span> serials
+                Showing <span className="font-bold text-ring-gold">{filteredAndSortedCards.length ? `${pagination.start + 1}-${pagination.end}` : '0'}</span> of{' '}
+                <span className="font-bold text-ring-gold">{filteredAndSortedCards.length}</span> matching serials
                 {hasActiveViewFilters ? ` for ${activeViewSummary}` : ' in this tracker'}.
               </p>
               {filteredQualitySummary.pendingReportsInViewCount > 0 && (
@@ -736,10 +679,10 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                     key={chip.id}
                     type="button"
                     onClick={() => clearActiveFilterChip(chip.id)}
-                    className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ring-gold/40 bg-ring-dark/80 px-3 py-1 text-xs font-bold text-ring-light transition-colors hover:border-ring-gold hover:text-ring-gold focus:outline-none focus:ring-2 focus:ring-ring-gold focus:ring-offset-2 focus:ring-offset-ring-dark"
+                    className="inline-flex min-h-9 max-w-full items-center gap-2 rounded border border-ring-gold/40 bg-ring-dark/80 px-3 py-1 font-sans text-xs font-bold text-ring-light transition-colors hover:border-ring-gold hover:text-ring-gold focus:outline-none focus:ring-2 focus:ring-ring-gold focus:ring-offset-2 focus:ring-offset-ring-dark"
                   >
-                    <span>{chip.label}</span>
-                    <XMarkIcon className="h-4 w-4" aria-hidden="true" />
+                    <span className="min-w-0 break-words">{chip.label}</span>
+                    <XMarkIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
                   </button>
                 ))}
                 <button
@@ -750,26 +693,15 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                     setStatusFilter('all');
                     setSortOrder('id-asc');
                   }}
-                  className="inline-flex min-h-9 items-center rounded-full border border-ring-gold/30 px-3 py-1 text-xs font-bold text-ring-gold transition-colors hover:border-yellow-400 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-ring-gold focus:ring-offset-2 focus:ring-offset-ring-dark"
+                  className="inline-flex min-h-9 items-center rounded border border-ring-gold/30 px-3 py-1 font-sans text-xs font-bold text-ring-gold transition-colors hover:border-yellow-400 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-ring-gold focus:ring-offset-2 focus:ring-offset-ring-dark"
                 >
                   Clear All
                 </button>
               </div>
             )}
 
-            {hasActiveViewFilters && filteredAndSortedCards.length > 0 && (
-              <div className="w-full max-w-5xl mt-4">
-                <PrimaryAffiliateCtas
-                  links={tracker.affiliateLinks}
-                  trackerSlug={tracker.slug}
-                  placement="tracker-filtered-cta"
-                  title="Marketplace Links For This View"
-                  description={`${filteredAndSortedCards.length} matching serial${filteredAndSortedCards.length === 1 ? '' : 's'}: ${activeViewSummary}.`}
-                />
-              </div>
-            )}
-
-            <section className="w-full max-w-5xl mt-8" aria-label={`${tracker.title} serialized cards`}>
+            <TrackerPagination {...pagination} onChange={changePage} position="top" />
+            <section className="w-full max-w-5xl mt-4 font-sans" aria-label={`${tracker.title} serialized cards`}>
               <h2 className="sr-only">{tracker.title} Card Collection</h2>
               {filteredAndSortedCards.length === 0 ? (
                 <div className="rounded-lg border border-ring-gold/30 bg-ring-dark/80 px-5 py-8 text-center">
@@ -791,21 +723,16 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  {filteredAndSortedCards.map((card, index) => {
+                  {visibleCards.map((card, index) => {
               const imageSrc = card.image || referenceImage;
               const reportParams = getTrackerCardDeepLinkParams(tracker, card);
+              if (card.found) reportParams.set('kind', 'sighting');
               const reportHref = `${trackerPath}/submit?${reportParams.toString()}`;
               const serialEbayLink = getSerialAffiliateLinks(tracker, card).find((link) => link.merchant === 'ebay');
-              const statusLabel = card.found
-                ? card.verificationStatus === 'confirmed'
-                  ? 'Confirmed'
-                  : 'Located'
-                : (card.pendingReports || 0) > 0
-                  ? 'Pending Review'
-                : 'Not Found';
+              const statusLabel = getCardStatusLabel(card);
               
               return (
-                <article key={card.id} className="border border-ring-gold rounded-lg p-4 bg-ring-dark shadow-[0_0_15px_rgba(214,167,61,0.5)] flex flex-col h-full">
+                <article key={card.id} className="border border-ring-gold/40 rounded-lg p-4 bg-ring-dark flex flex-col h-full">
                   <div 
                     className="aspect-[3/4] mb-3 bg-ring-light rounded overflow-hidden cursor-pointer"
                     onClick={() => {
@@ -817,6 +744,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                     aria-label={`View larger image of ${formatTrackerCardLabel(tracker, card)}`}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
                         setLightboxIndex(index);
                         setLightboxOpen(true);
                       }
@@ -847,9 +775,9 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                     >
                       {statusLabel}
                     </span>
-                    {!card.found && (card.pendingReports || 0) > 0 && (
+                    {(card.pendingReports || 0) > 0 && (
                       <span className="mt-2 inline-block rounded border border-ring-teal/40 px-2 py-0.5 text-xs text-ring-light">
-                        {card.pendingReports} report{card.pendingReports === 1 ? '' : 's'}
+                        {card.pendingReports} {card.found ? 'update' : 'report'}{card.pendingReports === 1 ? '' : 's'} under review
                       </span>
                     )}
                     {card.sourceType && (
@@ -890,14 +818,12 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                     )}
 
                     <div className="mt-auto grid grid-cols-1 gap-2">
-                      {!card.found && (
                         <Link
                           href={reportHref}
                           className="w-full rounded border border-ring-gold/60 px-4 py-2 text-center text-sm font-bold text-ring-gold transition-colors hover:border-yellow-400 hover:text-yellow-400"
                         >
-                          Report This Serial
+                          {card.found ? 'Report an Update' : 'Report This Serial'}
                         </Link>
-                      )}
                       {serialEbayLink && (
                         <AffiliateOutboundLink
                           link={serialEbayLink}
@@ -922,6 +848,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                 </div>
               )}
             </section>
+            <TrackerPagination {...pagination} onChange={changePage} position="bottom" />
           </>
         )}
 
@@ -938,6 +865,10 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
           trackerSlug={tracker.slug}
           placement="tracker-marketplace"
         />
+
+        <div className="mt-6 w-full max-w-5xl"><TrackerMarketInsights tracker={tracker} /></div>
+        <div className="mt-6 w-full max-w-5xl"><TrackerFaq tracker={tracker} /></div>
+        <div className="mt-6 w-full max-w-5xl"><TrackerMarketTrustStrip summary={marketSummary} /><ReferenceLinks links={tracker.referenceLinks} compact /></div>
         <AdminPanel 
           tracker={tracker}
           cards={cards} 
@@ -953,6 +884,10 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
             card={selectedCardForDetails}
             isOpen={!!selectedCardForDetails}
             onClose={closeCardDetails}
+            onPrevious={filteredAndSortedCards.indexOf(selectedCardForDetails) > 0
+              ? () => openCardDetails(filteredAndSortedCards[filteredAndSortedCards.indexOf(selectedCardForDetails) - 1], true) : undefined}
+            onNext={filteredAndSortedCards.indexOf(selectedCardForDetails) >= 0 && filteredAndSortedCards.indexOf(selectedCardForDetails) < filteredAndSortedCards.length - 1
+              ? () => openCardDetails(filteredAndSortedCards[filteredAndSortedCards.indexOf(selectedCardForDetails) + 1], true) : undefined}
           />
         )}
       </main>
@@ -976,7 +911,8 @@ function CardSummarySection({
   const activeRows = rows.filter((row) => row.foundCount > 0 || row.pendingReportCount > 0);
 
   return (
-    <section className="w-full max-w-5xl mt-8 rounded-lg border border-ring-gold/30 bg-ring-dark/75 p-4" aria-label="Card activity summary">
+    <details className="mb-4 w-full max-w-5xl" aria-label="Card activity summary">
+      <summary className="cursor-pointer py-3 text-sm font-semibold text-ring-light">Card activity ({rows.length} cards)</summary>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-ring-gold">Card Activity</h2>
         <button
@@ -1041,6 +977,6 @@ function CardSummarySection({
           );
         })}
       </div>
-    </section>
+    </details>
   );
 }

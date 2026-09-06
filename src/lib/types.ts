@@ -129,5 +129,6 @@ export interface SerializedRingCard {
   priceDate?: string;
   priceHistory: PriceHistoryEntry[];
   grading?: GradingInfo;
+  /** Public aggregate of pending and needs-more-info reports; never a discovery count. */
   pendingReports?: number;
 } 

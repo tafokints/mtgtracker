@@ -394,6 +394,10 @@ describe('tracker API routes', () => {
     const follow = (payload?: unknown, access = token) => new Request('https://mtgtrackers.com/api/reports/one-ring/' + id, { method: payload ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', origin: 'https://mtgtrackers.com', 'x-report-token': access }, body: payload ? JSON.stringify(payload) : undefined });
     expect((await readReportReceipt(follow(undefined, 'wrong'), context)).status).toBe(403);
     expect((await reviewSubmission(reviewRequest({ submissionId: id, action: 'needs-more-info', reviewNotes: 'Please provide a readable serial photo' }), routeContext())).status).toBe(200);
+    const heldPublic = await (await readCards(exportRequest(), routeContext())).json();
+    expect(heldPublic[6]).toMatchObject({ found: false, pendingReports: 1 });
+    expect(JSON.stringify(heldPublic)).not.toContain('Please provide a readable serial photo');
+    expect(JSON.stringify(heldPublic)).not.toContain(token);
     expect((await (await readReportReceipt(follow(), context)).json()).request).toContain('readable serial');
     const uploadSession = await (await replyToReport(follow({ action: 'upload-session' }), context)).json();
     const uploaded = await (await uploadEvidenceImage(uploadRequest(await realImage(), '203.0.113.9', uploadSession.token), routeContext())).json();
@@ -404,8 +408,10 @@ describe('tracker API routes', () => {
     const updated = await (await readReportReceipt(follow(), context)).json();
     expect(updated.status).toBe('pending');
     expect(updated.followUps).toHaveLength(1);
+    expect((await (await readCards(exportRequest(), routeContext())).json())[6]).toMatchObject({ found: false, pendingReports: 1 });
     expect((await reviewSubmission(reviewRequest({ submissionId: id, action: 'approve', reviewNotes: 'Private moderator note' }), routeContext())).status).toBe(200);
     expect(JSON.stringify(await (await readReportReceipt(follow(), context)).json())).not.toContain('Private moderator note');
+    expect((await (await readCards(exportRequest(), routeContext())).json())[6]).toMatchObject({ found: true, pendingReports: 0 });
   });
 
   it('retracts and reopens approvals without deleting history or disclosing withdrawn facts', async () => {
@@ -2247,6 +2253,7 @@ describe('tracker API routes', () => {
       status: 'rejected',
       reviewNotes: 'Could not verify.',
     });
+    expect((await (await readCards(exportRequest(), routeContext())).json())[7]).toMatchObject({ found: false, pendingReports: 0 });
   });
 
   it('can request more information without changing card state', async () => {
