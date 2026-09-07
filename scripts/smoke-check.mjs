@@ -197,8 +197,10 @@ async function main() {
   const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');
   const sampleCatalogEntry = serializedCatalog.find((entry) => entry.slug === 'aetherdrift-aetherspark') || serializedCatalog[0];
   const checks = [
-    checkPage('/', ['MTG Trackers', 'Featured Trackers', 'BreadcrumbList', '<meta name="impact-site-verification" value="20d9178f-daf3-44b2-924a-9f8eec1387be"/>']),
-    checkPage('/trackers', ['Featured Trackers', 'All Serialized Treatments', 'Marketplace links are affiliate links', 'BreadcrumbList']),
+    checkPage('/', ['MTG Trackers', 'Featured Trackers', 'The One Ring: Poster Edition /100', 'BreadcrumbList', '<meta name="impact-site-verification" value="20d9178f-daf3-44b2-924a-9f8eec1387be"/>']),
+    checkPage('/trackers', ['Featured Trackers', 'All Serialized Treatments', 'The One Ring: Poster Edition /100', 'Marketplace links are affiliate links', 'BreadcrumbList']),
+    checkPage('/serialized-mtg-catalog/lotr-one-ring-001/the-one-ring-0', ['The One Ring: Unique 001/001', 'Numbered copies', 'Black Speech', '/serialized-mtg-catalog/lotr-poster-cards/the-one-ring-748z', 'Non-English printing. Included for reference']),
+    checkPage('/serialized-mtg-catalog/lotr-poster-cards/the-one-ring-748z', ['The One Ring: Poster Edition /100', '/serialized-mtg-catalog/lotr-one-ring-001/the-one-ring-0', 'Numbered copies', 'Open Serial Tracker']),
     checkPage('/sets', ['Serialized MTG Sets', 'released English printings', '/sets/the-brothers-war']),
     checkPage('/sets/the-brothers-war', ['Card Printings', 'Search card printings', 'Printing language', 'Mox Amber']),
     checkPage('/serialized-mtg-catalog/bro-retro-schematic-artifacts/mox-amber-98z', ['Mox Amber', 'Numbered copies', 'Open Serial Tracker', 'eBay Partner Network', 'Amazon Associate', 'BreadcrumbList']),
@@ -206,7 +208,7 @@ async function main() {
     checkPage('/trackers/card-brr-98z/submit', ['Mox Amber', 'Serials 1 to 500', 'Photos', 'inputMode="numeric"']),
     checkPage('/serialized-mtg-catalog', ['Serialized MTG Catalog', 'Marketplace Research', 'Reporting open', 'Request tracker', 'CollectionPage', 'BreadcrumbList']),
     checkPage(`/serialized-mtg-catalog/${sampleCatalogEntry.slug}`, [sampleCatalogEntry.title, 'Marketplace Research', 'Tracker Notes', 'Open Live Tracker', 'Dataset', 'BreadcrumbList']),
-    checkPage('/verification-guide', ['Serialized MTG Verification Guide', 'Verification Status', 'Best Evidence', 'Fastest Approval Path', 'WebPage', 'BreadcrumbList']),
+    checkPage('/verification-guide', ['Serialized MTG Verification Guide', 'Verification Status', 'Best Evidence', 'Fastest Approval Path', 'supported source link or upload a clear photo', 'A new serial cannot become located until supporting evidence is available', 'WebPage', 'BreadcrumbList']),
     checkPage('/discoveries', ['Recent Discoveries', 'Discovery Feeds', 'JSON Feed', 'RSS Feed', 'CollectionPage', 'BreadcrumbList']),
     checkPage('/trackers/one-ring?serial=001', [
       'The One Ring 001/100 | MTG Trackers',
@@ -249,6 +251,7 @@ async function main() {
     ...liveTrackers.flatMap((tracker) => [
       checkPage(`/trackers/${tracker.slug}`, [
         tracker.title,
+        tracker.displayTitle || tracker.title,
         `${tracker.title} Tracker`,
         'Collector Notes',
         `${tracker.title} Market Context`,
@@ -267,7 +270,7 @@ async function main() {
         'Dataset',
         `${tracker.title} Serialized Card Statistics`,
       ]),
-      checkPage(`/trackers/${tracker.slug}/submit`, ['Report a Find', 'Reports are queued for admin review', 'Additional details (optional)', 'Photos stay on your device until you submit.', 'Source Link', 'Photos', 'Submit report', 'BreadcrumbList', 'ContactPage', `${tracker.title} Discovery Report`]),
+      checkPage(`/trackers/${tracker.slug}/submit`, [tracker.displayTitle || tracker.title, 'Report a Find', 'Reports are queued for admin review', 'Additional details (optional)', 'Photos stay on your device until you submit.', 'Source Link', 'Photos', 'Submit report', 'BreadcrumbList', 'ContactPage', `${tracker.title} Discovery Report`]),
       checkBreadcrumbJsonLd(`/trackers/${tracker.slug}`, ['MTG Trackers', 'Trackers', tracker.title]),
       checkBreadcrumbJsonLd(`/trackers/${tracker.slug}/stats`, ['MTG Trackers', 'Trackers', tracker.title, 'Stats']),
       checkBreadcrumbJsonLd(`/trackers/${tracker.slug}/submit`, ['MTG Trackers', 'Trackers', tracker.title, 'Report a Find']),

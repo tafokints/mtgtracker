@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
+import { DISCOVERY_EVIDENCE_REQUIRED, hasSubmissionEvidence } from '@/lib/submission-review';
 import { retractReportEvents } from '@/lib/card-history';
 import { DiscoverySubmission, SubmissionStatus, VerificationStatus } from '@/lib/types';
 import { getRedis } from '@/lib/redis';
@@ -208,6 +209,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         if (mergedEvidenceSubmissions.length !== mergeSubmissionIds.length) throw new TrackerStoreError('A merged report changed during review. Please retry.', 409);
         for (const candidate of [submission, ...mergedEvidenceSubmissions]) {
           if (checkedReports.get(candidate.id) !== JSON.stringify(candidate)) throw new TrackerStoreError('Report changed during safety checks. Please retry.', 409);
+        }
+        const card = cards.find((candidate) => candidate.id === submission.cardId);
+        if (!card) throw new TrackerStoreError('Card not found', 404);
+        if (!card.found && ![submission, ...mergedEvidenceSubmissions].some(hasSubmissionEvidence)) {
+          throw new TrackerStoreError(DISCOVERY_EVIDENCE_REQUIRED, 409);
         }
         const applied = applyApprovedSubmission(tracker, cards, reviewedSubmission, {
           imageUrl: typeof input.imageUrl === 'string' ? input.imageUrl : undefined,

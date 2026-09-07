@@ -26,6 +26,10 @@ Shared tracker writes use a multi-record Lua CAS over both views' card/report ar
 
 ## Public And Admin Flows
 
+Approval requires a supported source (including a grading source) or protected evidence on the primary/explicitly merged reports before an unlocated copy can become located. Eligibility is checked inside the atomic mutation against the current copy, after all safety checks. Notes-only reports remain reviewable; context-only updates to already located copies never independently set `found` or verification. Retraction of the discovery therefore cannot leave a notes-only update sustaining it. See docs/SUBMISSION_CASES.md.
+
+Optional `TrackerSummary.displayTitle` identifies editions in page headings/directories/report forms without changing the underlying card title, exact-serial searches, storage keys or copy IDs. The One Ring poster /100 and unique 001/001 have distinct printing headings and reciprocal reference links; the unique Black Speech printing remains reference-only.
+
 - `/admin`: owner sign-in, cross-tracker inbox, focused safety-gated review and configuration-only service indicators. It is noindex/no-referrer/no-store with no site analytics. Private records are loaded only by authenticated APIs. Cursor pages use original report storage and active generated-printing membership, not shared-view projections; see docs/SECURITY_OPERATIONS.md for ordering and array-storage limits.
 - `/`, `/trackers`: umbrella directory and recent discoveries.
 - `/trackers/[slug]`: serial grid, filters, details, evidence, and marketplace links.

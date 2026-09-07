@@ -53,10 +53,10 @@ try {
     const noOverflow = async () => assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `Horizontal overflow at ${width}`);
     await page.goto(`${base}/trackers/one-ring/submit?serial=007`);
     await page.waitForLoadState('networkidle');
+    await page.getByText('Additional details (optional)', { exact: true }).click();
     await page.locator('#price').fill('1234.50');
     await page.getByRole('combobox', { name: /Price type/ }).selectOption('completed-sale');
     await page.getByLabel('Price date', { exact: true }).fill('2026-09-01');
-    await page.getByText('Grading observation (optional)', { exact: true }).click();
     await page.getByLabel('Grading service', { exact: true }).fill('PSA');
     await page.getByLabel('Grade', { exact: true }).fill('9');
     await page.getByLabel('Certificate number', { exact: true }).fill('1234567890');
@@ -69,6 +69,9 @@ try {
     await page.getByText('Admin Panel', { exact: true }).waitFor();
     await page.getByText('Replace the supplied recorded facts with this correction', { exact: true }).waitFor();
     await page.getByRole('checkbox', { name: 'Replace the supplied recorded facts with this correction' }).check();
+    await page.getByText('Context-only update. Located status and verification stay unchanged.', { exact: true }).waitFor();
+    assert.equal(await page.getByLabel('Approved verification', { exact: true }).isDisabled(), true);
+    assert.equal(await page.getByLabel('Approved verification', { exact: true }).inputValue(), 'confirmed');
     await page.getByRole('button', { name: 'Approve', exact: true }).click();
     await page.waitForFunction(() => document.body.textContent.includes('Approve:'));
     assert.equal(reviewPosts[0].applyCorrection, true);

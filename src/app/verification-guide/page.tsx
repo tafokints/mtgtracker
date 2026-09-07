@@ -57,7 +57,7 @@ const sourceGuidance = [
 const imageRules = [
   'Show the stamped serial number clearly enough to read.',
   'Include the full card face or enough of the card to identify the exact treatment.',
-  'Prefer original uploads or public image URLs over compressed repost screenshots.',
+  'Upload an original photo when available. External image URLs are not accepted as uploads.',
   'Do not include addresses, payment details, private messages, or personal contact information.',
   'Use multiple images when one photo shows the serial and another proves the source, grade, or listing context.',
 ];
@@ -132,8 +132,12 @@ export default function VerificationGuidePage() {
         <section className="mt-10 rounded border border-ring-teal/35 bg-ring-teal/10 p-5">
           <h2 className="text-2xl font-bold text-ring-light">Fastest Approval Path</h2>
           <p className="mt-3 text-sm leading-6 text-ring-light/80">
-            Pick the exact card and serial, add the original source link, upload or link a clear image of the stamp, include price/date if public,
-            and add a short note explaining why the source is credible. That gives admins enough evidence to approve the discovery without guessing.
+            Pick the exact card and serial, then add a supported source link or upload a clear photo of the stamp. Either can be enough;
+            both are welcome. Name, date, price and grading details are optional. Evidence stays private until safety checks and admin approval.
+          </p>
+          <p className="mt-3 text-sm leading-6 text-ring-light/75">
+            Only have notes? Submit the tip for review. A new serial cannot become located until supporting evidence is available.
+            Notes about an already located copy can add context without raising its verification level.
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Link

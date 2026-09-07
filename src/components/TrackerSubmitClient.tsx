@@ -256,7 +256,8 @@ export default function TrackerSubmitClient({ tracker }: { tracker: TrackerSumma
         <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />Back to tracker
       </Link>
       <h1 className="mt-4 text-2xl font-bold text-ring-gold">Report a Find</h1>
-      <p className="mt-2 break-words font-semibold text-ring-light">{tracker.title}</p>
+      <p className="mt-2 break-words font-semibold text-ring-light">{tracker.displayTitle || tracker.title}</p>
+      <p className="mt-1 text-sm text-ring-light/70">{tracker.subtitle}</p>
       <p className="mt-2 text-sm text-ring-light/70">Reports are queued for admin review before they appear as located.</p>
       <form onSubmit={handleSubmit} onInvalidCapture={(event) => {
         const field = event.target as HTMLInputElement;

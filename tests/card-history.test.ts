@@ -5,6 +5,7 @@ import { allTrackers, getTracker } from '@/lib/trackers';
 import { parseGradingInfo, parsePriceObservation } from '@/lib/history-validation';
 import { validBackupCard, validBackupSubmission } from '@/lib/backup-validation';
 import type { DiscoverySubmission } from '@/lib/types';
+import { hasSubmissionEvidence } from '@/lib/submission-review';
 
 const ring = getTracker('one-ring')!;
 const posters = getTracker('lotr-poster-cards')!;
@@ -14,6 +15,40 @@ function report(overrides: Partial<DiscoverySubmission> = {}): DiscoverySubmissi
 }
 
 describe('one copy with many historical observations', () => {
+  it.each([
+    { link: undefined },
+    { link: 'https://unsupported.example/card' },
+    { link: undefined, imageUrl: ring.referenceImage },
+    { link: undefined, notes: 'https://www.ebay.com/itm/123456789012' },
+    { link: undefined, grading: { service: 'PSA', grade: 10, certificateNumber: '123456' } },
+  ])('does not establish a discovery from context or reference artwork: %j', (fields) => {
+    const cards = createInitialTrackerCards(ring);
+    const tip = report(fields);
+    expect(hasSubmissionEvidence(tip)).toBe(false);
+    expect(applyApprovedSubmission(ring, cards, tip, { verificationStatus: 'confirmed' })).toBe(false);
+    expect(cards[6].found).toBe(false);
+    expect(cards[6].history || []).toHaveLength(0);
+  });
+
+  it.each(['sighting', 'correction'] as const)('keeps a context-only %s independent of discovery and verification after retraction', (kind) => {
+    const cards = createInitialTrackerCards(ring);
+    applyApprovedSubmission(ring, cards, report({ requestedVerificationStatus: 'source-linked' }), {});
+    applyApprovedSubmission(ring, cards, report({ id: 'context', kind, link: undefined, notes: 'Later context', price: 2000, currency: 'USD', priceKind: 'asking-price' }), { applyCorrection: true, verificationStatus: 'confirmed' });
+    expect(cards[6]).toMatchObject({ found: true, verificationStatus: 'source-linked' });
+    expect(cards[6].history![1].facts).not.toHaveProperty('found');
+    expect(cards[6].history![1].facts).not.toHaveProperty('verificationStatus');
+    retractReportEvents(cards[6], 'first', 'retraction', at);
+    expect(cards[6]).toMatchObject({ found: false, verificationStatus: 'unverified', notes: 'Later context' });
+    expect(cards[6].priceHistory).toEqual(expect.arrayContaining([expect.objectContaining({ price: 2000 })]));
+  });
+
+  it('allows a structured grading source or supporting merged report to establish a discovery', () => {
+    const cards = createInitialTrackerCards(ring);
+    expect(applyApprovedSubmission(ring, cards, report({ link: undefined }), { mergedEvidenceSubmissions: [report({ id: 'support' })] })).toBe(true);
+    expect(cards[6].found).toBe(true);
+    const certificate = report({ link: undefined, grading: { service: 'PSA', grade: 10, sourceUrl: 'https://www.psacard.com/cert/12345678' } });
+    expect(hasSubmissionEvidence(certificate)).toBe(true);
+  });
   it('assigns every live printing one explicit canonical owner across the catalog', () => {
     const owners = new Map<string, string>();
     for (const tracker of allTrackers.filter((tracker) => tracker.status === 'live')) {

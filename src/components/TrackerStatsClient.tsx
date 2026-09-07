@@ -145,7 +145,7 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
       <main className="flex min-h-screen flex-col items-center justify-center p-8">
         <div className="w-full max-w-5xl space-y-6">
           <Link href={trackerPath} className="text-sm text-ring-teal hover:underline">Back to Tracker</Link>
-          <h1 className={`break-words text-3xl font-bold ${tracker.theme.accentClass}`}>{tracker.title} Statistics</h1>
+          <h1 className={`break-words text-3xl font-bold ${tracker.theme.accentClass}`}>{tracker.displayTitle || tracker.title} Statistics</h1>
           <p className="text-sm text-ring-light/70">{tracker.subtitle}</p>
           <p role="status" className="text-ring-light/70">Loading statistics...</p>
           <TrackerMarketInsights tracker={tracker} />
@@ -170,7 +170,7 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
         <div className="z-10 w-full max-w-7xl items-center justify-between font-mono text-sm lg:flex mb-8">
           <div className="min-w-0 lg:pr-6">
             <h1 className="break-words text-2xl md:text-4xl font-bold text-ring-gold">
-              {tracker.title} Statistics
+              {tracker.displayTitle || tracker.title} Statistics
             </h1>
             <p className="mt-2 text-sm text-ring-light/70">{tracker.subtitle}</p>
           </div>

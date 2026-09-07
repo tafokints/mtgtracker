@@ -2,6 +2,7 @@ import { Redis } from '@upstash/redis';
 import { DiscoverySubmission, EvidenceImage, SerializedRingCard, VerificationStatus } from './types';
 import { getDefinitionPrintingId, TrackerCardDefinition, TrackerSummary } from './trackers';
 import { appendCardEvent, rebuildCardHistory } from './card-history';
+import { hasSubmissionEvidence } from './submission-review';
 
 export type ResolvedTrackerCardDefinition = Required<Pick<TrackerCardDefinition, 'slug' | 'title'>> & {
   total: number;
@@ -428,6 +429,9 @@ export function applyApprovedSubmission(
     return false;
   }
 
+  const hasEvidence = [submission, ...(options.mergedEvidenceSubmissions || [])].some(hasSubmissionEvidence);
+  if (!cards[cardIndex].found && !hasEvidence) return false;
+
   const selectedImageUrl =
     options.imageUrl ||
     submission.imageUrl ||
@@ -442,12 +446,13 @@ export function applyApprovedSubmission(
   const recordedAt = submission.reviewedAt || submission.submittedAt;
   const eventId = options.eventId || `report:${submission.id}:${recordedAt}`;
   const facts = {
-    found: true,
+    // Context-only updates must not sustain a discovery after its evidence is retracted.
+    found: hasEvidence ? true : undefined,
     foundBy: submission.foundBy,
     dateFound: submission.dateFound,
     link: submission.link,
     sourceType: submission.sourceType,
-    verificationStatus: options.verificationStatus || submission.requestedVerificationStatus || 'source-linked',
+    verificationStatus: hasEvidence ? options.verificationStatus || submission.requestedVerificationStatus || 'source-linked' : undefined,
     notes: submission.notes,
     image: approvedEvidence.concat(mergedEvidence).some((image) => image.url === selectedImageUrl) ? selectedImageUrl : undefined,
     evidenceImages: mergeEvidenceImages([], [

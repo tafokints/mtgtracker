@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { serializedCatalog } from '@/lib/serialized-catalog';
-import { getCatalogPrintings, printingLanguage, printingTotal, serializedPrintings } from '@/lib/serialized-printings';
+import { getCatalogPrintings, getRelatedPrintings, printingLanguage, printingTitle, printingTotal, serializedPrintings } from '@/lib/serialized-printings';
 import { allTrackers, getTracker } from '@/lib/trackers';
 import { getTrackerCardDefinitions, getTrackerCardSlot, getTrackerSlotId, getTrackerTotalSlots } from '@/lib/tracker-data';
 
@@ -78,6 +78,12 @@ describe('source-reviewed serialized quantities', () => {
     expect(printingTotal(poster)).toBe(100);
     expect(unique.id).not.toBe(poster.id);
     const ring = getTracker('one-ring')!;
+    expect(ring.displayTitle).toBe('The One Ring: Poster Edition /100');
+    expect(printingTitle(poster)).toBe(ring.displayTitle);
+    expect(printingTitle(unique)).toBe('The One Ring: Unique 001/001');
+    expect(getRelatedPrintings(unique)).toContain(poster);
+    expect(getRelatedPrintings(poster)).toContain(unique);
+    expect(getTrackerCardDefinitions(ring)[0]).toMatchObject({ slug: 'one-ring', title: 'The One Ring' });
     expect(ring.subtitle).toContain('poster edition /100');
     expect(getTrackerCardDefinitions(ring)[0].printingId).toBe(poster.id);
     expect(getTrackerTotalSlots(ring)).toBe(100);

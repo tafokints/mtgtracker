@@ -12,6 +12,7 @@ import { getTrackerGrowthRecommendations } from '@/lib/tracker-growth-recommenda
 import { getMarketplaceCtaRecommendations } from '@/lib/marketplace-cta-recommendations';
 import ExternalImage from '@/components/ExternalImage';
 import { evidenceIdFromUrl, normalizeSourceUrl } from '@/lib/evidence-policy';
+import { DISCOVERY_EVIDENCE_REQUIRED, hasSubmissionEvidence } from '@/lib/submission-review';
 import ReviewSourceLink from '@/components/ReviewSourceLink';
 import Link from 'next/link';
 import { XMarkIcon } from '@heroicons/react/24/outline';
@@ -1312,6 +1313,14 @@ export default function AdminPanel({
               )}
               {filteredPendingSubmissions.map((submission) => {
                 const evidenceSummary = getSubmissionEvidenceSummary(submission);
+                const selectedReports = [submission, ...getMergeCandidates(submission).filter((candidate) => (mergeSelections[submission.id] || []).includes(candidate.id))];
+                const currentCard = cards.find((card) => card.id === submission.cardId);
+                const hasEvidence = selectedReports.some(hasSubmissionEvidence);
+                const evidenceBlocked = selectedReports.some((report) => [report.imageUrl, ...(report.evidenceImages || []).map((image) => image.url)].filter(Boolean).some((url) =>
+                  !evidenceIdFromUrl(url) || report.evidenceSafety?.find((item) => item.url === url)?.status !== 'clean'));
+                const approvalIssue = !currentCard ? 'Card unavailable. Refresh before reviewing.'
+                  : !currentCard.found && !hasEvidence ? DISCOVERY_EVIDENCE_REQUIRED
+                    : evidenceBlocked ? 'All selected attachments must pass safety checks before approval.' : undefined;
 
                 return (
                 <div key={submission.id} className="rounded border border-ring-gold/40 bg-black/20 p-3 space-y-3">
@@ -1436,9 +1445,11 @@ export default function AdminPanel({
                   </div>
 
                   <div>
-                    <label className="block text-ring-gold text-xs font-bold mb-1">Approved verification</label>
+                    <label htmlFor={`verification-${submission.id}`} className="block text-ring-gold text-xs font-bold mb-1">Approved verification</label>
                     <select
-                      value={verificationOverrides[submission.id] || submission.requestedVerificationStatus}
+                      id={`verification-${submission.id}`}
+                      disabled={!hasEvidence}
+                      value={hasEvidence ? verificationOverrides[submission.id] || submission.requestedVerificationStatus : currentCard?.verificationStatus || 'unverified'}
                       onChange={(event) => setVerificationOverrides({ ...verificationOverrides, [submission.id]: event.target.value as VerificationStatus })}
                       className="w-full bg-ring-light text-ring-dark border border-ring-gold rounded py-2 px-3 text-sm"
                     >
@@ -1463,11 +1474,14 @@ export default function AdminPanel({
                   {submission.price !== undefined && <p className="text-xs text-ring-light">{submission.priceKind || 'unclassified'}: {submission.currency || 'Currency unknown'} {submission.price} - {submission.priceDate || 'Date unknown'}</p>}
                   {submission.grading && <p className="text-xs text-ring-light">Grading: {submission.grading.service} {submission.grading.grade} - {submission.grading.certificateNumber || 'No certificate recorded'}</p>}
                   {submission.followUps?.map((reply) => <p key={reply.id} className="whitespace-pre-wrap break-words text-sm text-ring-light">Follow-up {reply.at.slice(0, 10)}: {reply.notes}</p>)}
+                  {approvalIssue && <p id={`approval-issue-${submission.id}`} className="text-sm text-amber-200">{approvalIssue}</p>}
+                  {!approvalIssue && !hasEvidence && <p className="text-sm text-ring-light/70">Context-only update. Located status and verification stay unchanged.</p>}
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <button
                       onClick={() => runMutation(() => reviewSubmission(submission, 'approve'))}
-                      disabled={mutating || (submission.evidenceImages || []).some((image) => !evidenceIdFromUrl(image.url) || submission.evidenceSafety?.find((item) => item.url === image.url)?.status !== 'clean')}
-                      className="bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-3 rounded text-sm"
+                      disabled={mutating || Boolean(approvalIssue)}
+                      aria-describedby={approvalIssue ? `approval-issue-${submission.id}` : undefined}
+                      className="bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-3 rounded text-sm disabled:opacity-50"
                     >
                       Approve
                     </button>

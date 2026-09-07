@@ -12,6 +12,13 @@ Standing affiliate requirement: preserve a clear top-of-page disclosure before t
 
 The owner has deferred screening-service account setup and requested a core workflow/usability pass. Do not bypass existing safety gates: pending uploads remain private and unapprovable until real checks pass. Public "under review" means an unresolved report exists, not that a discovery is verified.
 
+- [x] Require structured source/protected evidence for new-discovery approval, including selected merges and the latest atomic copy state. Allow context-only updates to located copies without independently setting location or verification; preserve retraction behavior. Show actionable approval reasons and keep Needs Info available. Case matrix: docs/SUBMISSION_CASES.md.
+- [x] Label The One Ring: Poster Edition /100 explicitly in the home/directory/tracker/report/stats headings and The One Ring: Unique 001/001 on its reference page, with reciprocal printing links. Preserve original card title, storage, /100 copy identities and affiliate searches; the /1 Black Speech printing stays reference-only.
+- [ ] Add a structured supported-source field to private Needs Info replies, with immutable reply history, normalization, review/reputation checks and backup validation. Current replies accept notes and owned photos; a URL typed into notes is not approval evidence. For now, a separate exact-serial source report can be explicitly merged by the owner.
+- [ ] Design an unknown-serial tips inbox separate from exact-copy reports; never invent a serial or mark a slot located from an unbound tip.
+
+Approval/edition verification (2026-09-07): 562 tests across 36 files, lint and build pass. Owner, workflow, collector, submission and quantity/guide browser suites pass at 320/390/1440px; screenshots were inspected. Offline checks pass for 819 configured, 1,740 serial-boundary, 66 catalog and 894 printing affiliate links. The read-only deployment suite now checks the distinct Ring headings and corrected public evidence guidance (65 checks). Hosted scanner setup and lifecycle testing remain deferred, not proven by these fixtures.
+
 - [x] Keep needs-more-info reports in public open-report counts, including reports about already located copies. Publish counts only, not reporter details, review notes or pending evidence.
 - [x] Add consistent Under Review / Unreported labels, visible update reporting on located cards, and a report confirmation with the private receipt and a return-to-serial link.
 - [x] Add labeled search/card/status/sort controls, quick status counts, exact stamped-number/range search and 48-card pagination. Preserve shareable filters/page state and stop clearing filters when opening details.

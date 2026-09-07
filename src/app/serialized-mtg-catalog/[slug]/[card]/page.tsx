@@ -4,7 +4,7 @@ import ExternalImage from '@/components/ExternalImage';
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import AffiliateOutboundLink from '@/components/AffiliateOutboundLink';
 import { serializedCatalog } from '@/lib/serialized-catalog';
-import { catalogCheckedAt, catalogOfficialSources, getCatalogSet, getSerializedPrinting, isReleasedPrinting, printingLanguage, printingPath, printingReleaseDate, printingTitle, printingTotal, serializedPrintings } from '@/lib/serialized-printings';
+import { catalogCheckedAt, catalogOfficialSources, getCatalogSet, getRelatedPrintings, getSerializedPrinting, isReleasedPrinting, printingLanguage, printingPath, printingReleaseDate, printingTitle, printingTotal, serializedPrintings } from '@/lib/serialized-printings';
 import { getPrintingAffiliateLinks, getPrintingTracker, getPrintingTrackerHref } from '@/lib/trackers';
 import { buildBreadcrumbJsonLd } from '@/lib/seo';
 
@@ -28,6 +28,7 @@ export default async function PrintingPage({ params }: Props) {
   const total = printingTotal(printing);
   const links = getPrintingAffiliateLinks(printing);
   const official = catalogOfficialSources[entry.slug];
+  const relatedPrintings = getRelatedPrintings(printing);
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-5 py-8 sm:px-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(buildBreadcrumbJsonLd([{ name: 'MTG Trackers', path: '/' }, { name: 'Sets', path: '/sets' }, { name: set.title, path: `/sets/${set.slug}` }, { name: entry.title, path: `/serialized-mtg-catalog/${entry.slug}` }, { name: title, path: printingPath(printing) }])) }} />
@@ -36,6 +37,9 @@ export default async function PrintingPage({ params }: Props) {
         <p className="text-sm text-cyan-200">{printing.setCode} #{printing.collectorNumber} · {printingLanguage(printing)}</p>
         <h1 className="mt-2 break-words text-3xl font-bold text-zinc-100 sm:text-4xl">{title}</h1>
         <p className="mt-3 text-zinc-300">{entry.treatment}</p>
+        {relatedPrintings.length > 0 && <nav aria-label="Other printings of this card" className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm text-cyan-200">
+          {relatedPrintings.map((related) => <Link key={related.id} className="underline" href={printingPath(related)}>{printingTitle(related)}</Link>)}
+        </nav>}
       </header>
       <div className="mt-5"><AffiliateDisclosureNotice compact links={links} /></div>
       <section className="mt-7 grid items-start gap-8 sm:grid-cols-[220px_minmax(0,1fr)]">

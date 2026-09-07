@@ -141,7 +141,7 @@ function TrackerCard({ tracker }: { tracker: (typeof trackers)[number] }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-ring-teal">{tracker.subtitle}</p>
-          <h3 className="mt-2 text-2xl font-bold text-ring-gold">{tracker.title}</h3>
+          <h3 className="mt-2 text-2xl font-bold text-ring-gold">{tracker.displayTitle || tracker.title}</h3>
         </div>
         <span className="rounded border border-ring-gold/30 px-2 py-1 text-xs uppercase text-ring-light/70">
           {quantityLabel}

@@ -42,11 +42,17 @@ export function printingPath(printing: SerializedPrinting) {
 }
 
 export function printingTitle(printing: SerializedPrinting) {
+  if (printing.catalogSlug === 'lotr-one-ring-001') return 'The One Ring: Unique 001/001';
+  if (printing.catalogSlug === 'lotr-poster-cards' && printing.collectorNumber === '748z') return 'The One Ring: Poster Edition /100';
   if (printing.catalogSlug === 'lotr-serialized-sol-rings') {
     const variants: Record<string, string> = { '408z': 'Elven Sol Ring', '409z': 'Dwarven Sol Ring', '410z': 'Human Sol Ring' };
     return variants[printing.collectorNumber] || printing.name;
   }
   return printing.name;
+}
+
+export function getRelatedPrintings(printing: SerializedPrinting) {
+  return serializedPrintings.filter((candidate) => candidate.id !== printing.id && candidate.name === printing.name && candidate.setCode === printing.setCode);
 }
 
 export function printingReleaseDate(printing: SerializedPrinting) {

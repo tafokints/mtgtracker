@@ -506,6 +506,75 @@ describe('tracker API routes', () => {
     });
   });
 
+  it.each(['unverified', 'source-linked', 'confirmed'])('keeps a notes-only new find pending despite %s approval', async (verificationStatus) => {
+    const { body } = await submitValidDiscovery(7, '203.0.113.7', { link: undefined, notes: 'Saw this opened' });
+    const before = structuredClone(redisFixture.store.get(tracker.storage.submissionsKey));
+    const response = await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve', verificationStatus }), routeContext());
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ message: expect.stringContaining('supported source link or uploaded evidence') });
+    expect(redisFixture.store.get(tracker.storage.submissionsKey)).toEqual(before);
+    const cards = await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json();
+    expect(cards[6]).toMatchObject({ found: false, pendingReports: 1 });
+  });
+
+  it('requires a supporting report to be explicitly merged, then retracts all its contributions together', async () => {
+    const tip = await submitValidDiscovery(7, '203.0.113.7', { link: undefined });
+    const source = await submitValidDiscovery(7, '203.0.113.8');
+    expect((await reviewSubmission(reviewRequest({ submissionId: tip.body.submissionId, action: 'approve' }), routeContext())).status).toBe(409);
+    expect((await reviewSubmission(reviewRequest({ submissionId: tip.body.submissionId, action: 'approve', mergeSubmissionIds: [source.body.submissionId] }), routeContext())).status).toBe(200);
+    expect((await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json())[6].found).toBe(true);
+    expect((await reviewSubmission(reviewRequest({ submissionId: tip.body.submissionId, action: 'revoke', reviewNotes: 'Wrong serial in source' }), routeContext())).status).toBe(200);
+    expect((await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json())[6].found).toBe(false);
+  });
+
+  it.each(['clean', 'pending', 'flagged', 'error'] as const)('allows photo-only approval only after clean scans, not %s bypasses', async (status) => {
+    scanFixture.scan.mockResolvedValue({ status, reason: status === 'clean' ? 'checks-passed' : 'fixture-held', policyVersion: 1 });
+    const token = createSubmissionSession('one-ring', 7).token;
+    const upload = await (await uploadEvidenceImage(uploadRequest(await realImage(), undefined, token), routeContext())).json();
+    const { body, response } = await submitValidDiscovery(7, '203.0.113.7', { link: undefined, notes: undefined, evidenceAssetIds: [upload.assetId] }, token);
+    expect(response.status).toBe(202);
+    const approved = await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve', verificationStatus: 'confirmed' }), routeContext());
+    expect(approved.status).toBe(status === 'clean' ? 200 : 409);
+    expect((await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json())[6].found).toBe(status === 'clean');
+  });
+
+  it('still requires Web Risk for link-only approval and does not bypass it through a merge', async () => {
+    const source = await submitValidDiscovery();
+    const tip = await submitValidDiscovery(7, '203.0.113.8', { link: undefined });
+    delete process.env.GOOGLE_WEB_RISK_API_KEY;
+    expect((await reviewSubmission(reviewRequest({ submissionId: source.body.submissionId, action: 'approve' }), routeContext())).status).toBe(503);
+    expect((await reviewSubmission(reviewRequest({ submissionId: tip.body.submissionId, action: 'approve', mergeSubmissionIds: [source.body.submissionId] }), routeContext())).status).toBe(503);
+    const reports = redisFixture.store.get(tracker.storage.submissionsKey) as Array<{ status: string }>;
+    expect(reports.every((report) => report.status === 'pending')).toBe(true);
+  });
+
+  it('lets notes update a located copy without upgrading or independently sustaining verification', async () => {
+    const source = await submitValidDiscovery();
+    expect((await reviewSubmission(reviewRequest({ submissionId: source.body.submissionId, action: 'approve', verificationStatus: 'source-linked' }), routeContext())).status).toBe(200);
+    const tip = await submitValidDiscovery(7, '203.0.113.8', { link: undefined, notes: 'Additional context' });
+    expect((await reviewSubmission(reviewRequest({ submissionId: tip.body.submissionId, action: 'approve', verificationStatus: 'confirmed' }), routeContext())).status).toBe(200);
+    expect((await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json())[6]).toMatchObject({ found: true, verificationStatus: 'source-linked' });
+    expect((await reviewSubmission(reviewRequest({ submissionId: source.body.submissionId, action: 'revoke', reviewNotes: 'Retract source' }), routeContext())).status).toBe(200);
+    expect((await (await readCards(new Request('https://mtgtrackers.com/cards'), routeContext())).json())[6]).toMatchObject({ found: false, verificationStatus: 'unverified' });
+  });
+
+  it('rechecks discovery eligibility when the supporting discovery disappears during review', async () => {
+    const source = await submitValidDiscovery();
+    await reviewSubmission(reviewRequest({ submissionId: source.body.submissionId, action: 'approve' }), routeContext());
+    const tip = await submitValidDiscovery(7, '203.0.113.8', { link: undefined });
+    const originalEval = redisFixture.redis.eval.bind(redisFixture.redis);
+    let reads = 0;
+    vi.spyOn(redisFixture.redis, 'eval').mockImplementation(async (script, keys, args) => {
+      if (script.includes('-- read related tracker') && ++reads === 2) {
+        await reviewSubmission(reviewRequest({ submissionId: source.body.submissionId, action: 'revoke', reviewNotes: 'Concurrent retraction' }), routeContext());
+      }
+      return originalEval(script, keys, args);
+    });
+    expect((await reviewSubmission(reviewRequest({ submissionId: tip.body.submissionId, action: 'approve' }), routeContext())).status).toBe(409);
+    const reports = redisFixture.store.get(tracker.storage.submissionsKey) as Array<{ id: string; status: string }>;
+    expect(reports.find((report) => report.id === tip.body.submissionId)?.status).toBe('pending');
+  });
+
   it('requires a verified report session for public submissions and uploads', async () => {
     const report = submitRequest({ cardId: 7, notes: 'test' }, undefined, '');
     expect((await submitDiscovery(report, routeContext())).status).toBe(403);

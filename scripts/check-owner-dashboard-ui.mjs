@@ -4,6 +4,7 @@ import { mkdir } from 'node:fs/promises';
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.argv[2] || 'playwright');
 const base = process.env.OWNER_UI_BASE_URL || 'http://127.0.0.1:3103';
+assert.equal(new URL(base).hostname, '127.0.0.1', 'Owner fixtures must stay local');
 await mkdir('node_modules/.cache', { recursive: true });
 const browser = await chromium.launch({ channel: 'msedge', headless: true });
 try {
@@ -15,6 +16,8 @@ try {
     let failInventory = true;
     const report = { id: 'fixture-report', cardId: 7, serialNumber: '007', serialTotal: 100, cardTitle: 'The One Ring', status: 'pending', kind: 'discovery', submittedAt: '2026-09-05T10:00:00.000Z', sourceType: 'other', requestedVerificationStatus: 'unverified', evidenceImages: [], notes: 'Private fixture collector note', reviewHistory: [] };
     const held = { ...report, id: 'held-report', cardId: 8, serialNumber: '008', evidenceImages: [{ url: '/api/evidence/11111111-1111-4111-8111-111111111111' }], evidenceSafety: [{ url: '/api/evidence/11111111-1111-4111-8111-111111111111', status: 'flagged', reason: 'sexual-content' }] };
+    let support;
+    const heldSupport = { ...held, id: 'held-support', cardId: 7, serialNumber: '007', link: 'https://www.ebay.com/itm/123456789013' };
     const row = (item) => ({ id: item.id, tracker: 'one-ring', trackerTitle: 'The One Ring', cardTitle: 'The One Ring', serial: `${item.serialNumber}/100`, status: item.status, kind: item.kind, submittedAt: item.submittedAt, imageCount: item.evidenceImages.length, hasSource: false });
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('request', (request) => requests.push(request.url()));
@@ -52,15 +55,16 @@ try {
         const status = url.searchParams.get('status');
         return route.fulfill({ json: { rows: status === 'rejected' ? [] : [row(report), row(held)], nextCursor: null } });
       }
-      if (url.pathname.endsWith('/cards')) return route.fulfill({ json: [{ id: 7, name: 'The One Ring 007/100', cardTitle: 'The One Ring', serialNumber: '007', serialTotal: 100, found: false, verificationStatus: 'unverified', priceHistory: [] }] });
+      if (url.pathname.endsWith('/cards')) return route.fulfill({ json: [7, 8].map((id) => ({ id, name: `The One Ring 00${id}/100`, cardTitle: 'The One Ring', serialNumber: `00${id}`, serialTotal: 100, found: false, verificationStatus: 'unverified', priceHistory: [] })) });
       if (url.pathname.endsWith('/submissions')) {
         if (method === 'POST') {
           const body = route.request().postDataJSON(); actions.push(body);
           assert.equal(body.submissionId, report.id); assert.equal(body.action, 'approve');
+          assert.deepEqual(body.mergeSubmissionIds, ['support-report']);
           report.status = 'approved'; report.reviewedBy = 'fixture-owner'; report.reviewedAt = '2026-09-05T10:05:00.000Z';
           report.reviewHistory = [{ id: 'review', at: report.reviewedAt, actor: 'admin', actorId: 'fixture-owner', action: 'approve' }];
         }
-        return route.fulfill({ json: [report, held] });
+        return route.fulfill({ json: [report, held, ...(support ? [support, heldSupport] : [])] });
       }
       return route.fulfill({ status: 503, json: { message: 'Unexpected fixture request' } });
     });
@@ -78,6 +82,21 @@ try {
     await page.waitForFunction(() => [...document.querySelectorAll('img[alt="Reference artwork"]')].every((image) => image.complete && image.naturalWidth > 0));
     await page.screenshot({ path: `node_modules/.cache/owner-dashboard-${width}.png`, fullPage: true });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    assert.equal(await page.getByRole('button', { name: 'Approve', exact: true }).isDisabled(), true);
+    assert.equal(await page.getByRole('button', { name: 'Needs Info', exact: true }).isEnabled(), true);
+    assert.equal(await page.getByLabel('Approved verification', { exact: true }).isDisabled(), true);
+    await page.getByText(/A new discovery needs a supported source link or uploaded evidence/).waitFor();
+    support = { ...report, id: 'support-report', link: 'https://www.ebay.com/itm/123456789012', notes: 'Supporting source' };
+    await page.getByRole('button', { name: 'Close report review' }).click();
+    await page.getByRole('button', { name: /The One Ring 007\/100/ }).click();
+    assert.equal(await page.getByRole('button', { name: 'Approve', exact: true }).isDisabled(), true);
+    await page.getByRole('checkbox', { name: /123456789012/ }).check();
+    assert.equal(await page.getByRole('button', { name: 'Approve', exact: true }).isEnabled(), true);
+    assert.equal(await page.getByLabel('Approved verification', { exact: true }).isEnabled(), true);
+    await page.getByRole('checkbox', { name: /123456789013/ }).check();
+    assert.equal(await page.getByRole('button', { name: 'Approve', exact: true }).isDisabled(), true);
+    await page.getByText('All selected attachments must pass safety checks before approval.', { exact: true }).waitFor();
+    await page.getByRole('checkbox', { name: /123456789013/ }).uncheck();
     await page.getByRole('button', { name: 'Approve', exact: true }).click();
     await page.getByRole('button', { name: 'Retract approval', exact: true }).waitFor();
     assert.equal(actions.length, 1);

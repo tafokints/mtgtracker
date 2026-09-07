@@ -109,7 +109,7 @@ export default async function TrackersPage() {
             return (
               <article key={tracker.slug} className="rounded-lg border border-ring-gold/40 bg-ring-dark/80 p-5">
                 <div className="flex items-center justify-between gap-4">
-                  <h2 className="text-xl font-bold text-ring-gold">{tracker.title}</h2>
+                  <h2 className="text-xl font-bold text-ring-gold">{tracker.displayTitle || tracker.title}</h2>
                   <span className="rounded border border-ring-gold/30 px-2 py-1 text-xs uppercase text-ring-light/70">
                     {tracker.status}
                   </span>

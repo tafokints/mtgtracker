@@ -34,11 +34,29 @@ try {
 
     await page.goto(`${base}/trackers/one-ring`);
     await page.getByRole('heading', { name: 'Serials', exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'The One Ring: Poster Edition /100', exact: true }).waitFor();
     await page.getByText('Borderless poster edition /100', { exact: true }).waitFor();
     const uniqueLink = page.getByRole('link', { name: /Unique 001\/001 One Ring \(different printing\)/ });
     assert.equal(await uniqueLink.getAttribute('href'), 'https://scryfall.com/card/ltr/0/the-one-ring');
     await noOverflow();
     await page.screenshot({ path: `node_modules/.cache/quantity-ring-${width}.png` });
+
+    await page.goto(`${base}/trackers/one-ring/submit`);
+    await page.getByText('The One Ring: Poster Edition /100', { exact: true }).waitFor();
+    await page.getByText('Borderless poster edition /100', { exact: true }).waitFor();
+    await noOverflow();
+    await page.goto(`${base}/trackers`);
+    await page.getByRole('heading', { name: 'The One Ring: Poster Edition /100', exact: true }).waitFor();
+    await noOverflow();
+
+    await page.goto(`${base}/verification-guide`);
+    const guide = await page.locator('main').innerText();
+    assert.match(guide, /supported source link or upload a clear photo/);
+    assert.match(guide, /A new serial cannot become located until supporting evidence is available/);
+    assert.doesNotMatch(guide, /upload or link a clear image|public image URLs/);
+    await page.getByRole('heading', { name: 'Fastest Approval Path', exact: true }).scrollIntoViewIfNeeded();
+    await noOverflow();
+    await page.screenshot({ path: `node_modules/.cache/review-guide-${width}.png` });
 
     await page.goto(`${base}/trackers/lotr-poster-cards/stats`);
     const locatedStatistic = page.getByRole('heading', { name: 'Located', exact: true }).locator('..');
@@ -53,7 +71,16 @@ try {
       assert.ok(printing);
       await page.goto(`${base}${printingPath(printing)}`);
       assert.equal(await page.getByText('Numbered copies', { exact: true }).locator('..').locator('dd').innerText(), String(total));
-      if (set === 'LTR' && number === '0') assert.match(await page.locator('header').innerText(), /Black Speech/);
+      if (set === 'LTR' && number === '0') {
+        assert.match(await page.locator('header').innerText(), /Black Speech/);
+        await page.getByRole('heading', { name: 'The One Ring: Unique 001/001', exact: true }).waitFor();
+        assert.equal(await page.getByRole('navigation', { name: 'Other printings of this card' }).getByRole('link', { name: 'The One Ring: Poster Edition /100', exact: true }).getAttribute('href'), '/serialized-mtg-catalog/lotr-poster-cards/the-one-ring-748z');
+        assert.equal(await page.getByRole('link', { name: 'Report a Find', exact: true }).count(), 0);
+      }
+      if (set === 'LTR' && number === '748z') {
+        await page.getByRole('heading', { name: 'The One Ring: Poster Edition /100', exact: true }).waitFor();
+        assert.equal(await page.getByRole('navigation', { name: 'Other printings of this card' }).getByRole('link', { name: 'The One Ring: Unique 001/001', exact: true }).getAttribute('href'), '/serialized-mtg-catalog/lotr-one-ring-001/the-one-ring-0');
+      }
       const artwork = page.getByRole('img', { name: /serialized reference printing/ });
       await artwork.evaluate((image) => image.decode());
       assert.ok(await artwork.evaluate((image) => image.naturalWidth > 0));

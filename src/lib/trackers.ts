@@ -67,6 +67,7 @@ export interface TrackerSummary {
   printingId?: string;
   catalogGenerated?: boolean;
   title: string;
+  displayTitle?: string;
   subtitle: string;
   description: string;
   setName?: string;
@@ -154,6 +155,7 @@ export const trackers: TrackerSummary[] = [
     slug: 'one-ring',
     catalogSlug: 'lotr-poster-cards',
     title: 'The One Ring',
+    displayTitle: 'The One Ring: Poster Edition /100',
     subtitle: 'Borderless poster edition /100',
     description: 'Track the 100 serialized borderless poster The One Ring cards (LTR #748z) from the Lord of the Rings Holiday Release. This is a separate printing from the unique 001/001 One Ring (LTR #0).',
     setName: 'The Lord of the Rings: Tales of Middle-earth',
@@ -646,7 +648,8 @@ export function getPrintingTrackerHref(printing: SerializedPrinting) {
 export function getPrintingAffiliateLinks(printing: SerializedPrinting) {
   const entry = serializedCatalog.find((entry) => entry.slug === printing.catalogSlug)!;
   const title = printingTitle(printing);
+  const searchTitle = printing.name === 'The One Ring' ? printing.name : title;
   return getCatalogAffiliateLinks(entry).map((link) => link.merchant === 'ebay' ? {
-    ...link, label: `${title} serials on eBay`, href: buildTrackerEbaySearchUrl(`${title} ${entry.setName} serialized mtg`, 'serialized-mtg'),
+    ...link, label: `${title} serials on eBay`, href: buildTrackerEbaySearchUrl(`${searchTitle} ${entry.setName} serialized mtg`, 'serialized-mtg'),
   } : link);
 }
