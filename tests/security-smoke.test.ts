@@ -17,10 +17,14 @@ function responder(overrides: Record<string, { status?: number; headers?: Record
 describe('read-only deployment security smoke', () => {
   it('tests the deployed auth boundary without credentials, cookies, writes or redirects', async () => {
     const fixture = responder();
-    expect(await checkOwnerBoundary('https://mtgtrackers.com', fixture.fetch)).toHaveLength(7);
-    expect(fixture.calls).toHaveLength(7);
-    for (const { options } of fixture.calls) {
-      expect(options.method).toBeUndefined(); expect(options.body).toBeUndefined();
+    expect(await checkOwnerBoundary('https://mtgtrackers.com', fixture.fetch)).toHaveLength(8);
+    expect(fixture.calls).toHaveLength(8);
+    for (const { url, options } of fixture.calls) {
+      if (new URL(url).pathname === '/api/admin/storage-inventory') {
+        expect(options.method).toBe('POST'); expect(options.body).toBe('{}');
+      } else {
+        expect(options.method).toBeUndefined(); expect(options.body).toBeUndefined();
+      }
       expect(options.redirect).toBe('manual'); expect(options.signal).toBeInstanceOf(AbortSignal);
       expect(Object.keys(options.headers!)).toEqual(['User-Agent']);
     }
@@ -34,6 +38,9 @@ describe('read-only deployment security smoke', () => {
       { '/api/admin/configuration': { status: 302 } },
       { '/api/admin/login': { body: { authenticated: false } } },
       { '/api/admin/inbox': { body: { message: 'Unauthorized', rows: ['private data'] } } },
+      { '/api/admin/storage-inventory': { status: 200 } },
+      { '/api/admin/storage-inventory': { headers: { 'Cache-Control': 'public, max-age=600' } } },
+      { '/api/admin/storage-inventory': { body: { message: 'Unauthorized', rows: ['private data'] } } },
     ]) await expect(checkOwnerBoundary('https://mtgtrackers.com', responder(override).fetch)).rejects.toThrow();
   });
   it('rejects health responses exposing internal configuration', () => {

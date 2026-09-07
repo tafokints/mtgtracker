@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import { randomUUID } from 'node:crypto';
-import { appendCardEvent } from '@/lib/card-history';
+import { recordAdminMutation } from '@/lib/admin-mutation';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
-import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
+import { TrackerStoreError } from '@/lib/tracker-store';
 import { parseCardId } from '@/lib/admin-validation';
 import { evidenceIdFromUrl } from '@/lib/evidence-policy';
 
@@ -39,24 +38,19 @@ export async function POST(request: Request, { params }: RouteContext) {
       return NextResponse.json({ message: 'Choose approved uploaded evidence for this card' }, { status: 400 });
     }
 
-    const id = randomUUID();
-    const recordedAt = new Date().toISOString();
-    await mutateTrackerState(redis, tracker, ({ cards, submissions }) => {
-      const cardIndex = cards.findIndex((card) => card.id === numericCardId);
-
-      if (cardIndex === -1) {
-        throw new TrackerStoreError('Card not found', 404);
-      }
-
-      const image = cards[cardIndex].evidenceImages?.find((image) => image.url === imageUrl);
-      if (!image) throw new TrackerStoreError('Image must already be approved evidence for this card', 409);
-      const report = submissions.find((report) => report.id === image.sourceSubmissionId);
-      const approvalId = report?.status === 'duplicate' ? report.duplicateOf : report?.id;
-      if (!approvalId) throw new TrackerStoreError('Evidence approval is unavailable', 409);
-      appendCardEvent(cards[cardIndex], { id, kind: 'image', recordedAt, sourceSubmissionId: approvalId, facts: { image: imageUrl as string } });
+    const result = await recordAdminMutation({
+      request, redis, tracker, cardId: numericCardId, kind: 'image', payload: { imageUrl },
+      edit: (card, submissions) => {
+        const image = card.evidenceImages?.find((image) => image.url === imageUrl);
+        if (!image) throw new TrackerStoreError('Image must already be approved evidence for this card', 409);
+        const report = submissions.find((report) => report.id === image.sourceSubmissionId);
+        const approvalId = report?.status === 'duplicate' ? report.duplicateOf : report?.id;
+        if (!approvalId) throw new TrackerStoreError('Evidence approval is unavailable', 409);
+        return { sourceSubmissionId: approvalId, facts: { image: imageUrl as string } };
+      },
     });
 
-    return NextResponse.json({ message: 'Image updated successfully' });
+    return NextResponse.json({ message: 'Image updated successfully', replayed: result.replayed });
   } catch (error) {
     if (error instanceof TrackerStoreError) return NextResponse.json({ message: error.message }, { status: error.status });
     console.error('Error updating image:', error);

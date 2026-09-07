@@ -12,6 +12,7 @@ try {
     const errors = []; const requests = []; const actions = [];
     let authenticated = false; let failLogin = true; let failInbox = false; let failLogout = false;
     let storageConfigured = false; let failCleanup = true; let storageChecks = 0; let storageAuthExpired = false;
+    let failInventory = true;
     const report = { id: 'fixture-report', cardId: 7, serialNumber: '007', serialTotal: 100, cardTitle: 'The One Ring', status: 'pending', kind: 'discovery', submittedAt: '2026-09-05T10:00:00.000Z', sourceType: 'other', requestedVerificationStatus: 'unverified', evidenceImages: [], notes: 'Private fixture collector note', reviewHistory: [] };
     const held = { ...report, id: 'held-report', cardId: 8, serialNumber: '008', evidenceImages: [{ url: '/api/evidence/11111111-1111-4111-8111-111111111111' }], evidenceSafety: [{ url: '/api/evidence/11111111-1111-4111-8111-111111111111', status: 'flagged', reason: 'sexual-content' }] };
     const row = (item) => ({ id: item.id, tracker: 'one-ring', trackerTitle: 'The One Ring', cardTitle: 'The One Ring', serial: `${item.serialNumber}/100`, status: item.status, kind: item.kind, submittedAt: item.submittedAt, imageCount: item.evidenceImages.length, hasSource: false });
@@ -30,6 +31,12 @@ try {
       }
       if (!authenticated) return route.fulfill({ status: 401, json: { message: 'Unauthorized' } });
       if (url.pathname === '/api/admin/configuration') return route.fulfill({ json: { services: [{ name: 'Malware scanner', configured: false }, { name: 'Redis', configured: true }, { name: 'Private image storage', configured: storageConfigured }] } });
+      if (url.pathname === '/api/admin/storage-inventory') {
+        assert.equal(method, 'POST');
+        if (failInventory) return route.fulfill({ status: 503, json: { message: 'Inventory temporarily unavailable' } });
+        const next = route.request().postDataJSON().cursor;
+        return route.fulfill({ json: { rows: [{ id: '11111111-1111-4111-8111-111111111111', card: 'The One Ring 007/100', status: next ? 'unknown' : 'candidate', createdAt: '2026-08-01T00:00:00Z', bytes: 1024 }], nextCursor: next ? null : 'next-inventory', checkedAt: '2026-09-06T00:00:00Z' } });
+      }
       if (url.pathname === '/api/admin/storage-check') {
         assert.equal(method, 'POST');
         assert.deepEqual(route.request().postDataJSON(), { confirm: 'TEST_PRIVATE_STORAGE' });
@@ -88,6 +95,20 @@ try {
     await page.getByRole('button', { name: 'Service setup' }).click();
     await page.getByText('Missing configuration', { exact: true }).first().waitFor();
     await page.getByText('Not verified here', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Check inventory', exact: true }).click();
+    await page.getByRole('alert').filter({ hasText: 'Inventory temporarily unavailable' }).waitFor();
+    failInventory = false;
+    await page.getByRole('button', { name: 'Check inventory', exact: true }).click();
+    await page.getByText('Potentially abandoned', { exact: true }).waitFor();
+    const inventory = page.getByRole('region', { name: 'Upload retention inventory' });
+    assert.equal(await inventory.getByRole('button', { name: /delete/i }).count(), 0);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await inventory.screenshot({ path: `node_modules/.cache/storage-inventory-${width}.png` });
+    await page.getByRole('button', { name: 'Next inventory batch' }).click();
+    await page.getByText('Needs investigation', { exact: true }).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Next inventory batch' }).isDisabled(), true);
+    await page.getByRole('button', { name: 'Previous inventory batch' }).click();
+    await page.getByText('Potentially abandoned', { exact: true }).waitFor();
     assert.equal(storageChecks, 0);
     assert.equal(await page.getByRole('button', { name: 'Test storage', exact: true }).isDisabled(), true);
     storageConfigured = true;
@@ -114,6 +135,7 @@ try {
     failLogout = false; await page.getByRole('button', { name: 'Sign out' }).click();
     await page.getByRole('heading', { name: 'Owner sign-in' }).waitFor();
     assert.equal(await page.getByText('Storage checks passed', { exact: true }).count(), 0);
+    assert.equal(await page.getByText('Potentially abandoned', { exact: true }).count(), 0);
     assert.equal(await page.getByText('Private fixture collector note', { exact: false }).count(), 0);
     await signIn();
     await page.getByRole('button', { name: 'Test storage', exact: true }).waitFor();

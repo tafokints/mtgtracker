@@ -1,13 +1,12 @@
-import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
-import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
+import { TrackerStoreError } from '@/lib/tracker-store';
 import { parseCardId } from '@/lib/admin-validation';
 import { parsePriceObservation } from '@/lib/history-validation';
-import { appendCardEvent } from '@/lib/card-history';
+import { recordAdminMutation } from '@/lib/admin-mutation';
 import { checkSourceReputation } from '@/lib/evidence-scanning';
 import { EvidenceUploadError } from '@/lib/evidence-upload';
 
@@ -28,18 +27,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     let entry;
     try { entry = parsePriceObservation(body.value.entry as Record<string, unknown>); }
     catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
-    if (entry.sourceUrl) await checkSourceReputation(entry.sourceUrl);
-    const id = randomUUID();
-    const recordedAt = new Date().toISOString();
-    const price = { ...entry, id, recordedAt };
-    const card = await mutateTrackerState(getRedis(), tracker, ({ cards }) => {
-      const card = cards.find((item) => item.id === cardId);
-      if (!card) throw new TrackerStoreError('Card not found', 404);
-      if (!card.found) throw new TrackerStoreError('Approve a discovery before adding market history', 409);
-      appendCardEvent(card, { id, kind: 'price', recordedAt, price });
-      return card;
+    const result = await recordAdminMutation({
+      request, redis: getRedis(), tracker, cardId, kind: 'price', payload: entry,
+      check: entry.sourceUrl ? () => checkSourceReputation(entry.sourceUrl!) : undefined,
+      edit: (_card, _submissions, event) => ({ price: { ...entry, ...event } }),
     });
-    return NextResponse.json({ success: true, card });
+    return NextResponse.json({ success: true, ...result });
   } catch (error) {
     if (error instanceof TrackerStoreError || error instanceof EvidenceUploadError) return NextResponse.json({ error: error.message }, { status: error.status });
     return NextResponse.json({ error: 'Unable to record price history' }, { status: 500 });

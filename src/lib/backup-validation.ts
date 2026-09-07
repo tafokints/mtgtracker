@@ -2,6 +2,7 @@ import { isDateOnly, isSafeImageUrl } from '@/lib/admin-validation';
 import { getTrackerCardSlot } from '@/lib/tracker-data';
 import { getTracker, type TrackerSummary } from '@/lib/trackers';
 import { parseGradingInfo, parsePriceObservation } from './history-validation';
+import { EVIDENCE_ID } from './evidence-policy';
 
 const verificationStatuses = ['unverified', 'source-linked', 'confirmed'];
 const sourceTypes = ['marketplace', 'grading-pop', 'social', 'article', 'private-sale', 'other'];
@@ -61,12 +62,19 @@ export function validBackupCard(value: unknown, tracker: TrackerSummary): boolea
   if (value.history !== undefined) {
     if (!Array.isArray(value.history) || (value.history.length && !value.historyBaseline)) return false;
     const seen = new Set<string>();
+    const requests = new Set<string>();
     for (const event of value.history) {
       if (!record(event) || typeof event.id !== 'string' || !event.id || seen.has(event.id) || typeof event.recordedAt !== 'string' || !Number.isFinite(Date.parse(event.recordedAt)) || !['discovery', 'sighting', 'correction', 'price', 'grading', 'image', 'retraction'].includes(String(event.kind))) return false;
       if (event.facts !== undefined && (!record(event.facts) || !validFacts(event.facts, tracker, value.id))) return false;
       if (event.price !== undefined && (!record(event.price) || !validPrice(event.price))) return false;
       if (event.grading !== undefined && !validGradingEvent(event.grading)) return false;
       if (!optionalStrings(event, ['sourceSubmissionId'])) return false;
+      if (event.adminMutation !== undefined && (!record(event.adminMutation) ||
+        typeof event.adminMutation.id !== 'string' || !EVIDENCE_ID.test(event.adminMutation.id) || requests.has(event.adminMutation.id) ||
+        typeof event.adminMutation.payloadHash !== 'string' || !/^[a-f0-9]{64}$/.test(event.adminMutation.payloadHash) ||
+        typeof event.adminMutation.actorId !== 'string' || !event.adminMutation.actorId || event.adminMutation.actorId.length > 120 ||
+        !['price', 'grading', 'image'].includes(String(event.kind)))) return false;
+      if (record(event.adminMutation)) requests.add(event.adminMutation.id as string);
       if (event.kind === 'retraction' && (!Array.isArray(event.retracts) || !event.retracts.length || event.retracts.some((id) => typeof id !== 'string' || !seen.has(id)))) return false;
       if (event.kind !== 'retraction' && event.retracts !== undefined) return false;
       seen.add(event.id);

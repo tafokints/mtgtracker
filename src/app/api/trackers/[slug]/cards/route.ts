@@ -25,7 +25,11 @@ export async function GET(_request: Request, { params }: RouteContext) {
     const { cards, submissions } = await getTrackerState(redis, tracker);
 
     return NextResponse.json(withPendingReportCounts(cards, submissions).map((card) => {
-      const publicCard = { ...card, history: activeCardEvents(card) };
+      const publicCard = { ...card, history: activeCardEvents(card).map((event) => {
+        const publicEvent = { ...event };
+        delete publicEvent.adminMutation;
+        return publicEvent;
+      }) };
       delete publicCard.historyBaseline;
       return publicCard;
     }));

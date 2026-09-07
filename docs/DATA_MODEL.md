@@ -36,7 +36,15 @@ These are logical one-to-many relationships, still persisted inside the existing
 - Grading events preserve service, grade, optional certificate and event date. Regrades and later observations of an ungraded card do not delete previous grading events. Dates are not guessed. An absent current grade means unknown, not proof that the copy has never been graded.
 - Admin price/grading writes require an already documented copy and never independently set `found` or upgrade verification.
 - Retraction appends a journal event, changes report status to `revoked`, and rebuilds the copy without that approval's contributions. Previously approved evidence becomes inaccessible to anonymous readers. Other independently approved reports survive. Legacy approvals without journal entries require deliberate correction/reconciliation, not an invented rollback.
-- Public card responses omit the private baseline and withdrawn events. Admin exports retain the complete journal and review history.
+- Public card responses omit the private baseline, withdrawn events and private admin retry receipts. Admin exports retain the complete journal and review history.
+
+## Retry-Safe Admin Edits
+
+Price, grading and image-selection writes require a v4 UUID `Idempotency-Key`. `admin-mutation.ts` binds it to the authenticated owner and a SHA-256 digest of the copy ID, edit kind and normalized payload. The edit and its private `adminMutation` receipt are appended in the same atomic journal commit. Matching retries return the current card without reapplying an old edit; reuse for a different payload or owner returns 409. Both shared One Ring views resolve to the same receipt. The legacy update-price route preserves the header and delegates to the price-history route.
+
+The browser coalesces identical in-flight saves and keeps only an opaque request ID under a payload-digest key in tab-local session storage. After an uncertain response, retry the same values; a same-tab reload can recover that ID. Changed values are a different request. Confirmed success removes the pending ID so a deliberately new identical observation remains possible. When session storage is unavailable, reload persistence is not guaranteed. Previously open admin pages must refresh after this release to send the new header.
+
+Receipts have no independent expiry and survive later edits, retraction, and restore of a snapshot containing them. A deliberate restore to a snapshot predating the edit removes its receipt along with that history; retry protection cannot span discarded history. Import validates unique IDs, hashes, owners and eligible event kinds. These receipts are not a general audit service or a reason to bypass image/source checks for new edits.
 
 ## Review And Follow-Up
 

@@ -25,11 +25,18 @@ try {
     const reviewPosts = [];
     const metadataPosts = [];
     let replySaved = false;
+    let loseSave = true;
     page.on('pageerror', (error) => errors.push(error.message));
     await page.route(`${base}/api/**`, async (route) => {
       const url = new URL(route.request().url());
       if (url.pathname.endsWith('/cards')) return route.fulfill({ json: cards });
-      if (/\/(update-grading|update-price|add-price-history)$/.test(url.pathname)) { metadataPosts.push({ path: url.pathname, body: route.request().postDataJSON() }); return route.fulfill({ json: { success: true } }); }
+      if (/\/(update-grading|update-price|add-price-history)$/.test(url.pathname)) {
+        const requestId = route.request().headers()['idempotency-key'];
+        assert.match(requestId, /^[a-f0-9-]{36}$/);
+        metadataPosts.push({ path: url.pathname, body: route.request().postDataJSON(), requestId });
+        if (loseSave) { loseSave = false; return route.fulfill({ status: 503, json: { message: 'Fixture save response lost' } }); }
+        return route.fulfill({ json: { success: true } });
+      }
       if (url.pathname === '/api/admin/login') return route.fulfill({ json: { authenticated: true } });
       if (url.pathname === '/api/admin/affiliate-stats') return route.fulfill({ status: 503, json: { message: 'Isolated UI fixture' } });
       if (url.pathname.endsWith('/submissions')) {
@@ -73,7 +80,16 @@ try {
     await page.getByRole('combobox', { name: /Observed status/ }).selectOption('ungraded');
     await page.getByLabel('Observation date', { exact: true }).fill('2026-09-05');
     await page.getByRole('button', { name: 'Update Grading', exact: true }).click();
+    await page.getByText('Fixture save response lost', { exact: true }).waitFor();
+    await page.reload(); await page.waitForLoadState('networkidle');
+    await page.keyboard.press('Control+Alt+a');
+    await page.getByRole('button', { name: 'Grading', exact: true }).click();
+    await page.getByLabel('Select Card', { exact: true }).selectOption('7');
+    await page.getByRole('combobox', { name: /Observed status/ }).selectOption('ungraded');
+    await page.getByLabel('Observation date', { exact: true }).fill('2026-09-05');
+    await page.getByRole('button', { name: 'Update Grading', exact: true }).click();
     await page.waitForFunction(() => document.body.textContent.includes('Grading updated'));
+    assert.equal(metadataPosts[0].requestId, metadataPosts[1].requestId);
     assert.equal(metadataPosts[0].body.status, 'ungraded');
     assert.equal(metadataPosts[0].body.grading, undefined);
     await page.getByRole('button', { name: 'Price', exact: true }).click();
@@ -83,8 +99,9 @@ try {
     await page.getByLabel('Observation date', { exact: true }).fill('2026-09-05');
     await page.getByRole('button', { name: 'Update Price', exact: true }).click();
     await page.waitForFunction(() => document.body.textContent.includes('Price updated'));
-    assert.equal(metadataPosts[1].body.kind, 'completed-sale');
-    assert.equal(metadataPosts[1].body.currency, 'USD');
+    assert.equal(metadataPosts[2].body.kind, 'completed-sale');
+    assert.equal(metadataPosts[2].body.currency, 'USD');
+    assert.notEqual(metadataPosts[2].requestId, metadataPosts[1].requestId);
     await noOverflow();
 
     await page.goto(`${base}/trackers/one-ring?serial=007`);

@@ -35,6 +35,10 @@ The inbox reads original storage, not projected alias queues, and selects featur
 
 The Service setup configuration endpoint returns only presence/configuration booleans, never credentials. Blob supports a connected `BLOB_STORE_ID` with SDK-managed Vercel OIDC or an explicit static `BLOB_READ_WRITE_TOKEN`. Configured does not prove private-store access, valid provider credentials, scan quality or successful cloud tests. Scheduled backup/restore verification cannot be inferred from the application environment and is explicitly not verified in this view.
 
+Service setup also includes an explicit read-only Upload retention inventory. `POST /api/admin/storage-inventory` requires the owner session and same origin, accepts only an optional bounded cursor, and returns private/no-store/noindex responses. Its site-wide budget is 120 batches/hour. It reads bounded Redis metadata and related current/legacy report/card records without initializing tracker arrays or reading Blob files. Usual authentication/rate counters still operate. Uncertain records are labeled Needs investigation, never assumed abandoned. There are no deletion controls. Scope, limits and the seven-day investigation grace period are documented in docs/ADMIN_RELIABILITY_2026-09-06.md.
+
+Admin price/grading/image saves now require private, owner-bound request IDs committed with their journal events. Matching retries return current state; changed-payload reuse is rejected. Existing owner authentication, same-origin rules and evidence checks are unchanged. See docs/DATA_MODEL.md for client reload behavior and restore limitations.
+
 The separate owner-confirmed storage test uses `POST /api/admin/storage-check`, an awaited owner/same-origin guard, a 1 KiB exact confirmation body and a site-wide budget of three tests per 15 minutes. It writes a tiny benign text file to a fresh `_diagnostics/storage/{runId}.txt`, checks exact private read-back and anonymous access denial, then deletes only that generated path and checks metadata absence. Timeouts and unexpected responses never pass; cleanup is attempted even after an upload failure. No reports, discoveries, existing files or scanner settings change. The response contains only per-step statuses, a run ID and timestamp, never provider URLs, tokens or raw exceptions. Results are transient and no-store, not a persisted certification. The page warns about provider operations before execution. See docs/INTAKE_SETUP.md for setup and cleanup limits.
 
 The owner reports enrolling a regenerated Base32 seed in Google Authenticator and updating Vercel. Production owner variable names were confirmed without reading values. After deploying `0058bc3`, the owner confirmed successful password/TOTP login, logout and re-login at `https://mtgtrackers.com/admin`. This is owner-reported hosted verification, not an agent credential test. Local review checks use intercepted browser APIs and benign synthetic reports; no production reports were created.
@@ -49,6 +53,8 @@ The owner reports enrolling a regenerated Base32 seed in Google Authenticator an
 Rate limits are application controls, not replacements for Vercel firewall controls. Verify that the deployment overwrites forwarded-IP headers and has no exposed origin allowing spoofing. Keep temporary limits separate from permanent data; do not enable database eviction on canonical records. Review historic telemetry separately: the new policy repairs daily expiry on touched keys but does not sweep untouched pre-existing keys. Existing large or arbitrary legacy analytics keys need an explicit dry-run cleanup before deletion.
 
 ## Encrypted Recovery Backups
+
+Owner decision, 2026-09-06: setup is on the back burner. The protected GitHub environment and a successful encrypted backup have not been configured/verified. Do not activate this workflow or collector-data deletion as part of routine inventory work. The instructions below remain the future setup procedure, not a completed deployment claim.
 
 Tracker JSON export/import remains a limited per-view administrative tool. It is NOT a complete image backup. The new recovery runner includes:
 
@@ -83,11 +89,10 @@ After restore, verify shared-copy counts/history, owner login, private pending-i
 ## Remaining Release Gates
 
 - Configure separate isolated Preview credentials and stores. The owner confirmed Production login/logout/re-login; Preview password/owner ID/TOTP are absent. The new Blob connection includes Production and Preview, so Preview must not be treated as an isolated evidence-test environment yet.
-- Activate and validate hosted backups, test actual restoration, and configure spend/failure alerts.
+- Deferred by owner: activate and validate hosted backups, test actual restoration, and configure backup failure alerts. Platform spend controls remain separate work.
 - Complete actual private Blob, Turnstile, malware/sexual-content scanners and Web Risk setup/tests. Known-threat link screening is not adult-content classification or authenticity verification.
 - Add durable scan jobs, cleanup/retention and false-positive/takedown handling; keep scans fail-closed.
 - Add independent paginated report/event storage and opt-in owner notifications. The unified owner inbox exists, but its backing tracker arrays and selected-tracker detail queries still need the independent-record migration.
-- Add request IDs for retried admin price/grading/image edits; current public-report retries are protected but these admin writes can still repeat after a lost response.
 - Correct whole-site affiliate rollups to include active generated trackers efficiently. Click telemetry is not proof of merchant commission credit.
 - Add multi-user moderator roles and a comprehensive protected audit trail before inviting other reviewers. Current review history records the configured owner, but this is not a general-purpose identity provider.
 

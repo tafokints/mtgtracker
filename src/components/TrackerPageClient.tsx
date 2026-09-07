@@ -1,5 +1,7 @@
 'use client';
 
+import { saveAdminMutation } from '@/lib/admin-mutation-client';
+
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry } from "@/lib/types";
 import { getSerialAffiliateLinks, type TrackerSummary } from '@/lib/trackers';
@@ -365,74 +367,23 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   }, [cards, tracker]);
 
   const handlePriceUpdate = async (cardId: number, entry: PriceHistoryEntry) => {
-    try {
-      const response = await fetch(`${trackerApiBase}/update-price`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ cardId, ...entry }),
-      });
-
-      if (!response.ok) { const data = await response.json(); throw new Error(data.error || data.message || 'Price update failed'); }
-      await fetchCards();
-    } catch (error) {
-      throw error instanceof Error ? error : new Error('Price update failed');
-    }
+    await saveAdminMutation(`${trackerApiBase}/update-price`, { cardId, ...entry });
+    await fetchCards();
   };
 
   const handleImageUpdate = async (cardId: number, imageUrl: string) => {
-    try {
-      const response = await fetch(`${trackerApiBase}/update-image`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ cardId, imageUrl }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.message || 'Image update failed');
-      }
-      await fetchCards();
-    } catch (error) {
-      throw error instanceof Error ? error : new Error('Image update failed');
-    }
+    await saveAdminMutation(`${trackerApiBase}/update-image`, { cardId, imageUrl });
+    await fetchCards();
   };
 
   const handleGradingUpdate = async (cardId: number, grading: GradingInfo | undefined, status: 'graded' | 'ungraded' = 'graded', occurredOn?: string) => {
-    try {
-      const response = await fetch(`${trackerApiBase}/update-grading`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ cardId, grading, status, occurredOn }),
-      });
-
-      if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Grading update failed'); }
-      await fetchCards();
-    } catch (error) {
-      throw error instanceof Error ? error : new Error('Grading update failed');
-    }
+    await saveAdminMutation(`${trackerApiBase}/update-grading`, { cardId, grading, status, occurredOn });
+    await fetchCards();
   };
 
   const handlePriceHistoryAdd = async (cardId: number, entry: PriceHistoryEntry) => {
-    try {
-      const response = await fetch(`${trackerApiBase}/add-price-history`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ cardId, entry }),
-      });
-
-      if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Price history update failed'); }
-      await fetchCards();
-    } catch (error) {
-      throw error instanceof Error ? error : new Error('Price history update failed');
-    }
+    await saveAdminMutation(`${trackerApiBase}/add-price-history`, { cardId, entry });
+    await fetchCards();
   };
   const cardFilterOptions = useMemo(() => {
     const countsBySlug = new Map<string, number>();

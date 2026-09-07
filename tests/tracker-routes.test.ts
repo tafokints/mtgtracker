@@ -30,6 +30,16 @@ const redisFixture = vi.hoisted(() => {
         return 'OK';
       },
       async eval(script: string, keys: string[], args: string[]) {
+        if (script.includes('-- bounded read-only storage inventory')) {
+          let remaining = Number(args[0]);
+          return keys.map((key) => {
+            if (!store.has(key)) return { state: 'missing' };
+            const raw = JSON.stringify(store.get(key));
+            if (Buffer.byteLength(raw) > remaining) return { state: 'unavailable' };
+            remaining -= Buffer.byteLength(raw);
+            return { state: 'present', raw };
+          });
+        }
         if (script.includes('-- validate and touch revocable owner session')) {
           const session = store.get(keys[0]) as { fingerprint: string; expiresAt: number; lastSeenAt: number; principal: unknown } | undefined;
           const now = Number(args[0]);
@@ -82,6 +92,7 @@ const redisFixture = vi.hoisted(() => {
         for (const [key, value] of Object.entries(values)) store.set(key, structuredClone(value));
         return 'OK';
       },
+      async scan() { return ['0', [...store.keys()].filter((key) => key.startsWith('evidence:v1:'))]; },
       async del(key: string) {
         const existed = store.delete(key);
         return existed ? 1 : 0;
@@ -154,6 +165,7 @@ import { POST as startSubmissionSession } from '@/app/api/trackers/[slug]/submis
 import { POST as checkReportSource } from '@/app/api/trackers/[slug]/submissions/[id]/source/route';
 import { GET as readReportReceipt, POST as replyToReport } from '@/app/api/reports/[slug]/[id]/route';
 import { GET as previewReconciliation, POST as commitReconciliation } from '@/app/api/admin/reconcile-copies/route';
+import { POST as inventory } from '@/app/api/admin/storage-inventory/route';
 import { getTrackerSlotId } from '@/lib/tracker-data';
 
 let adminSession = '';
@@ -255,13 +267,14 @@ function promotionVisitRequest(body: unknown) {
   });
 }
 
-function reviewRequest(body: unknown, session = adminSession) {
+function reviewRequest(body: unknown, session = adminSession, requestId = crypto.randomUUID()) {
   return new NextRequest('https://mtgtrackers.com/api/trackers/one-ring/submissions', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       origin: 'https://mtgtrackers.com',
       cookie: `${ADMIN_COOKIE_NAME}=${session}`,
+      'Idempotency-Key': requestId,
     },
     body: JSON.stringify(body),
   });
@@ -664,6 +677,105 @@ describe('tracker API routes', () => {
     expect(responses.map((response) => response.status)).toEqual([200, 200]);
     const cards = redisFixture.store.get(tracker.storage.cardsKey) as unknown[];
     expect(cards[6]).toMatchObject({ price: 1800, image: url });
+  });
+
+  it.each(['price', 'grading', 'image'] as const)('deduplicates concurrent and later %s retries atomically', async (kind) => {
+    const token = createSubmissionSession('one-ring', 7).token;
+    const uploaded = await (await uploadEvidenceImage(uploadRequest(await realImage(), undefined, token), routeContext())).json();
+    const { body } = await submitValidDiscovery(7, undefined, { evidenceAssetIds: [uploaded.assetId] }, token);
+    await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext());
+    const payload = kind === 'price' ? { cardId: 7, price: 1800 } : kind === 'grading' ? { cardId: 7, status: 'ungraded' } : { cardId: 7, imageUrl: evidenceUrl(uploaded.assetId) };
+    const handler = kind === 'price' ? updatePrice : kind === 'grading' ? updateGrading : updateImage;
+    const id = crypto.randomUUID();
+    const responses = await Promise.all([0, 1, 2].map(() => handler(reviewRequest(payload, adminSession, id), routeContext())));
+    expect(responses.map((response) => response.status)).toEqual([200, 200, 200]);
+    const results = await Promise.all(responses.map((response) => response.json()));
+    expect(results.filter((result) => !result.replayed)).toHaveLength(1);
+    const stored = await (await exportTrackerBackup(exportRequest(), routeContext())).json();
+    expect(stored.cards[6].history.filter((event: { adminMutation?: { id: string } }) => event.adminMutation?.id === id)).toHaveLength(1);
+    expect(JSON.stringify(await (await readCards(exportRequest(), routeContext())).json())).not.toContain('adminMutation');
+    expect((await handler(reviewRequest(payload, adminSession, id), routeContext())).status).toBe(200);
+    // The receipt stays in the journal through restore and retraction; replay never reapplies it.
+    expect((await importTrackerBackup(importRequest({ confirm: 'RESTORE_TRACKER_BACKUP', backup: stored }), routeContext())).status).toBe(200);
+    expect((await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'revoke', reviewNotes: 'Fixture withdrawal' }), routeContext())).status).toBe(200);
+    expect((await handler(reviewRequest(payload, adminSession, id), routeContext())).status).toBe(200);
+    expect((await (await readCards(exportRequest(), routeContext())).json())[6].found).toBe(false);
+  });
+
+  it('shares retry receipts across canonical/alias views and legacy/new price endpoints', async () => {
+    const { body } = await submitValidDiscovery();
+    await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext());
+    const id = crypto.randomUUID();
+    const entry = { price: 2100, kind: 'completed-sale', currency: 'USD', date: '2026-09-06', sourceUrl: 'https://www.ebay.com/itm/123456789012' };
+    expect((await updatePrice(reviewRequest({ cardId: 7, ...entry }, adminSession, id), routeContext())).status).toBe(200);
+    delete process.env.GOOGLE_WEB_RISK_API_KEY;
+    const poster = getTracker('lotr-poster-cards')!;
+    const alias = getTrackerSlotId(poster, 'the-one-ring', 7)!;
+    const retry = await addPriceHistory(reviewRequest({ cardId: alias, entry }, adminSession, id), routeContext(poster.slug));
+    expect(retry.status).toBe(200);
+    expect(await retry.json()).toMatchObject({ replayed: true });
+    expect((await addPriceHistory(reviewRequest({ cardId: 7, entry: { ...entry, price: 2200 } }, adminSession, id), routeContext())).status).toBe(409);
+    expect((await updateGrading(reviewRequest({ cardId: 7, status: 'ungraded' }, adminSession, id), routeContext())).status).toBe(409);
+    // A genuinely new observation still runs the source safety check.
+    expect((await addPriceHistory(reviewRequest({ cardId: 7, entry }), routeContext())).status).toBe(503);
+  });
+
+  it('does not duplicate a save when Redis commits but its reply is lost', async () => {
+    const { body } = await submitValidDiscovery();
+    await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext());
+    const id = crypto.randomUUID();
+    const original = redisFixture.redis.eval;
+    let lost = false;
+    vi.spyOn(redisFixture.redis, 'eval').mockImplementation(async (script, keys, args) => {
+      const result = await original(script, keys, args);
+      if (!lost && script.includes('-- commit related tracker')) { lost = true; throw new Error('Lost commit reply'); }
+      return result;
+    });
+    const payload = { cardId: 7, status: 'ungraded' };
+    expect((await updateGrading(reviewRequest(payload, adminSession, id), routeContext())).status).toBe(500);
+    expect((await (await updateGrading(reviewRequest(payload, adminSession, id), routeContext())).json()).replayed).toBe(true);
+    const stored = await (await exportTrackerBackup(exportRequest(), routeContext())).json();
+    expect(stored.cards[6].history.filter((event: { kind: string }) => event.kind === 'grading')).toHaveLength(1);
+  });
+
+  it('requires valid request IDs without weakening owner or origin checks', async () => {
+    for (const id of ['', 'not-a-uuid']) expect((await updatePrice(reviewRequest({ cardId: 7, price: 1 }, adminSession, id), routeContext())).status).toBe(400);
+    const crossOrigin = reviewRequest({ cardId: 7, price: 1 });
+    crossOrigin.headers.set('origin', 'https://attacker.example');
+    expect((await updatePrice(crossOrigin, routeContext())).status).toBe(403);
+    expect((await inventory(reviewRequest({}, ''))).status).toBe(401);
+    expect((await inventory(crossOrigin)).status).toBe(403);
+    expect((await inventory(reviewRequest({ action: 'delete' }))).status).toBe(400);
+    expect((await inventory(reviewRequest({ cursor: 'bad' }))).status).toBe(400);
+  });
+
+  it('serves a private read-only inventory without reading Blob bytes or creating trackers', async () => {
+    const uploaded = await (await uploadEvidenceImage(uploadRequest(await realImage()), routeContext())).json();
+    blobFixture.get.mockClear(); blobFixture.put.mockClear();
+    const asset = structuredClone(redisFixture.store.get(evidenceKey(uploaded.assetId)));
+    const response = await inventory(reviewRequest({}));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toContain('no-store');
+    expect(response.headers.get('x-robots-tag')).toContain('noindex');
+    expect(await response.json()).toMatchObject({ rows: [{ id: uploaded.assetId, status: 'recent' }], nextCursor: null });
+    expect(redisFixture.store.get(evidenceKey(uploaded.assetId))).toEqual(asset);
+    expect(redisFixture.store.has(tracker.storage.cardsKey)).toBe(false);
+    expect(blobFixture.get).not.toHaveBeenCalled(); expect(blobFixture.put).not.toHaveBeenCalled();
+  });
+
+  it('binds saved requests to the authenticated owner and validates receipts on import', async () => {
+    const { body } = await submitValidDiscovery();
+    await reviewSubmission(reviewRequest({ submissionId: body.submissionId, action: 'approve' }), routeContext());
+    const id = crypto.randomUUID();
+    const payload = { cardId: 7, price: 50 };
+    expect((await updatePrice(reviewRequest(payload, adminSession, id), routeContext())).status).toBe(200);
+    const backup = await (await exportTrackerBackup(exportRequest(), routeContext())).json();
+    const event = backup.cards[6].history.at(-1);
+    event.adminMutation.payloadHash = 'broken';
+    expect((await importTrackerBackup(importRequest({ confirm: 'RESTORE_TRACKER_BACKUP', backup }), routeContext())).status).toBe(400);
+    vi.stubEnv('ADMIN_OWNER_ID', 'replacement-owner');
+    const replacement = await createAdminSession();
+    expect((await updatePrice(reviewRequest(payload, replacement, id), routeContext())).status).toBe(409);
   });
 
   it('does not partially approve when the atomic commit fails', async () => {

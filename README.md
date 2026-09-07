@@ -124,6 +124,8 @@ The `/trackers` directory uses read-only stats snapshots so new multi-card track
 
 `docs/SECURITY_OPERATIONS.md` documents owner enrollment, request budgets, encrypted evidence-aware backups, the opt-in nightly workflow and isolated restore. Per-tracker exports below remain limited and do not contain image files. Public `/api/health` now returns only connectivity status, without writes, environment details or raw errors.
 
+In `/admin` -> Service setup, Upload retention offers a read-only, paginated upload-record inventory. It flags records for investigation without reading or deleting files; it is not a completed backup or storage-integrity check. Backup activation and the hosted restore drill are deferred. Price/grading/image edits now use retry-safe request IDs; refresh an already-open tracker admin page after updating. Details and verification: `docs/ADMIN_RELIABILITY_2026-09-06.md`.
+
 ## Redis Keys And Backups
 
 Each live tracker owns two Redis JSON values defined in `src/lib/trackers.ts`:

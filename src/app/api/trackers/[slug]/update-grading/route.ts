@@ -1,13 +1,12 @@
-import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
 import { getTracker } from '@/lib/trackers';
 import { requireAdmin } from '@/lib/admin-auth';
 import { readJsonBody } from '@/lib/request-json';
-import { mutateTrackerState, TrackerStoreError } from '@/lib/tracker-store';
+import { TrackerStoreError } from '@/lib/tracker-store';
 import { isDateOnly, parseCardId } from '@/lib/admin-validation';
 import { parseGradingInfo } from '@/lib/history-validation';
-import { appendCardEvent } from '@/lib/card-history';
+import { recordAdminMutation } from '@/lib/admin-mutation';
 import { checkSourceReputation } from '@/lib/evidence-scanning';
 import { EvidenceUploadError } from '@/lib/evidence-upload';
 
@@ -31,18 +30,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
     const occurredOn = body.value.occurredOn ?? grading?.dateGraded;
     if (occurredOn !== undefined && !isDateOnly(occurredOn)) return NextResponse.json({ error: 'Invalid grading event date' }, { status: 400 });
-    if (grading?.sourceUrl) await checkSourceReputation(grading.sourceUrl);
-    const id = randomUUID();
-    const recordedAt = new Date().toISOString();
-    const entry = { id, status: status as 'graded' | 'ungraded', grading, occurredOn: occurredOn as string | undefined, recordedAt };
-    const card = await mutateTrackerState(getRedis(), tracker, ({ cards }) => {
-      const card = cards.find((item) => item.id === cardId);
-      if (!card) throw new TrackerStoreError('Card not found', 404);
-      if (!card.found) throw new TrackerStoreError('Approve a discovery before adding grading history', 409);
-      appendCardEvent(card, { id, kind: 'grading', recordedAt, grading: entry });
-      return card;
+    const entry = { status: status as 'graded' | 'ungraded', grading, occurredOn: occurredOn as string | undefined };
+    const result = await recordAdminMutation({
+      request, redis: getRedis(), tracker, cardId, kind: 'grading', payload: entry,
+      check: grading?.sourceUrl ? () => checkSourceReputation(grading.sourceUrl!) : undefined,
+      edit: (_card, _submissions, event) => ({ grading: { ...entry, ...event } }),
     });
-    return NextResponse.json({ success: true, card });
+    return NextResponse.json({ success: true, ...result });
   } catch (error) {
     if (error instanceof TrackerStoreError || error instanceof EvidenceUploadError) return NextResponse.json({ error: error.message }, { status: error.status });
     return NextResponse.json({ error: 'Unable to record grading history' }, { status: 500 });

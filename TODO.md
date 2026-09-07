@@ -35,8 +35,12 @@ Deferred local service-diagnostic work is preserved in the Git stash named `Defe
 - [x] Owner reports enrolling the regenerated Base32 key and updating Vercel. Production variable names for owner ID, TOTP, password and session secret were confirmed without reading values.
 - [x] Owner confirms real production password/TOTP login, logout and re-login at `https://mtgtrackers.com/admin`. This is user-reported verification; the agent did not receive passwords, seeds, codes or cookies.
 - [ ] Configure separate Preview password/owner ID/TOTP settings and isolated Redis/Blob stores before hosted workflow QA; current connections must not be mistaken for a sandbox.
-- [ ] Activate the protected backup environment/failure notifications and perform a real hosted restore drill; retain the encryption key offline.
-- [ ] Add idempotency IDs to admin price/grading/image writes to avoid repeated history after lost responses.
+- [ ] Deferred by owner on 2026-09-06: activate the protected backup environment/failure notifications and perform a real hosted restore drill; retain the encryption key offline. The protected environment and successful encrypted backup are not set up yet. Do not enable deletion while recovery remains unverified.
+- [x] Add owner-bound idempotency IDs to admin price/grading/image writes. Atomically retain private retry receipts in the copy journal, reject changed-payload reuse, and recover the same request ID after a failed save or same-tab reload. Tests cover concurrency, lost commit responses, shared One Ring views, retraction, restore and public redaction. See docs/ADMIN_RELIABILITY_2026-09-06.md.
+- [x] Add an owner-only read-only upload inventory under Service setup. Bound metadata/reference reads, retain assets associated with reports/history regardless of review status, and flag uncertain records without guessing. No Blob reads, removal controls, automatic cleanup or backup activation.
+
+Reliability/inventory verification (2026-09-06): 514 tests across 35 files, lint, production build and actual Upstash SDK/Lua fixture checks pass. Owner, reporting/history and collector browser suites pass at 320/390/1440px, including a failed-save retry after reload, inventory errors/pagination and logout clearing. Screenshots were inspected. Browser APIs are intercepted, not proof of hosted scans or backup recovery. The deployment smoke suite now also checks anonymous inventory denial and private/noindex headers (63 total live checks).
+
 - [ ] Include active generated trackers in efficient whole-site affiliate rollups; unscoped reports currently default to featured trackers.
 - [ ] Configure platform WAF/bandwidth/spend controls, validate trusted forwarded-IP handling, and review untouched legacy analytics keys with a dry-run cleanup.
 
@@ -96,9 +100,9 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 - [x] Add schema-v2 journal/origin-aware tracker backups and nested restore validation; keep private baselines and withdrawn events out of public card responses. This does not include Blob bytes or asset metadata.
 - [ ] Preview any production shared-copy conflicts and review reconciliation decisions after taking complete backups; do not silently choose a legacy record.
 - [ ] Complete the protected-intake service setup and hosted lifecycle gate above. Earlier public Blob setup advice is superseded: use a private store.
-- [ ] Add orphan-upload cleanup, a retention policy, and audited admin removal. Detaching a form attachment is not physical deletion; report hard-delete is not implemented.
+- [ ] Add orphan-upload cleanup, a retention policy, and audited admin removal after verified recovery and explicit policy approval. The read-only inventory is implemented; seven days is an investigation grace period, not an approved deletion policy. Detaching a form attachment is not physical deletion; report hard-delete is not implemented.
 - [x] Bound/rate-limit new public telemetry and add retention; arbitrary dimensions no longer create unlimited persistent keys. Historic untouched keys still need reviewed cleanup.
-- [ ] Enable the implemented encrypted recovery backup workflow and perform an isolated hosted restore drill. New recovery archives include asset metadata/files; tracker JSON exports alone still do not.
+- [ ] Deferred by owner on 2026-09-06: enable the implemented encrypted recovery backup workflow and perform an isolated hosted restore drill. New recovery archives include asset metadata/files; tracker JSON exports alone still do not.
 - [ ] Validate the existing tracker scaffold across single-card and multi-card sets, different serialized quantities, shared identities, themes, and relevant affiliate defaults/fallbacks.
 - [x] Add mobile/browser regression checks for empty trackers and isolated populated fixtures: serial selection, submission, image preview, review, and filters; improve the 2,000-slot browsing experience with 48-card result pages. Real hosted service verification remains a separate gate.
 - [ ] Locate primary distribution documentation for the two Secret Lair serialized promos; their pages currently disclose the source limitation. Refresh the printing snapshot for new releases and manually review newly encountered sets.

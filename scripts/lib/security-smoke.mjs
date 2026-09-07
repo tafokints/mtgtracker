@@ -6,8 +6,8 @@ export function assertPrivate(response, label) {
 
 export async function checkOwnerBoundary(baseUrl, fetcher = fetch) {
   const results = [];
-  async function request(path) {
-    const response = await fetcher(`${baseUrl}${path}`, { redirect: 'manual', signal: AbortSignal.timeout(20000), headers: { 'User-Agent': 'MTGTrackers security smoke' } });
+  async function request(path, options = {}) {
+    const response = await fetcher(`${baseUrl}${path}`, { redirect: 'manual', signal: AbortSignal.timeout(20000), headers: { 'User-Agent': 'MTGTrackers security smoke' }, ...options });
     assert.equal(response.status, path === '/admin' || path === '/api/admin/login' ? 200 : 401, `${path} unexpected status`);
     return response;
   }
@@ -33,6 +33,11 @@ export async function checkOwnerBoundary(baseUrl, fetcher = fetch) {
     assert.deepEqual(await response.json(), { message: 'Unauthorized' }, `${path} must return only an anonymous denial`);
     results.push({ path: `${path} anonymous denial`, ok: true });
   }
+  const inventory = await request('/api/admin/storage-inventory', { method: 'POST', body: '{}' });
+  assertPrivate(inventory, 'Upload inventory');
+  assert.match(inventory.headers.get('x-robots-tag') || '', /noindex/);
+  assert.deepEqual(await inventory.json(), { message: 'Unauthorized' }, 'Inventory must return only an anonymous denial');
+  results.push({ path: '/api/admin/storage-inventory anonymous denial', ok: true });
   return results;
 }
 

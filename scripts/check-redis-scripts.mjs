@@ -11,7 +11,7 @@ assert.equal((await (await fetch(url)).json()).fixture, 'mtgtrackers-isolated-re
 const redis = new Redis({ url, token: 'fixture-only', enableAutoPipelining: false, responseEncoding: false });
 const productionDefaults = new Redis({ url, token: 'fixture-only' });
 const scripts = {};
-for (const file of ['tracker-store.ts', 'copy-reconciliation.ts', 'evidence-store.ts', 'rate-limit.ts', 'admin-auth.ts', 'telemetry-policy.ts']) {
+for (const file of ['tracker-store.ts', 'copy-reconciliation.ts', 'evidence-store.ts', 'rate-limit.ts', 'admin-auth.ts', 'telemetry-policy.ts', 'storage-inventory.ts']) {
 const source = ts.createSourceFile(file, readFileSync(new URL(`../src/lib/${file}`, import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
 for (const statement of source.statements) {
   if (!ts.isVariableStatement(statement)) continue;
@@ -51,6 +51,8 @@ try {
   await redis.eval(scripts.INCREMENT_TELEMETRY, [dailyKey], ['7776000']);
   assert.ok(await redis.ttl(dailyKey) > 0);
   assert.deepEqual(await productionDefaults.eval(SNAPSHOT_KEYS, [sessionKey, dailyKey], []), [false, '1']);
+  assert.deepEqual(await productionDefaults.eval(scripts.READ_INVENTORY_RECORDS, [sessionKey, dailyKey], [1024]), [{ state: 'missing' }, { state: 'present', raw: '1' }]);
+  assert.deepEqual(await productionDefaults.eval(scripts.READ_INVENTORY_RECORDS, [dailyKey], [0]), [{ state: 'unavailable' }]);
   assert.deepEqual(await redis.eval(scripts.READ_RELATED_STATE, relatedKeys, []), ['', '', '', '']);
   const oldRelated = [oldCards, '[]', oldCards, '[]'];
   const newRelated = [newCards, reports, oldCards, '[]'];
@@ -72,6 +74,7 @@ try {
   const commit = () => redis.eval(scripts.COMMIT_TRACKER_STATE, keys, [oldCards, '', newCards, reports, slug]);
   assert.deepEqual((await Promise.all([commit(), commit()])).sort(), [0, 1]);
   assert.deepEqual(await redis.smembers(keys[2]), [slug]);
+  assert.deepEqual(await productionDefaults.eval(scripts.READ_INVENTORY_RECORDS, [keys[2]], [1024]), [{ state: 'unavailable' }]);
   assert.deepEqual(await redis.get(keys[0]), JSON.parse(newCards));
   assert.deepEqual(await redis.get(keys[1]), JSON.parse(reports));
 

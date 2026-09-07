@@ -32,6 +32,8 @@ export type ReportKind = 'discovery' | 'sighting' | 'correction';
 export type CardFacts = Pick<SerializedRingCard, 'found' | 'foundBy' | 'dateFound' | 'link' | 'sourceType' | 'verificationStatus' | 'notes' | 'image' | 'evidenceImages' | 'price' | 'priceDate' | 'priceHistory' | 'grading'>;
 
 export interface CardHistoryEvent {
+  /** Private retry receipt; persisted with the event and excluded from public projections. */
+  adminMutation?: { id: string; payloadHash: string; actorId: string };
   id: string;
   kind: ReportKind | 'price' | 'grading' | 'image' | 'retraction';
   recordedAt: string;
