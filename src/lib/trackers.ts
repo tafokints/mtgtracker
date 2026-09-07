@@ -154,8 +154,8 @@ export const trackers: TrackerSummary[] = [
     slug: 'one-ring',
     catalogSlug: 'lotr-poster-cards',
     title: 'The One Ring',
-    subtitle: 'Serialized borderless poster cards',
-    description: 'Track the 100 serialized The One Ring cards from MTG The Lord of the Rings: Tales of Middle-earth.',
+    subtitle: 'Borderless poster edition /100',
+    description: 'Track the 100 serialized borderless poster The One Ring cards (LTR #748z) from the Lord of the Rings Holiday Release. This is a separate printing from the unique 001/001 One Ring (LTR #0).',
     setName: 'The Lord of the Rings: Tales of Middle-earth',
     releaseName: 'Holiday Release',
     cardType: 'Serialized borderless poster',
@@ -204,6 +204,11 @@ export const trackers: TrackerSummary[] = [
         href: 'https://scryfall.com/card/ltr/748z/the-one-ring',
         type: 'scryfall',
       },
+      {
+        label: 'Unique 001/001 One Ring (different printing)',
+        href: 'https://scryfall.com/card/ltr/0/the-one-ring',
+        type: 'other',
+      },
     ],
     marketInsights: [
       {
@@ -229,6 +234,10 @@ export const trackers: TrackerSummary[] = [
       {
         question: 'How many serialized The One Ring poster cards exist?',
         answer: 'There are 100 serialized The One Ring borderless poster cards in the Lord of the Rings Holiday Release, numbered 001/100 through 100/100.',
+      },
+      {
+        question: 'Is this the unique 001/001 One Ring?',
+        answer: 'No. The unique Black Speech One Ring is LTR #0, with only one numbered copy. This tracker covers the separate borderless poster printing, LTR #748z, with 100 numbered copies. Their serials and discovery records are not interchangeable.',
       },
       {
         question: 'What counts as a strong The One Ring discovery report?',

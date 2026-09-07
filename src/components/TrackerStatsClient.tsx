@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { SerializedRingCard } from '@/lib/types';
 import type { TrackerSummary } from '@/lib/trackers';
-import { formatTrackerCardLabel, getTrackerCardDeepLinkParams } from '@/lib/tracker-data';
+import { formatTrackerCardLabel, getTrackerCardDeepLinkParams, getTrackerTotalSlots } from '@/lib/tracker-data';
 import { getTrackerMarketSummary } from '@/lib/tracker-market-summary';
 import AffiliateDisclosureNotice from '@/components/AffiliateDisclosureNotice';
 import PrimaryAffiliateCtas from '@/components/PrimaryAffiliateCtas';
@@ -19,6 +19,7 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
   const [loading, setLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
   const trackerPath = `/trackers/${tracker.slug}`;
+  const totalSlots = getTrackerTotalSlots(tracker);
 
   useEffect(() => {
     fetch(`/api/trackers/${tracker.slug}/cards`)
@@ -111,13 +112,13 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
     ];
 
     return {
-      totalCards: tracker.total || cards.length,
+      totalCards: totalSlots,
       foundCount: foundCards.length,
       confirmedCount: confirmedCards.length,
       sourceLinkedCount: sourceLinkedCards.length,
       unverifiedCount: unverifiedCards.length,
       pricedCount: prices.length,
-      foundPercentage: (foundCards.length / (tracker.total || cards.length || 1)) * 100,
+      foundPercentage: totalSlots > 0 ? (foundCards.length / totalSlots) * 100 : 0,
       averagePrice,
       totalValue,
       findsByMonth: Object.entries(findsByMonth)
@@ -137,7 +138,7 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
         .slice(0, 10),
       priceRanges,
     };
-  }, [cards.length, foundCards, gradedCards, confirmedCards, sourceLinkedCards, unverifiedCards, tracker.total]);
+  }, [foundCards, gradedCards, confirmedCards, sourceLinkedCards, unverifiedCards, totalSlots]);
 
   if (loading) {
     return (
@@ -145,6 +146,7 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
         <div className="w-full max-w-5xl space-y-6">
           <Link href={trackerPath} className="text-sm text-ring-teal hover:underline">Back to Tracker</Link>
           <h1 className={`break-words text-3xl font-bold ${tracker.theme.accentClass}`}>{tracker.title} Statistics</h1>
+          <p className="text-sm text-ring-light/70">{tracker.subtitle}</p>
           <p role="status" className="text-ring-light/70">Loading statistics...</p>
           <TrackerMarketInsights tracker={tracker} />
         </div>
@@ -166,9 +168,12 @@ export default function TrackerStatsClient({ tracker }: { tracker: TrackerSummar
     <>
       <main className="flex min-h-screen flex-col items-center p-8 md:p-12">
         <div className="z-10 w-full max-w-7xl items-center justify-between font-mono text-sm lg:flex mb-8">
-          <h1 className="text-2xl md:text-4xl font-bold text-ring-gold">
-            {tracker.title} Statistics
-          </h1>
+          <div className="min-w-0 lg:pr-6">
+            <h1 className="break-words text-2xl md:text-4xl font-bold text-ring-gold">
+              {tracker.title} Statistics
+            </h1>
+            <p className="mt-2 text-sm text-ring-light/70">{tracker.subtitle}</p>
+          </div>
           <Link href={trackerPath} className="text-ring-gold hover:text-yellow-400 transition-colors">
             &larr; Back to Tracker
           </Link>

@@ -60,6 +60,8 @@ export function isReleasedPrinting(printing: SerializedPrinting) {
 }
 
 export function printingLanguage(printing: SerializedPrinting) {
+  // Scryfall groups LTR #0 under qya, but Wizards identifies its text as Black Speech.
+  if (printing.catalogSlug === 'lotr-one-ring-001' && printing.collectorNumber === '0') return 'Black Speech';
   return ({ en: 'English', qya: 'Quenya', it: 'Italian', grc: 'Ancient Greek' } as Record<string, string>)[printing.language] || printing.language;
 }
 

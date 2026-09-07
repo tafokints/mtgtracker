@@ -1,6 +1,6 @@
 # TODO
 
-## Current Plan (2026-09-05)
+## Current Plan (2026-09-06)
 
 Goal: become a trusted, comprehensive serialized MTG reference funded by relevant affiliate purchases. Accuracy, recoverability, and useful collector workflows come before more promotional placements. Click counts measure interest; merchant-reported commissions and operating costs measure profitability.
 
@@ -23,6 +23,8 @@ Deferred local service-diagnostic work is preserved in the Git stash named `Defe
 
 ### Audit And Reliability
 
+- [x] Review all 298 catalogued printing quantities across 22 families against publisher sources and numbered card references. Keep unique One Ring /1 separate from poster One Ring /100, preserve Chocobo /77 and Doctor/Sol Ring variants, clarify printing labels, and fix the LOTR poster statistics denominator from 100 to 2,000. Independent regression expectations and source limitations: docs/SERIAL_QUANTITY_AUDIT_2026-09-06.md.
+- [ ] Locate primary publisher distribution documentation for Mirrored Viscera Seer and Secret Lair /295. Their numbered card stamps were checked; keep the existing documentation caveat rather than claiming fully verified promotion details.
 - [x] Switch the sole owner password source to `ADMIN_PASSWORD_FRONTEND` at the owner's request, including password checks and session/replay fingerprints. Keep it server-only, reject legacy-password fallback and retain production MFA. Release `0058bc3` passed 343 tests, lint, build, CI and 62 production smoke checks; the owner subsequently confirmed the complete sign-in flow below.
 - [x] Push the five pending application commits through GitHub -> Vercel and verify the live custom domain. Release `7ad9ceb` passed GitHub Verify and is live at `/admin`; the owner only changed environment variables before this source push.
 - [x] Refresh outdated privacy smoke expectations; verify minimal health, private/noindex admin responses, mandatory-MFA anonymous status, denial of private APIs and no admin sitemap entry. The production smoke suite passes 62 checks.

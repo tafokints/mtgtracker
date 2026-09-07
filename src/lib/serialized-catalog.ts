@@ -170,7 +170,7 @@ export const serializedCatalog: SerializedCatalogEntry[] = [
     setName: 'The Lord of the Rings: Tales of Middle-earth',
     releaseYear: 2023,
     releaseMonth: '2023-06',
-    treatment: 'unique serialized Quenya One Ring',
+    treatment: 'unique serialized Black Speech One Ring',
     trackingMode: 'single-card',
     status: 'planned',
     cardCount: 1,
