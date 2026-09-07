@@ -87,6 +87,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Impact requires value, not content, for this public ownership-verification tag. */}
+        <meta name="impact-site-verification" {...{ value: "20d9178f-daf3-44b2-924a-9f8eec1387be" }} />
         <link rel="manifest" href="/manifest.json" />
         <link rel="alternate" type="application/feed+json" title="MTG Trackers Recent Discoveries JSON Feed" href="/discoveries.json" />
         <link rel="alternate" type="application/rss+xml" title="MTG Trackers Recent Discoveries RSS Feed" href="/discoveries.xml" />

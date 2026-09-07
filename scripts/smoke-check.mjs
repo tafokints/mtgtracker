@@ -197,7 +197,7 @@ async function main() {
   const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');
   const sampleCatalogEntry = serializedCatalog.find((entry) => entry.slug === 'aetherdrift-aetherspark') || serializedCatalog[0];
   const checks = [
-    checkPage('/', ['MTG Trackers', 'Featured Trackers', 'BreadcrumbList']),
+    checkPage('/', ['MTG Trackers', 'Featured Trackers', 'BreadcrumbList', '<meta name="impact-site-verification" value="20d9178f-daf3-44b2-924a-9f8eec1387be"/>']),
     checkPage('/trackers', ['Featured Trackers', 'All Serialized Treatments', 'Marketplace links are affiliate links', 'BreadcrumbList']),
     checkPage('/sets', ['Serialized MTG Sets', 'released English printings', '/sets/the-brothers-war']),
     checkPage('/sets/the-brothers-war', ['Card Printings', 'Search card printings', 'Printing language', 'Mox Amber']),
