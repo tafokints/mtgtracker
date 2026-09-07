@@ -284,6 +284,7 @@ Also verify:
 - Amazon affiliate links use Associate tag `meleeitonme0a-20`.
 - The validator checks configured, boundary-serial, and catalog URL shapes. HTTP 403/429 means `manual-review`, not a verified destination. Run `node scripts/validate-affiliate-links.mjs --offline` for URL-only checks without merchant requests.
 - Link checks cannot confirm merchant account approval, qualifying orders, or commissions. Reconcile merchant reports and operating costs before calling the site profitable. See `docs/PROJECT_AUDIT_2026-09-05.md` and the current priority queue in `TODO.md`.
+- The owner-assisted account checkpoint is recorded in `docs/AFFILIATE_ACCOUNT_VERIFICATION_2026-09-06.md`: eBay and Amazon website registrations are saved, and Impact shows `mtgtrackers.com` as Connected. Preserve the passive `impact-site-verification` meta tag in the homepage head, including its required `value` attribute.
 - `/about`, `/contact`, `/privacy`, and `/affiliate-disclosure` load in production.
 - `/serialized-mtg-catalog` loads in production and is included in the sitemap.
 - Individual `/serialized-mtg-catalog/[slug]` pages load in production and are included in the sitemap.

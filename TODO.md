@@ -107,7 +107,11 @@ Baseline audit evidence is in docs/PROJECT_AUDIT_2026-09-05.md. The expanded upl
 - [x] Add mobile/browser regression checks for empty trackers and isolated populated fixtures: serial selection, submission, image preview, review, and filters; improve the 2,000-slot browsing experience with 48-card result pages. Real hosted service verification remains a separate gate.
 - [ ] Locate primary distribution documentation for the two Secret Lair serialized promos; their pages currently disclose the source limitation. Refresh the printing snapshot for new releases and manually review newly encountered sets.
 - [ ] Add per-tracker aesthetics through shared theme tokens and verify contrast/readability.
-- [ ] Confirm mtgtrackers.com is registered/approved in eBay, Amazon Associates, and TCGplayer/Impact accounts; verify configured IDs against each dashboard and retain prominent disclosures.
+- [x] Confirm eBay campaign `5339113954` is Active and register `https://mtgtrackers.com` as a Website media property. Registration is observed, not blanket compliance approval.
+- [x] Confirm Amazon Store ID `meleeitonme0a-20` matches the site and save `https://mtgtrackers.com` in the website list, with the owner's answer to the required audience declaration. Existing properties remain unchanged.
+- [x] Confirm the TCGplayer application is Approved in Impact account `6334129` and the existing generic link is `https://partner.tcgplayer.com/DyJ25G`. Deploy the owner-authorized passive meta tag and register `mtgtrackers.com`; Impact shows Connected after reload. Keep the old Golden Chocobo entry unchanged.
+
+Affiliate account checkpoint (2026-09-06): see docs/AFFILIATE_ACCOUNT_VERIFICATION_2026-09-06.md. Release `87fa824` passed 514 tests, lint, build, GitHub Verify and 63 production smoke checks. Attribution IDs, affiliate links, top disclosures and payment settings were not changed. Ownership/registration checks do not prove qualifying orders or earned commissions; merchant-report reconciliation remains in the later queue.
 
 Infrastructure acceptance: reports remain pending until authenticated review; overlapping views agree on card identity and discovery counts; image ingestion and telemetry have abuse/cost limits; backups can be restored in isolation; new trackers reuse validated configuration; affiliate destinations, attribution parameters, fallbacks, and disclosures pass checks. No minimum production discovery count is required.
 
