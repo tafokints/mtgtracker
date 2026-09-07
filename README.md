@@ -56,7 +56,7 @@ Featured trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at 
 - Shareable tracker view links through `q`, `filter`, `sort`, and `cardFilter` URL parameters, with one-click copy from tracker headers
 - Card-level public filtering for multi-card serialized treatments
 - Card activity summaries for multi-card tracker pages
-- Protected report flow with source type, evidence level, price, private image uploads, and notes
+- Short protected report flow with local photo selection, a source link or notes, and optional discovery/price/grading details
 - Public verification guide linked from report forms so crowd-sourced submissions include stronger evidence
 - Report form evidence image count guardrails and removal controls before submission
 - Serial detail report links preselect the matching card and serial in the report form
@@ -180,8 +180,9 @@ Admin backups are tracker-scoped:
 ## Admin And Review Workflows
 
 - Report form: use the `Report a Find` link on any live tracker page to send a discovery into admin review.
-- Evidence checklist: public report pages show live guidance for serial selection, source links, image evidence, and admin-review context.
-- Evidence level: public reports can request `Looks Confirmed` only when they include a source link or evidence image.
+- Minimal reports: no account, discoverer name, date, price or grading information is required. Choose the card/serial and provide a photo, supported source link or note. Pricing, grading and source-type overrides are under Additional details. Deep links retain the selected serial/report type; serial entry uses a numeric keypad instead of a long dropdown.
+- Verification: the public form no longer asks reporters to score their evidence. A supported link requests source-linked review; photo-only/note-only reports are unverified. Neither choice approves a report. The admin decides canonical verification through the existing safety-gated review.
+- Photo selection: local object-URL previews require no permission request or upload. Submit requires consent and Turnstile, then privately uploads selected files and queues the report. Successful uploads survive same-session retries; partial upload failures stop submission. A changed copy or expired permission requires fresh uploads of the retained local files. Unsent drafts/files are held in memory only and do not survive leaving/reloading the page. Removing a local-only photo needs no server call; removing an already uploaded photo does not delete it from storage.
 - Evidence uploads: JPEG/PNG/WebP up to 4 MB and 25 million decoded pixels are validated, metadata-stripped, and stored privately. A server-verified Turnstile challenge grants a one-hour permission bound to one tracker, serial slot, and report. Uploads are limited to 8/session, 10/IP/hour and 500/site/day. External image URLs are rejected. Only scanned evidence attached to an approved discovery is publicly readable through the app; Blob URLs are never returned to submitters. Attachment removal does not physically delete the file; orphan retention is still pending.
 - Safety checks: Cloudmersive scans the stored WebP for malware; Azure AI Content Safety screens a PNG derivative for sexual content; Google Web Risk checks supported source URLs. Missing credentials, malformed results, timeouts, and flagged results never count as a pass. See `docs/EVIDENCE_SECURITY.md` for setup, source-domain restrictions, test evidence, and remaining launch gates.
 - Admin panel: press `Ctrl + Alt + A` on `/trackers/one-ring`.

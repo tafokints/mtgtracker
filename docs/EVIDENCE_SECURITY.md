@@ -4,7 +4,7 @@ Implemented 2026-09-05. This is the first protected-intake milestone, not a comp
 
 ## Flow
 
-1. Choose a tracker/card/serial and confirm permission to submit evidence under the privacy notice.
+1. Choose a tracker/card/serial and optionally select local photo files, a supported source link or notes. Photos have local-only previews until Submit; selection and removal of unsent files make no storage request. Confirm permission under the privacy notice before sending anything.
 2. Complete Turnstile. The server verifies success, hostname, and action `discovery`, then signs a one-hour report permission using a domain-separated ADMIN_SESSION_SECRET signature.
 3. Upload at most eight JPEG/PNG/WebP images. The server bounds actual bytes, decodes pixels, removes metadata, and stores a WebP privately. Browser previews use local object URLs, not remote evidence URLs.
 4. Each file has a separate Redis record `evidence:v1:{uuid}` with report identity, private path, SHA-256, dimensions, timestamps, and scan result. Raw storage addresses and bearer permissions are never included in public records or logs.
@@ -12,6 +12,10 @@ Implemented 2026-09-05. This is the first protected-intake milestone, not a comp
 6. Public submit binds uploaded IDs to the signed report and selected slot, then creates a pending report with immutable original facts. Identical retries return the original ID; differing payloads return 409. A private receipt link permits bounded needs-info replies and additional owned files, without overwriting original facts. Different card/serial selections require a new permission and new uploads. See docs/DATA_MODEL.md.
 7. Admins inspect clean private evidence and use Check source link before navigating to a source. Approval rechecks source reputation and all selected merged evidence. Any changed report snapshot aborts approval; cards/review status commit together.
 8. Images remain in private storage after approval. The app serves them only when the asset is clean and both approved report lineage and canonical found-card references match. Shared views retain original upload ownership. Responses are no-store and bytes must match the stored hash. Use the audited revoke action to remove an approval's contributions; directly editing a derived card field does not change its journal. Retraction prevents subsequent app reads, not retrieval of copies someone already downloaded.
+
+The simplified form (2026-09-06) keeps pricing, grading, discovery dates/names and source-type overrides optional. It no longer assigns an evidence-quality score or offers Looks Confirmed: supported links request source-linked review, otherwise the form requests unverified review. Admin approval and all server checks are unchanged. The shared file-size constant keeps the browser convenience check aligned with the server; MIME labels are not trusted as proof of safe bytes. Photo-only and note-only reports are still pending reports, not discoveries.
+
+Submit uploads selected files under the exact-copy permission before sending the report. Partial failures retain both successful IDs and failed local files for retry, with no incomplete report silently sent. Lost report responses reuse the same permission and evidence IDs. A changed copy or expired permission requires fresh uploads; local files remain selected but old remote IDs are not reused. Drafts and original files stay in browser memory only and are lost on reload/navigation. Removal after an upload still detaches rather than deletes; no cleanup policy changed.
 
 ## Service Setup
 

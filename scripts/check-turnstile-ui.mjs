@@ -61,7 +61,7 @@ try {
     }), { sitekey, action: 'discovery', size: width === 320 ? 'compact' : 'flexible', field: false });
     await page.getByRole('checkbox', { name: /I have permission/ }).check();
     await page.getByLabel('Notes', { exact: true }).fill('Isolated browser fixture; no real report will be sent.');
-    const submit = page.getByRole('button', { name: 'Submit', exact: true });
+    const submit = page.getByRole('button', { name: 'Submit report', exact: true });
     const freshToken = (token) => page.evaluate((value) => window.challengeFixture.options.callback(value), token);
     const retryWithoutToken = async (expectedRequests) => {
       await submit.click();
@@ -89,7 +89,7 @@ try {
       ['abort', '503', 'json', 'ok'].map((mode) => ({ cardId: 7, turnstileToken: `fixture-${mode}`, consent: true })));
 
     // A changed serial cannot reuse the previous report permission.
-    await page.locator('#serial').selectOption('8');
+    await page.locator('#serial').fill('8');
     for (const callback of ['expired-callback', 'timeout-callback', 'error-callback']) {
       await freshToken(`fixture-${callback}`);
       await page.evaluate((name) => window.challengeFixture.options[name](), callback);

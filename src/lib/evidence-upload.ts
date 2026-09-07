@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 
-export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+import { MAX_UPLOAD_BYTES } from './evidence-policy';
+export { MAX_UPLOAD_BYTES } from './evidence-policy';
 const MAX_REQUEST_BYTES = MAX_UPLOAD_BYTES + 64 * 1024;
 const IMAGE_FORMATS = { 'image/jpeg': 'jpeg', 'image/png': 'png', 'image/webp': 'webp' } as const;
 

@@ -16,10 +16,13 @@ The owner has deferred screening-service account setup and requested a core work
 - [x] Add consistent Under Review / Unreported labels, visible update reporting on located cards, and a report confirmation with the private receipt and a return-to-serial link.
 - [x] Add labeled search/card/status/sort controls, quick status counts, exact stamped-number/range search and 48-card pagination. Preserve shareable filters/page state and stop clearing filters when opening details.
 - [x] Move serial browsing ahead of FAQ/market explanations, collapse the long card activity overview, and add previous/next serial controls with native modal keyboard handling.
+- [x] Simplify public reporting at the owner's request: numeric serial entry, evidence before optional facts, local-only photo selection before consent, and no reporter-assigned confidence score. Photo, supported-link and note-only reports remain available without an account/name/date/price/grade. Submit retains consent, Turnstile, private uploads and safety-gated admin review. Partial upload/report failures preserve same-page inputs and successful IDs for retry; copy changes/expired permissions require fresh uploads of retained local files.
 - [x] Finish local desktop/mobile collector and owner review regression checks, including affiliate disclosure placement. 450 tests across 32 files, lint, build and collector/owner/workflow browser fixtures at 320/390/1440px pass. See docs/COLLECTOR_WORKFLOW_QA_2026-09-05.md. Release through the existing GitHub -> Vercel pipeline; read-only live checks remain separate from hosted intake verification.
 - [ ] Complete a real hosted upload -> scan -> approve/reject lifecycle after isolated stores and scanner accounts are ready. Intercepted browser fixtures and local route tests are not hosted service proof.
 
 Deferred local service-diagnostic work is preserved in the Git stash named `Deferred service diagnostics before collector workflow pass`; it is not in this release or pushed to GitHub. It includes the optional owner Turnstile acceptance/replay diagnostic and scanner configuration validation. Screening accounts are not configured; the real backend challenge acceptance/replay check is still pending.
+
+Submission UX verification (2026-09-06): 543 tests across 36 files, lint and build pass. `check-submission-ui.mjs`, `check-collector-ui.mjs` and `check-turnstile-ui.mjs` pass at 320/390/1440px, including local-only selection, consent, minimal reports, partial/lost-response retries, exact-copy/expiry binding and optional-field validation. Screenshots were inspected; APIs/widgets are isolated fixtures, not hosted scan proof. Offline affiliate URL checks pass unchanged. Unsent drafts are memory-only, not saved across navigation/reload. Whole-site affiliate reporting remains the next code priority below; backups and screening-account setup remain deferred.
 
 ### Audit And Reliability
 
@@ -233,7 +236,7 @@ The sections below retain completed implementation history; unchecked alternativ
 - [x] Add public report evidence image count guardrails and removal controls.
 - [x] Show selected card and serial confirmation on the public report form.
 - [x] Require source or image evidence when public reports request confirmed status.
-- [x] Add a live evidence quality checklist to public report forms.
+- [x] Add a live evidence quality checklist to public report forms. Superseded on 2026-09-06 by the simplified form; an attached image alone cannot establish a visible serial stamp or verification quality.
 
 ## Image Storage
 
