@@ -62,6 +62,8 @@ export default async function TrackersPage() {
   const directoryStats = await getDirectoryStats();
   const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');
 
+  const directoryAffiliateLinks = trackers.flatMap((tracker) => (tracker.affiliateLinks || []).slice(0, 3));
+
   return (
     <main className="min-h-screen px-6 py-8 md:px-10">
       <script
@@ -86,6 +88,12 @@ export default async function TrackersPage() {
           <Link href="/sets" className="text-sm font-semibold text-ring-teal hover:underline">Browse all sets and card trackers</Link>
         </div>
 
+        {directoryAffiliateLinks.length > 0 && (
+          <div className="mb-6">
+            <AffiliateDisclosureNotice links={directoryAffiliateLinks} compact />
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {trackers.map((tracker) => {
             const disabled = tracker.status === 'planned';
@@ -108,9 +116,9 @@ export default async function TrackersPage() {
 
             return (
               <article key={tracker.slug} className="rounded-lg border border-ring-gold/40 bg-ring-dark/80 p-5">
-                <div className="flex items-center justify-between gap-4">
-                  <h2 className="text-xl font-bold text-ring-gold">{tracker.displayTitle || tracker.title}</h2>
-                  <span className="rounded border border-ring-gold/30 px-2 py-1 text-xs uppercase text-ring-light/70">
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="min-w-0 break-words text-xl font-bold text-ring-gold">{tracker.displayTitle || tracker.title}</h2>
+                  <span className="shrink-0 rounded border border-ring-gold/30 px-2 py-1 text-xs uppercase text-ring-light/70">
                     {tracker.status}
                   </span>
                 </div>
@@ -188,9 +196,6 @@ export default async function TrackersPage() {
                 <ReferenceLinks links={tracker.referenceLinks} compact />
                 {(tracker.affiliateLinks || []).length > 0 && (
                   <div className="mt-5 border-t border-ring-gold/20 pt-4">
-                    <div className="mb-3">
-                      <AffiliateDisclosureNotice links={tracker.affiliateLinks} compact />
-                    </div>
                     <div className="flex flex-wrap gap-2">
                       {(tracker.affiliateLinks || []).slice(0, 3).map((link) => (
                         <AffiliateOutboundLink

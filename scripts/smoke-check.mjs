@@ -197,8 +197,8 @@ async function main() {
   const liveTrackers = trackers.filter((tracker) => tracker.status === 'live');
   const sampleCatalogEntry = serializedCatalog.find((entry) => entry.slug === 'aetherdrift-aetherspark') || serializedCatalog[0];
   const checks = [
-    checkPage('/', ['MTG Trackers', 'Featured Trackers', 'The One Ring: Poster Edition /100', 'BreadcrumbList', '<meta name="impact-site-verification" value="20d9178f-daf3-44b2-924a-9f8eec1387be"/>']),
-    checkPage('/trackers', ['Featured Trackers', 'All Serialized Treatments', 'The One Ring: Poster Edition /100', 'Marketplace links are affiliate links', 'BreadcrumbList']),
+    checkPage('/', ['MTG Trackers', 'Featured Trackers', 'id="featured-trackers"', 'Report a Find', 'The One Ring: Poster Edition /100', 'BreadcrumbList', '<meta name="impact-site-verification" value="20d9178f-daf3-44b2-924a-9f8eec1387be"/>']),
+    checkPage('/trackers', ['Featured Trackers', 'All Serialized Treatments', 'The One Ring: Poster Edition /100', 'Marketplace links are affiliate links', 'As an eBay Partner Network Affiliate', 'As an Amazon Associate', 'BreadcrumbList']),
     checkPage('/serialized-mtg-catalog/lotr-one-ring-001/the-one-ring-0', ['The One Ring: Unique 001/001', 'Numbered copies', 'Black Speech', '/serialized-mtg-catalog/lotr-poster-cards/the-one-ring-748z', 'Non-English printing. Included for reference']),
     checkPage('/serialized-mtg-catalog/lotr-poster-cards/the-one-ring-748z', ['The One Ring: Poster Edition /100', '/serialized-mtg-catalog/lotr-one-ring-001/the-one-ring-0', 'Numbered copies', 'Open Serial Tracker']),
     checkPage('/sets', ['Serialized MTG Sets', 'released English printings', '/sets/the-brothers-war']),
