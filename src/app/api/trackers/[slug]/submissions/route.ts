@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
-import { DISCOVERY_EVIDENCE_REQUIRED, hasSubmissionEvidence } from '@/lib/submission-review';
+import { DISCOVERY_EVIDENCE_REQUIRED, getSubmissionSourceUrls, hasSubmissionEvidence } from '@/lib/submission-review';
 import { retractReportEvents } from '@/lib/card-history';
 import { DiscoverySubmission, SubmissionStatus, VerificationStatus } from '@/lib/types';
 import { getRedis } from '@/lib/redis';
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       const checkedLinks = new Set<string>();
       for (const report of reports) {
         allowedImages.push(...await assertReportEvidenceClean(redis, slug, report));
-        for (const link of [report.link, report.grading?.sourceUrl]) {
+        for (const link of getSubmissionSourceUrls(report)) {
           if (link && !checkedLinks.has(link)) {
             await checkSourceReputation(link);
             checkedLinks.add(link);

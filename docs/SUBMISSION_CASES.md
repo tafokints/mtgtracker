@@ -23,9 +23,11 @@ Pending and Needs Info contribute only to public open-report counts. Private evi
 
 The eligibility guard runs inside the atomic review mutation as well as the interface. A concurrent retraction cannot turn a context-only approval into a new discovery. Context-only journal events omit location and verification facts. Existing historical events are not automatically migrated or rewritten.
 
-## Follow-Up Limits
+## Follow-Up Replies
 
-Private Needs Info receipt links currently accept text and additional owned photos. They do not yet expose a structured source-link field. A URL in reply text does not qualify as evidence; submit a separate exact-serial source report for the owner to merge until that field is implemented. Drafts are memory-only and do not survive reload/navigation.
+Private Needs Info receipt links accept a supported source link, notes, additional owned photos, or a combination. No second report or mandatory explanation is needed when someone only has the link. New replies allow up to eight distinct sources on the report. Links are normalized, stored in each reply and screened during admin review/approval; original report facts remain unchanged. A URL typed into the notes field is still plain text, not structured evidence. Drafts are memory-only and do not survive reload/navigation.
+
+Same-reply retries preserve the source and avoid duplicate entries; changed-payload reuse is rejected. Approved follow-up links appear in the card's source history and are withdrawn with their parent approval. The private receipt shows sources as text, never automatically opens them, and does not publish private reply notes.
 
 ## Ring Identity
 
@@ -40,5 +42,7 @@ Quantity sources and audit limitations: docs/SERIAL_QUANTITY_AUDIT_2026-09-06.md
 Local automated tests cover the case matrix, held/clean photo-only reports, source-check failures, explicit merges, context-only corrections, retraction and concurrent review. Browser fixtures cover mobile/desktop approval messages, held merge selection, receipts, form inputs, edition headings, quantities and reference artwork. These are isolated tests, not hosted scanner proof.
 
 Verification: 562 tests / 36 files, lint, build and offline affiliate checks passed. Owner, workflow, collector, submission and quantity/guide suites passed at 320/390/1440px. Screenshots were inspected. The deployment suite includes distinct Ring labels and public submission guidance alongside existing health and anonymous admin-denial checks.
+
+Follow-up extension: 591 tests / 36 files, lint, build and unchanged affiliate checks passed. Follow-up, owner and workflow browser suites passed at 320/390/1440px, including lost-response retries, plaintext private sources, failed source checks, correct stored-reply selection and notes-only replies. Source histories are covered through approval, shared views, merge, retraction and backup restore. Deployment checks now include anonymous receipt GET/POST and source-check denial (68 total). These checks do not exercise real hosted provider scans.
 
 The owner deferred screening-service setup and encrypted recovery activation. Missing image scanners hold photo approval; missing Web Risk holds source-linked approval. There is no production bypass, no production QA discovery, and no automatic rewrite of existing reports.

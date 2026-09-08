@@ -3,6 +3,7 @@ import { allTrackers, getTracker } from './trackers';
 import { getTrackerCardSlot } from './tracker-data';
 import { ACTIVE_PRINTING_TRACKERS_KEY } from './tracker-store';
 import type { DiscoverySubmission, SubmissionStatus } from './types';
+import { getSubmissionSourceUrls } from './submission-review';
 
 export const INBOX_STATUSES = ['pending', 'needs-more-info', 'approved', 'rejected', 'duplicate', 'cannot-verify', 'revoked', 'all'] as const;
 export type InboxStatus = typeof INBOX_STATUSES[number];
@@ -60,7 +61,7 @@ export async function readAdminInbox(redis: Redis, params: URLSearchParams): Pro
         cardTitle: slot.cardTitle || tracker.title, serial: `${slot.serialNumber}/${slot.serialTotal}`,
         status: report.status, kind: report.kind || 'discovery', submittedAt: report.submittedAt,
         imageCount: new Set([report.imageUrl, ...(report.evidenceImages || []).map((image) => image.url)].filter(Boolean)).size,
-        hasSource: Boolean(report.link) });
+        hasSource: getSubmissionSourceUrls(report).length > 0 });
       after = reportKey(report);
     }
   }

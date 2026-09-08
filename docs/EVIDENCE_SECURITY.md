@@ -48,6 +48,8 @@ Supported direct HTTPS sources currently include US eBay item pages, TCGplayer p
 
 The server never fetches submitted sites, follows their redirects, or embeds untrusted remote images. Web Risk sees the source URL and checks known malware/phishing/unwanted-software lists. This is NOT adult-content classification of linked pages and NOT a guarantee that a platform post is appropriate. Human reviewers must inspect the destination, card/serial, visible private information, image relevance, and provenance. Platform content can change later; periodic rechecks/takedown remain TODO. Notes are plain text, never HTML or automatically linked.
 
+Private Needs Info replies use this same source policy. The optional `sourceUrl` is normalized at intake, must be a supported direct HTTPS page, and remains plain text in the private receipt. A link-only reply is valid; entirely empty replies are not. New replies cap the report at eight distinct sources (original, grading and follow-up combined). Reply sources never overwrite original facts. The owner selects a stored reply ID for Check source link; client URL fields cannot redirect that check. Approval checks all sources again, including merged reports, then rejects changed snapshots. Only approved source events become public; private reply notes are not automatically published. Missing/flagged/unavailable Web Risk still blocks source opening and approval.
+
 ## Storage And Recovery Limits
 
 - Upload records precede Blob writes, leaving reconcilable records if storage or the request fails. A deterministic UUID pathname permits future orphan reconciliation without retaining personal filenames.

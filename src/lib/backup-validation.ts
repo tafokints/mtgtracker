@@ -2,7 +2,7 @@ import { isDateOnly, isSafeImageUrl } from '@/lib/admin-validation';
 import { getTrackerCardSlot } from '@/lib/tracker-data';
 import { getTracker, type TrackerSummary } from '@/lib/trackers';
 import { parseGradingInfo, parsePriceObservation } from './history-validation';
-import { EVIDENCE_ID } from './evidence-policy';
+import { EVIDENCE_ID, normalizeSourceUrl } from './evidence-policy';
 
 const verificationStatuses = ['unverified', 'source-linked', 'confirmed'];
 const sourceTypes = ['marketplace', 'grading-pop', 'social', 'article', 'private-sale', 'other'];
@@ -101,7 +101,8 @@ export function validBackupSubmission(value: unknown, tracker: TrackerSummary): 
     if (!origin || typeof value.originCardId !== 'number' || getTrackerCardSlot(origin, value.originCardId)?.copyId !== getTrackerCardSlot(tracker, value.cardId)?.copyId) return false;
   }
   if (value.reviewHistory !== undefined && (!Array.isArray(value.reviewHistory) || !value.reviewHistory.every((event) => record(event) && typeof event.id === 'string' && typeof event.action === 'string' && ['admin', 'submitter'].includes(String(event.actor)) && typeof event.at === 'string' && Number.isFinite(Date.parse(event.at)) && optionalStrings(event, ['notes', 'actorId'])))) return false;
-  if (value.followUps !== undefined && (!Array.isArray(value.followUps) || !value.followUps.every((reply) => record(reply) && typeof reply.id === 'string' && typeof reply.at === 'string' && Number.isFinite(Date.parse(reply.at)) && typeof reply.notes === 'string' && reply.notes.length <= 1200 && (reply.evidenceAssetIds === undefined || (Array.isArray(reply.evidenceAssetIds) && reply.evidenceAssetIds.length <= 8 && reply.evidenceAssetIds.every((id) => typeof id === 'string')))))) return false;
+  if (value.followUps !== undefined && (!Array.isArray(value.followUps) || !value.followUps.every((reply) => record(reply) && typeof reply.id === 'string' && typeof reply.at === 'string' && Number.isFinite(Date.parse(reply.at)) && typeof reply.notes === 'string' && reply.notes.length <= 1200 && (reply.sourceUrl === undefined || (typeof reply.sourceUrl === 'string' && Boolean(reply.sourceUrl) && normalizeSourceUrl(reply.sourceUrl) === reply.sourceUrl)) && (reply.evidenceAssetIds === undefined || (Array.isArray(reply.evidenceAssetIds) && reply.evidenceAssetIds.length <= 8 && reply.evidenceAssetIds.every((id) => typeof id === 'string')))))) return false;
+  if (Array.isArray(value.followUps) && new Set(value.followUps.map((reply) => reply.id)).size !== value.followUps.length) return false;
   return true;
 }
 

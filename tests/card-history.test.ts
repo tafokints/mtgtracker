@@ -5,7 +5,7 @@ import { allTrackers, getTracker } from '@/lib/trackers';
 import { parseGradingInfo, parsePriceObservation } from '@/lib/history-validation';
 import { validBackupCard, validBackupSubmission } from '@/lib/backup-validation';
 import type { DiscoverySubmission } from '@/lib/types';
-import { hasSubmissionEvidence } from '@/lib/submission-review';
+import { getSubmissionSourceUrls, hasSubmissionEvidence } from '@/lib/submission-review';
 
 const ring = getTracker('one-ring')!;
 const posters = getTracker('lotr-poster-cards')!;
@@ -15,6 +15,34 @@ function report(overrides: Partial<DiscoverySubmission> = {}): DiscoverySubmissi
 }
 
 describe('one copy with many historical observations', () => {
+  it.each([false, true])('retains follow-up source history under its parent approval (merged: %s)', (merged) => {
+    const cards = createInitialTrackerCards(ring);
+    const followUp = { id: 'reply-source', at, notes: 'Private reply context', sourceUrl: 'https://www.ebay.com/itm/123456789013' };
+    const original = report({ followUps: [followUp] });
+    const submitted = structuredClone(original);
+    const primary = merged ? report({ id: 'parent', link: undefined }) : original;
+    expect(hasSubmissionEvidence(report({ link: undefined, followUps: [followUp] }))).toBe(true);
+    expect(getSubmissionSourceUrls(original)).toEqual([original.link, followUp.sourceUrl]);
+    applyApprovedSubmission(ring, cards, primary, { mergedEvidenceSubmissions: merged ? [original] : [] });
+    expect(original).toEqual(submitted);
+    expect(cards[6].link).toBe(original.link);
+    expect(cards[6].history).toEqual(expect.arrayContaining([expect.objectContaining({ sourceSubmissionId: primary.id, facts: { link: followUp.sourceUrl } })]));
+    expect(JSON.stringify(cards[6])).not.toContain('Private reply context');
+    retractReportEvents(cards[6], primary.id, 'revoke', at);
+    expect(cards[6].found).toBe(false);
+    expect(cards[6].link).toBeUndefined();
+  });
+
+  it.each(['https://evil.test/card', 'javascript:alert(1)', 'https://www.ebay.com/itm/123456789013?tracking=1', '', null, 12])('rejects unsafe or noncanonical follow-up URLs on restore: %s', (sourceUrl) => {
+    expect(validBackupSubmission(report({ followUps: [{ id: 'reply', at, notes: '', sourceUrl: sourceUrl as string }] }), ring)).toBe(false);
+  });
+
+  it('restores canonical source replies and legacy note replies, but rejects ambiguous reply IDs', () => {
+    const reply = { id: 'reply', at, notes: '', sourceUrl: 'https://www.ebay.com/itm/123456789013' };
+    expect(validBackupSubmission(report({ followUps: [reply] }), ring)).toBe(true);
+    expect(validBackupSubmission(report({ followUps: [{ id: 'legacy', at, notes: 'Earlier context' }] }), ring)).toBe(true);
+    expect(validBackupSubmission(report({ followUps: [reply, { ...reply, sourceUrl: 'https://www.ebay.com/itm/123456789014' }] }), ring)).toBe(false);
+  });
   it.each([
     { link: undefined },
     { link: 'https://unsupported.example/card' },

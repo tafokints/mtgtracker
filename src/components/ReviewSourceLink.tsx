@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ShieldCheckIcon } from '@heroicons/react/24/outline';
 
-export default function ReviewSourceLink({ tracker, reportId, url }: { tracker: string; reportId: string; url: string }) {
+export default function ReviewSourceLink({ tracker, reportId, url, replyId }: { tracker: string; reportId: string; url: string; replyId?: string }) {
   const [checkedUrl, setCheckedUrl] = useState('');
   const [message, setMessage] = useState('');
   const [checking, setChecking] = useState(false);
@@ -13,7 +13,7 @@ export default function ReviewSourceLink({ tracker, reportId, url }: { tracker: 
       setChecking(true);
       setMessage('');
       try {
-        const response = await fetch(`/api/trackers/${encodeURIComponent(tracker)}/submissions/${encodeURIComponent(reportId)}/source`, { method: 'POST' });
+        const response = await fetch(`/api/trackers/${encodeURIComponent(tracker)}/submissions/${encodeURIComponent(reportId)}/source`, { method: 'POST', ...(replyId ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ replyId }) } : {}) });
         const data = await response.json();
         if (!response.ok || data.url !== url) throw new Error(data.message || 'Source changed. Refresh the queue.');
         setCheckedUrl(data.url);

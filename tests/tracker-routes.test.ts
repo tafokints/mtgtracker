@@ -323,6 +323,18 @@ async function submitValidDiscovery(cardId = 7, ip = '203.0.113.7', overrides: R
   return { response, body };
 }
 
+async function prepareSourceFollowUp(overrides: Record<string, unknown> = {}) {
+  const { body } = await submitValidDiscovery(7, '203.0.113.7', { link: undefined, notes: 'Original private tip', ...overrides });
+  const id = String(body.submissionId);
+  const token = String(body.followUpPath).split('#')[1];
+  const context = { params: Promise.resolve({ slug: 'one-ring', id }) };
+  const follow = (payload?: unknown, access = token) => new Request(`https://mtgtrackers.com/api/reports/one-ring/${id}`, {
+    method: payload ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', origin: 'https://mtgtrackers.com', 'x-report-token': access }, body: payload ? JSON.stringify(payload) : undefined,
+  });
+  expect((await reviewSubmission(reviewRequest({ submissionId: id, action: 'needs-more-info', reviewNotes: 'Please add a source' }), routeContext())).status).toBe(200);
+  return { id, token, context, follow };
+}
+
 describe('tracker API routes', () => {
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
   beforeEach(async () => {
@@ -441,6 +453,112 @@ describe('tracker API routes', () => {
     const saved = redisFixture.store.get(tracker.storage.cardsKey) as Array<{ history: unknown[]; found: boolean }>;
     expect(saved[6].history).toHaveLength(3);
     expect(saved[6].found).toBe(true);
+  });
+
+  it('accepts a link-only reply, screens the stored source and publishes it only through approval', async () => {
+    const { id, context, follow } = await prepareSourceFollowUp();
+    const before = structuredClone((redisFixture.store.get(tracker.storage.submissionsKey) as Array<Record<string, unknown>>)[0]);
+    const sourceUrl = 'https://www.ebay.com/itm/123456789013';
+    const reply = { replyId: crypto.randomUUID(), sourceUrl: ` ${sourceUrl}?tracking=discard#discard ` };
+    expect((await replyToReport(follow(reply), context)).status).toBe(200);
+    expect((await replyToReport(follow({ ...reply, sourceUrl }), context)).status).toBe(200);
+    expect((await replyToReport(follow({ ...reply, sourceUrl: 'https://www.ebay.com/itm/123456789014' }), context)).status).toBe(409);
+    expect((await replyToReport(follow({ replyId: crypto.randomUUID(), sourceUrl }), context)).status).toBe(409);
+    const saved = (redisFixture.store.get(tracker.storage.submissionsKey) as Array<Record<string, unknown>>)[0];
+    expect(saved.link).toBe(before.link); expect(saved.notes).toBe(before.notes); expect(saved.payloadHash).toBe(before.payloadHash);
+    const receipt = await (await readReportReceipt(follow(), context)).json();
+    expect(receipt).toMatchObject({ status: 'pending', followUps: [{ id: reply.replyId, notes: '', sourceUrl }] });
+    const publicBefore = await (await readCards(exportRequest(), routeContext())).json();
+    expect(publicBefore[6]).toMatchObject({ found: false, pendingReports: 1 });
+    expect(JSON.stringify(publicBefore)).not.toContain(sourceUrl);
+    const inbox = await (await readOwnerInbox(new Request('https://mtgtrackers.com/api/admin/inbox?tracker=one-ring', { headers: { cookie: `${ADMIN_COOKIE_NAME}=${adminSession}` } }))).json();
+    expect(inbox.rows[0].hasSource).toBe(true);
+    const checked = await checkReportSource(reviewRequest({ replyId: reply.replyId, url: 'https://evil.test/ignored' }), context);
+    expect(checked.status).toBe(200); expect(await checked.json()).toEqual({ url: sourceUrl });
+    expect((await checkReportSource(reviewRequest({ replyId: 'unknown' }), context)).status).toBe(404);
+    expect((await checkReportSource(reviewRequest({ replyId: reply.replyId }, ''), context)).status).toBe(401);
+    expect((await reviewSubmission(reviewRequest({ submissionId: id, action: 'approve', verificationStatus: 'source-linked' }), routeContext())).status).toBe(200);
+    const card = (await (await readCards(exportRequest(), routeContext())).json())[6];
+    expect(card).toMatchObject({ found: true, link: sourceUrl });
+    expect(card.history).toEqual(expect.arrayContaining([expect.objectContaining({ facts: { link: sourceUrl } })]));
+    const poster = getTracker('lotr-poster-cards')!;
+    const aliasSlot = getTrackerSlotId(poster, 'the-one-ring', 7)!;
+    expect((await (await readCards(exportRequest(), routeContext(poster.slug))).json())[aliasSlot - 1]).toMatchObject({ found: true, link: sourceUrl });
+    expect((await checkReportSource(reviewRequest({ replyId: reply.replyId }), { params: Promise.resolve({ slug: poster.slug, id }) })).status).toBe(200);
+    expect((await readReportReceipt(follow(), { params: Promise.resolve({ slug: poster.slug, id }) })).status).toBe(403);
+    const backup = await (await exportTrackerBackup(exportRequest(), routeContext())).json();
+    expect((await importTrackerBackup(importRequest({ confirm: 'RESTORE_TRACKER_BACKUP', backup }), routeContext())).status).toBe(200);
+    expect((await (await readReportReceipt(follow(), context)).json()).followUps[0].sourceUrl).toBe(sourceUrl);
+    expect((await reviewSubmission(reviewRequest({ submissionId: id, action: 'revoke', reviewNotes: 'Incorrect source' }), routeContext())).status).toBe(200);
+    const withdrawn = (await (await readCards(exportRequest(), routeContext())).json())[6];
+    expect(withdrawn.found).toBe(false); expect(JSON.stringify(withdrawn)).not.toContain(sourceUrl);
+  });
+
+  it.each([
+    { sourceUrl: 'http://www.ebay.com/itm/123456789012' }, { sourceUrl: 'https://evil.test/photo' },
+    { sourceUrl: 'https://bit.ly/example' }, { sourceUrl: 'javascript:alert(1)' },
+    { sourceUrl: 'https://www.ebay.com.evil.test/itm/123456789012' }, { sourceUrl: 'https://www.ebay.com@evil.test/itm/123456789012' },
+    { sourceUrl: 'https://127.0.0.1/itm/123456789012' }, { sourceUrl: ['https://www.ebay.com/itm/123456789012'] },
+    { sourceUrl: null }, { sourceUrl: 'x'.repeat(2049) }, { sourceUrl: '', notes: ' ' }, { notes: 42 },
+  ])('rejects invalid/empty source replies before storage: %j', async (fields) => {
+    const { context, follow } = await prepareSourceFollowUp();
+    const before = structuredClone(redisFixture.store.get(tracker.storage.submissionsKey));
+    const response = await replyToReport(follow({ replyId: crypto.randomUUID(), ...fields }), context);
+    expect(response.status).toBe(400);
+    expect(redisFixture.store.get(tracker.storage.submissionsKey)).toEqual(before);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it.each(['missing', 'flagged', 'unavailable'])('keeps follow-up sources and merged reports unapproved when screening is %s', async (failure) => {
+    const { id, context, follow } = await prepareSourceFollowUp();
+    const replyId = crypto.randomUUID();
+    await replyToReport(follow({ replyId, sourceUrl: 'https://www.ebay.com/itm/123456789013' }), context);
+    const tip = await submitValidDiscovery(7, '203.0.113.8', { link: undefined });
+    if (failure === 'missing') delete process.env.GOOGLE_WEB_RISK_API_KEY;
+    else vi.stubGlobal('fetch', vi.fn(async () => failure === 'flagged' ? Response.json({ threat: {} }) : new Response('', { status: 503 })));
+    const expected = failure === 'flagged' ? 409 : 503;
+    expect((await checkReportSource(reviewRequest({ replyId }), context)).status).toBe(expected);
+    expect((await reviewSubmission(reviewRequest({ submissionId: id, action: 'approve' }), routeContext())).status).toBe(expected);
+    expect((await reviewSubmission(reviewRequest({ submissionId: tip.body.submissionId, action: 'approve', mergeSubmissionIds: [id] }), routeContext())).status).toBe(expected);
+    expect((redisFixture.store.get(tracker.storage.submissionsKey) as Array<{ status: string }>).every((report) => report.status === 'pending')).toBe(true);
+  });
+
+  it.each([false, true])('handles concurrent reply retries without overwriting saved sources (changed: %s)', async (changed) => {
+    const { context, follow } = await prepareSourceFollowUp();
+    const reply = { replyId: crypto.randomUUID(), sourceUrl: 'https://www.ebay.com/itm/123456789013' };
+    const results = await Promise.all([replyToReport(follow(reply), context), replyToReport(follow({ ...reply, sourceUrl: changed ? 'https://www.ebay.com/itm/123456789014' : reply.sourceUrl }), context)]);
+    expect(results.map((response) => response.status).sort()).toEqual(changed ? [200, 409] : [200, 200]);
+    const receipt = await (await readReportReceipt(follow(), context)).json();
+    expect(receipt.followUps).toHaveLength(1);
+  });
+
+  it('rejects an approval when a reply source changes during safety checks', async () => {
+    const { id, context, follow } = await prepareSourceFollowUp();
+    await replyToReport(follow({ replyId: crypto.randomUUID(), sourceUrl: 'https://www.ebay.com/itm/123456789013' }), context);
+    let changed = false;
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      if (!changed) {
+        changed = true;
+        await reviewSubmission(reviewRequest({ submissionId: id, action: 'needs-more-info', reviewNotes: 'Another source needed' }), routeContext());
+        await replyToReport(follow({ replyId: crypto.randomUUID(), sourceUrl: 'https://www.ebay.com/itm/123456789014' }), context);
+      }
+      return Response.json({});
+    }));
+    const response = await reviewSubmission(reviewRequest({ submissionId: id, action: 'approve' }), routeContext());
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ message: 'Report changed during safety checks. Please retry.' });
+    expect((await (await readCards(exportRequest(), routeContext())).json())[6].found).toBe(false);
+  });
+
+  it('bounds new follow-up sources while preserving earlier replies and original facts', async () => {
+    const { id, context, follow } = await prepareSourceFollowUp();
+    for (let index = 0; index < 8; index++) {
+      if (index) await reviewSubmission(reviewRequest({ submissionId: id, action: 'needs-more-info', reviewNotes: 'More context requested' }), routeContext());
+      expect((await replyToReport(follow({ replyId: crypto.randomUUID(), sourceUrl: `https://www.ebay.com/itm/12345678901${index}` }), context)).status).toBe(200);
+    }
+    await reviewSubmission(reviewRequest({ submissionId: id, action: 'needs-more-info', reviewNotes: 'Follow-up requested' }), routeContext());
+    expect((await replyToReport(follow({ replyId: crypto.randomUUID(), sourceUrl: 'https://www.ebay.com/itm/123456789018' }), context)).status).toBe(400);
+    expect((await (await readReportReceipt(follow(), context)).json()).followUps).toHaveLength(8);
   });
 
   it('does not silently accept a changed retry of a submitted report', async () => {

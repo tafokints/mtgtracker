@@ -489,5 +489,16 @@ export function applyApprovedSubmission(
     });
   }
 
+  // Approved reply sources retain their own events without rewriting original report facts.
+  for (const report of [submission, ...(options.mergedEvidenceSubmissions || [])]) {
+    for (const reply of report.followUps || []) {
+      if (!reply.sourceUrl) continue;
+      appendCardEvent(cards[cardIndex], {
+        id: `${eventId}:reply:${report.id}:${reply.id}`, kind: 'sighting', recordedAt,
+        sourceSubmissionId: submission.id, facts: { link: reply.sourceUrl },
+      });
+    }
+  }
+
   return true;
 }

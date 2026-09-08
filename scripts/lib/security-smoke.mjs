@@ -6,9 +6,9 @@ export function assertPrivate(response, label) {
 
 export async function checkOwnerBoundary(baseUrl, fetcher = fetch) {
   const results = [];
-  async function request(path, options = {}) {
+  async function request(path, options = {}, expectedStatus = path === '/admin' || path === '/api/admin/login' ? 200 : 401) {
     const response = await fetcher(`${baseUrl}${path}`, { redirect: 'manual', signal: AbortSignal.timeout(20000), headers: { 'User-Agent': 'MTGTrackers security smoke' }, ...options });
-    assert.equal(response.status, path === '/admin' || path === '/api/admin/login' ? 200 : 401, `${path} unexpected status`);
+    assert.equal(response.status, expectedStatus, `${path} unexpected status`);
     return response;
   }
   const page = await request('/admin');
@@ -38,6 +38,17 @@ export async function checkOwnerBoundary(baseUrl, fetcher = fetch) {
   assert.match(inventory.headers.get('x-robots-tag') || '', /noindex/);
   assert.deepEqual(await inventory.json(), { message: 'Unauthorized' }, 'Inventory must return only an anonymous denial');
   results.push({ path: '/api/admin/storage-inventory anonymous denial', ok: true });
+  const sourcePath = '/api/trackers/one-ring/submissions/smoke-denied/source';
+  const source = await request(sourcePath, { method: 'POST', body: '{}' });
+  assert.deepEqual(await source.json(), { message: 'Unauthorized' });
+  results.push({ path: `${sourcePath} anonymous denial`, ok: true });
+  for (const method of ['GET', 'POST']) {
+    const path = '/api/reports/one-ring/smoke-denied';
+    const response = await request(path, { method, ...(method === 'POST' ? { body: '{}' } : {}) }, 403);
+    assertPrivate(response, path);
+    assert.deepEqual(await response.json(), { message: 'Invalid or expired private report link' });
+    results.push({ path: `${path} ${method} anonymous denial`, ok: true });
+  }
   return results;
 }
 

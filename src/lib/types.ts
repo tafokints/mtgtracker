@@ -79,7 +79,7 @@ export interface DiscoverySubmission {
   priceDate?: string;
   grading?: GradingInfo;
   reviewHistory?: ReportReviewEvent[];
-  followUps?: Array<{ id: string; at: string; notes: string; evidenceAssetIds?: string[] }>;
+  followUps?: Array<{ id: string; at: string; notes: string; sourceUrl?: string; evidenceAssetIds?: string[] }>;
   payloadHash?: string;
   cardId: number;
   cardSlug?: string;

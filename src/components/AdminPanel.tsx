@@ -12,7 +12,7 @@ import { getTrackerGrowthRecommendations } from '@/lib/tracker-growth-recommenda
 import { getMarketplaceCtaRecommendations } from '@/lib/marketplace-cta-recommendations';
 import ExternalImage from '@/components/ExternalImage';
 import { evidenceIdFromUrl, normalizeSourceUrl } from '@/lib/evidence-policy';
-import { DISCOVERY_EVIDENCE_REQUIRED, hasSubmissionEvidence } from '@/lib/submission-review';
+import { DISCOVERY_EVIDENCE_REQUIRED, getSubmissionSourceUrls, hasSubmissionEvidence } from '@/lib/submission-review';
 import ReviewSourceLink from '@/components/ReviewSourceLink';
 import Link from 'next/link';
 import { XMarkIcon } from '@heroicons/react/24/outline';
@@ -517,7 +517,7 @@ export default function AdminPanel({
       submission.imageUrl,
       ...(submission.evidenceImages || []).map((image) => image.url),
     ].filter(Boolean)).size;
-    const hasSource = Boolean(submission.link);
+    const hasSource = getSubmissionSourceUrls(submission).length > 0;
     const hasSaleData = submission.price !== undefined;
     const hasFinder = Boolean(submission.foundBy);
     const hasDate = Boolean(submission.dateFound);
@@ -1422,9 +1422,7 @@ export default function AdminPanel({
                               <span className="block text-ring-light">
                                 {new Date(candidate.submittedAt).toLocaleString()} - {(candidate.evidenceImages || []).length + (candidate.imageUrl ? 1 : 0)} image{(candidate.evidenceImages || []).length + (candidate.imageUrl ? 1 : 0) === 1 ? '' : 's'}
                               </span>
-                              {candidate.link && (
-                                <span className="break-all text-ring-light/70">{candidate.link}</span>
-                              )}
+                              {getSubmissionSourceUrls(candidate).map((url) => <span key={url} className="block break-all text-ring-light/70">{url}</span>)}
                             </span>
                           </label>
                         ))}
@@ -1473,7 +1471,10 @@ export default function AdminPanel({
                   <p className="text-xs text-ring-light">Report type: {submission.kind || 'discovery'}</p>
                   {submission.price !== undefined && <p className="text-xs text-ring-light">{submission.priceKind || 'unclassified'}: {submission.currency || 'Currency unknown'} {submission.price} - {submission.priceDate || 'Date unknown'}</p>}
                   {submission.grading && <p className="text-xs text-ring-light">Grading: {submission.grading.service} {submission.grading.grade} - {submission.grading.certificateNumber || 'No certificate recorded'}</p>}
-                  {submission.followUps?.map((reply) => <p key={reply.id} className="whitespace-pre-wrap break-words text-sm text-ring-light">Follow-up {reply.at.slice(0, 10)}: {reply.notes}</p>)}
+                  {submission.followUps?.map((reply) => <div key={reply.id} className="space-y-1 text-sm text-ring-light">
+                    <p className="whitespace-pre-wrap break-words">Follow-up {reply.at.slice(0, 10)}{reply.notes ? `: ${reply.notes}` : ''}</p>
+                    {reply.sourceUrl && <ReviewSourceLink tracker={tracker.slug} reportId={submission.id} replyId={reply.id} url={reply.sourceUrl} />}
+                  </div>)}
                   {approvalIssue && <p id={`approval-issue-${submission.id}`} className="text-sm text-amber-200">{approvalIssue}</p>}
                   {!approvalIssue && !hasEvidence && <p className="text-sm text-ring-light/70">Context-only update. Located status and verification stay unchanged.</p>}
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
