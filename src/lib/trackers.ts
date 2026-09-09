@@ -508,7 +508,7 @@ export const trackers: TrackerSummary[] = [
       {
         slug: 'traveling-chocobo',
         title: 'Traveling Chocobo',
-        referenceImage: 'https://cards.scryfall.io/large/front/6/a/6a548a79-1947-4434-98ea-ac8e228c557d.jpg?1752887769',
+        referenceImage: 'https://cards.scryfall.io/normal/front/6/c/6ce8744a-ede3-4662-968a-360eb6639f08.jpg?1783906436',
         scryfallUrl: 'https://scryfall.com/card/fin/551f/traveling-chocobo',
       },
     ],
@@ -546,7 +546,7 @@ export const trackers: TrackerSummary[] = [
         answer: 'Golden Chocobo is the collector-facing tracker name for the golden serialized Traveling Chocobo printing, while each serial record stays tied to the official Traveling Chocobo card identity.',
       },
     ],
-    referenceImage: 'https://cards.scryfall.io/large/front/6/a/6a548a79-1947-4434-98ea-ac8e228c557d.jpg?1752887769',
+    referenceImage: 'https://cards.scryfall.io/normal/front/6/c/6ce8744a-ede3-4662-968a-360eb6639f08.jpg?1783906436',
   },
 ];
 

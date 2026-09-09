@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { AFFILIATE_PLACEMENTS } from '@/lib/affiliate-placements';
 import { getTrackerRequestIssueUrl, serializedCatalog } from '@/lib/serialized-catalog';
-import { defaultAffiliateLinks, getSerialAffiliateLinks, trackers, type AffiliateLink } from '@/lib/trackers';
+import { serializedPrintings } from '@/lib/serialized-printings';
+import { defaultAffiliateLinks, getDefinitionPrintingId, getSerialAffiliateLinks, trackers, type AffiliateLink, type TrackerCardDefinition } from '@/lib/trackers';
 
 const requiredLiveMerchants = ['tcgplayer', 'ebay', 'amazon'] as const;
 const tcgplayerPartnerPath = '/DyJ25G';
@@ -20,6 +21,10 @@ function collectAffiliateLinks() {
       (tracker.affiliateLinks || defaultAffiliateLinks).map((link) => ({ trackerSlug: tracker.slug, link }))
     )),
   ] as Array<{ trackerSlug: string; link: AffiliateLink }>;
+}
+
+function scryfallImageId(url?: string) {
+  return url?.match(/\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jpg/i)?.[1];
 }
 
 describe('tracker config consistency', () => {
@@ -231,6 +236,40 @@ describe('tracker config consistency', () => {
         expect(definition.total || tracker.total, `${tracker.slug} ${definition.slug} total`).toBeGreaterThan(0);
         expect(definition.referenceImage || tracker.referenceImage, `${tracker.slug} ${definition.slug} reference image`).toMatch(/^https:\/\//);
         cardSlugs.add(definition.slug);
+      }
+    }
+  });
+
+  it('has reference images for every serialized printing', () => {
+    expect(serializedPrintings.length).toBeGreaterThan(0);
+
+    for (const printing of serializedPrintings) {
+      expect(printing.referenceImage, `${printing.setCode} ${printing.collectorNumber} ${printing.name} image`).toMatch(/^https:\/\/cards\.scryfall\.io\//);
+    }
+  });
+
+  it('keeps hand-authored tracker images aligned with synced printing images', () => {
+    const imageByPrintingId = new Map(serializedPrintings.map((printing) => [printing.id, printing.referenceImage]));
+
+    for (const tracker of trackers.filter((entry) => entry.status === 'live')) {
+      const definitions: TrackerCardDefinition[] = (tracker.cardDefinitions || []).length > 0
+        ? tracker.cardDefinitions || []
+        : [{
+          slug: tracker.slug,
+          title: tracker.title,
+          referenceImage: tracker.referenceImage,
+          printingId: tracker.printingId,
+        }];
+
+      for (const definition of definitions) {
+        const printingId = getDefinitionPrintingId(tracker, definition);
+        expect(printingId, `${tracker.slug} ${definition.slug} printing id`).toBeTruthy();
+        if (!printingId) continue;
+
+        const expectedImage = imageByPrintingId.get(printingId);
+        const actualImage = definition.referenceImage || tracker.referenceImage;
+        expect(expectedImage, `${tracker.slug} ${definition.slug} synced image`).toBeTruthy();
+        expect(scryfallImageId(actualImage), `${tracker.slug} ${definition.slug} reference image`).toBe(scryfallImageId(expectedImage));
       }
     }
   });
