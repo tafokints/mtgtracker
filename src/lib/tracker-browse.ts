@@ -66,9 +66,10 @@ export function browseTrackerCards(cards: SerializedRingCard[], view: {
     });
 }
 
-export function getTrackerPage(total: number, requestedPage: number) {
-  const pageCount = Math.max(1, Math.ceil(total / TRACKER_PAGE_SIZE));
+export function getTrackerPage(total: number, requestedPage: number, pageSize = TRACKER_PAGE_SIZE) {
+  const boundedPageSize = Number.isSafeInteger(pageSize) && pageSize > 0 ? pageSize : TRACKER_PAGE_SIZE;
+  const pageCount = Math.max(1, Math.ceil(total / boundedPageSize));
   const page = Math.min(pageCount, Math.max(1, Number.isSafeInteger(requestedPage) ? requestedPage : 1));
-  const start = (page - 1) * TRACKER_PAGE_SIZE;
-  return { page, pageCount, start, end: Math.min(total, start + TRACKER_PAGE_SIZE) };
+  const start = (page - 1) * boundedPageSize;
+  return { page, pageCount, start, end: Math.min(total, start + boundedPageSize) };
 }

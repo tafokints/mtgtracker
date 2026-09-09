@@ -4,7 +4,7 @@ import { saveAdminMutation } from '@/lib/admin-mutation-client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { SerializedRingCard, GradingInfo, PriceHistoryEntry } from "@/lib/types";
-import { getSerialAffiliateLinks, type TrackerSummary } from '@/lib/trackers';
+import { getSerialAffiliateLinks, type AffiliateLink, type TrackerSummary } from '@/lib/trackers';
 import Link from "next/link";
 import {
   findTrackerCardByDeepLinkParams,
@@ -31,7 +31,7 @@ import CardDetails from '@/components/CardDetails';
 import ExternalImage from '@/components/ExternalImage';
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { Squares2X2Icon, TableCellsIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { getTrackerMarketSummary } from '@/lib/tracker-market-summary';
 
 interface CardSummaryRow {
@@ -45,6 +45,9 @@ interface CardSummaryRow {
 }
 
 type ActiveFilterChipId = 'search' | 'card' | 'status' | 'sort';
+type TrackerViewMode = 'grid' | 'table';
+
+const TRACKER_TABLE_PAGE_SIZE = 100;
 
 const STATUS_FILTER_LABELS: Record<string, string> = {
   found: 'located serials',
@@ -85,8 +88,9 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
   const [cardFilter, setCardFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState('id-asc');
+  const [viewMode, setViewMode] = useState<TrackerViewMode>('grid');
   const [viewStateInitialized, setViewStateInitialized] = useState(false);
-  const filterKey = JSON.stringify([searchQuery, cardFilter, statusFilter, sortOrder]);
+  const filterKey = JSON.stringify([searchQuery, cardFilter, statusFilter, sortOrder, viewMode]);
   const [pageSelection, setPageSelection] = useState({ filters: '', page: 1 });
   const browseHeadingRef = useRef<HTMLHeadingElement>(null);
   
@@ -165,6 +169,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     const nextStatusFilter = params.get('filter') || 'all';
     const nextSortOrder = params.get('sort') || 'id-asc';
     const nextCardFilter = params.get('cardFilter') || 'all';
+    const nextViewMode = params.get('view') === 'table' ? 'table' : 'grid';
     const isKnownCardFilter =
       nextCardFilter === 'all' || cardDefinitions.some((definition) => definition.slug === nextCardFilter);
 
@@ -172,10 +177,12 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     setStatusFilter(VALID_STATUS_FILTERS.has(nextStatusFilter) ? nextStatusFilter : 'all');
     setSortOrder(VALID_SORT_ORDERS.has(nextSortOrder) ? nextSortOrder : 'id-asc');
     setCardFilter(isKnownCardFilter ? nextCardFilter : 'all');
+    setViewMode(nextViewMode);
     setPageSelection({
       filters: JSON.stringify([params.get('q') || '', isKnownCardFilter ? nextCardFilter : 'all',
         VALID_STATUS_FILTERS.has(nextStatusFilter) ? nextStatusFilter : 'all',
-        VALID_SORT_ORDERS.has(nextSortOrder) ? nextSortOrder : 'id-asc']),
+        VALID_SORT_ORDERS.has(nextSortOrder) ? nextSortOrder : 'id-asc',
+        nextViewMode]),
       page: Number(params.get('page') || 1),
     });
   }, [cardDefinitions]);
@@ -198,7 +205,8 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     cardFilter, searchQuery, statusFilter, sortOrder,
   }), [cards, cardFilter, searchQuery, statusFilter, sortOrder]);
   const requestedPage = pageSelection.filters === filterKey ? pageSelection.page : 1;
-  const pagination = getTrackerPage(filteredAndSortedCards.length, requestedPage);
+  const pageSize = viewMode === 'table' ? TRACKER_TABLE_PAGE_SIZE : undefined;
+  const pagination = getTrackerPage(filteredAndSortedCards.length, requestedPage, pageSize);
   const visibleCards = useMemo(() => filteredAndSortedCards.slice(pagination.start, pagination.end),
     [filteredAndSortedCards, pagination.start, pagination.end]);
   const statusCounts = useMemo(() => {
@@ -242,6 +250,12 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
       params.delete('cardFilter');
     }
 
+    if (viewMode === 'table') {
+      params.set('view', viewMode);
+    } else {
+      params.delete('view');
+    }
+
     if (pagination.page > 1) params.set('page', String(pagination.page));
     else params.delete('page');
 
@@ -252,7 +266,7 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     if (nextUrl !== currentUrl) {
       window.history.replaceState(null, '', nextUrl);
     }
-  }, [cardFilter, searchQuery, sortOrder, statusFilter, pagination.page, viewStateInitialized, loading, dataError]);
+  }, [cardFilter, searchQuery, sortOrder, statusFilter, viewMode, pagination.page, viewStateInitialized, loading, dataError]);
 
   const clearCopyViewMessageSoon = () => {
     if (copyViewMessageTimeoutRef.current) {
@@ -307,6 +321,16 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
     const query = params.toString();
     window.history[replace ? 'replaceState' : 'pushState'](null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
   }, [tracker]);
+
+  const getCardActionLinks = useCallback((card: SerializedRingCard) => {
+    const reportParams = getTrackerCardDeepLinkParams(tracker, card);
+    if (card.found) reportParams.set('kind', 'sighting');
+
+    return {
+      reportHref: `${trackerPath}/submit?${reportParams.toString()}`,
+      serialEbayLink: getSerialAffiliateLinks(tracker, card).find((link) => link.merchant === 'ebay'),
+    };
+  }, [tracker, trackerPath]);
 
   const closeCardDetails = useCallback(() => {
     setSelectedCardForDetails(null);
@@ -609,6 +633,8 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
               statusCounts={statusCounts}
             />
 
+            <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+
             <div className="mt-3 flex w-full max-w-5xl flex-wrap items-center justify-between gap-2 py-2 font-sans text-sm text-ring-light" role="status">
               <p>
                 Showing <span className="font-bold text-ring-gold">{filteredAndSortedCards.length ? `${pagination.start + 1}-${pagination.end}` : '0'}</span> of{' '}
@@ -677,130 +703,26 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  {visibleCards.map((card, index) => {
-              const imageSrc = card.image || referenceImage;
-              const reportParams = getTrackerCardDeepLinkParams(tracker, card);
-              if (card.found) reportParams.set('kind', 'sighting');
-              const reportHref = `${trackerPath}/submit?${reportParams.toString()}`;
-              const serialEbayLink = getSerialAffiliateLinks(tracker, card).find((link) => link.merchant === 'ebay');
-              const statusLabel = getCardStatusLabel(card);
-              
-              return (
-                <article key={card.id} className="border border-ring-gold/40 rounded-lg p-4 bg-ring-dark flex flex-col h-full">
-                  <div 
-                    className="aspect-[3/4] mb-3 bg-ring-light rounded overflow-hidden cursor-pointer"
-                    onClick={() => {
+                viewMode === 'table' ? (
+                  <SerialTable
+                    cards={visibleCards}
+                    tracker={tracker}
+                    getCardActionLinks={getCardActionLinks}
+                    onOpenDetails={openCardDetails}
+                  />
+                ) : (
+                  <SerialGrid
+                    cards={visibleCards}
+                    tracker={tracker}
+                    referenceImage={referenceImage}
+                    getCardActionLinks={getCardActionLinks}
+                    onOpenDetails={openCardDetails}
+                    onOpenImage={(index) => {
                       setLightboxIndex(index);
                       setLightboxOpen(true);
                     }}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`View larger image of ${formatTrackerCardLabel(tracker, card)}`}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setLightboxIndex(index);
-                        setLightboxOpen(true);
-                      }
-                    }}
-                  >
-                    <ExternalImage
-                      src={imageSrc}
-                      alt={`${formatTrackerCardLabel(tracker, card)} - ${card.name}`}
-                      className="w-full h-full object-contain bg-black/20"
-                      fallbackSrc={referenceImage}
-                    />
-                  </div>
-                  
-                  <h3 className="text-lg font-bold text-ring-gold tabular-nums">{card.serialNumber}/{card.serialTotal || tracker.total}</h3>
-                  {card.cardTitle && card.cardTitle !== tracker.title && (
-                    <p className="mb-2 text-sm font-semibold text-ring-light">{card.cardTitle}</p>
-                  )}
-                  
-                  <div className="flex-grow flex flex-col">
-                    <span
-                      className={`inline-block rounded px-2 py-0.5 text-xs font-bold ${
-                        card.found
-                          ? 'bg-green-800/50 text-green-300'
-                          : (card.pendingReports || 0) > 0
-                            ? 'bg-ring-teal/20 text-ring-teal'
-                            : 'bg-gray-700/50 text-gray-300'
-                      }`}
-                    >
-                      {statusLabel}
-                    </span>
-                    {(card.pendingReports || 0) > 0 && (
-                      <span className="mt-2 inline-block rounded border border-ring-teal/40 px-2 py-0.5 text-xs text-ring-light">
-                        {card.pendingReports} {card.found ? 'update' : 'report'}{card.pendingReports === 1 ? '' : 's'} under review
-                      </span>
-                    )}
-                    {card.sourceType && (
-                      <span className="mt-2 inline-block rounded border border-ring-gold/30 px-2 py-0.5 text-xs text-ring-light">
-                        {card.sourceType.replace('-', ' ')}
-                      </span>
-                    )}
-                    {(card.evidenceImages || []).length > 0 && (
-                      <span className="mt-2 inline-block rounded border border-ring-teal/40 px-2 py-0.5 text-xs text-ring-teal">
-                        {(card.evidenceImages || []).length} evidence image{(card.evidenceImages || []).length === 1 ? '' : 's'}
-                      </span>
-                    )}
-                    
-                    {card.price && (
-                      <div className="text-sm mt-2 text-green-400">
-                        <p>Recent Sale: ${card.price.toLocaleString()}</p>
-                        {card.priceDate && <p className="text-xs text-ring-light">{card.priceDate}</p>}
-                      </div>
-                    )}
-
-                    {card.grading && (
-                      <div className="text-sm mt-2 text-blue-400">
-                        <p>{card.grading.service} {card.grading.grade}</p>
-                        {card.grading.dateGraded && <p className="text-xs text-ring-light">{card.grading.dateGraded}</p>}
-                      </div>
-                    )}
-                    
-                    {card.found && (
-                      <div className="text-sm mt-2 text-ring-light">
-                        <p>Found by: {card.foundBy}</p>
-                        <p>Date: {card.dateFound}</p>
-                        {card.link && (
-                          <a href={card.link} target="_blank" rel="noopener noreferrer" className="text-ring-gold hover:underline">
-                            View Source
-                          </a>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="mt-auto grid grid-cols-1 gap-2">
-                        <Link
-                          href={reportHref}
-                          className="w-full rounded border border-ring-gold/60 px-4 py-2 text-center text-sm font-bold text-ring-gold transition-colors hover:border-yellow-400 hover:text-yellow-400"
-                        >
-                          {card.found ? 'Report an Update' : 'Report This Serial'}
-                        </Link>
-                      {serialEbayLink && (
-                        <AffiliateOutboundLink
-                          link={serialEbayLink}
-                          trackerSlug={tracker.slug}
-                          placement="tracker-card-serial"
-                          className="w-full rounded border border-ring-gold/60 px-4 py-2 text-center text-sm font-bold text-ring-gold transition-colors hover:border-yellow-400 hover:text-yellow-400"
-                        >
-                          Search eBay
-                        </AffiliateOutboundLink>
-                      )}
-                      <button
-                        onClick={() => openCardDetails(card)}
-                        className="w-full bg-ring-gold hover:bg-yellow-400 text-ring-dark font-bold py-2 px-4 rounded text-sm"
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              );
-                  })}
-                </div>
+                  />
+                )
               )}
             </section>
             <TrackerPagination {...pagination} onChange={changePage} position="bottom" />
@@ -848,6 +770,317 @@ export default function TrackerPageClient({ tracker }: { tracker: TrackerSummary
       </main>
     </>
   );
+}
+
+function ViewModeToggle({
+  viewMode,
+  onChange,
+}: {
+  viewMode: TrackerViewMode;
+  onChange: (mode: TrackerViewMode) => void;
+}) {
+  const options: Array<{ mode: TrackerViewMode; label: string; icon: typeof Squares2X2Icon }> = [
+    { mode: 'grid', label: 'Images', icon: Squares2X2Icon },
+    { mode: 'table', label: 'Table', icon: TableCellsIcon },
+  ];
+
+  return (
+    <div className="mt-4 flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 font-sans">
+      <p className="text-sm font-semibold text-ring-light">View</p>
+      <div className="inline-grid grid-cols-2 overflow-hidden rounded border border-ring-gold/35 bg-black/20" role="group" aria-label="Serial view">
+        {options.map((option) => {
+          const Icon = option.icon;
+          const active = viewMode === option.mode;
+
+          return (
+            <button
+              key={option.mode}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(option.mode)}
+              className={`inline-flex min-h-10 items-center justify-center gap-2 px-4 py-2 text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-ring-gold focus:ring-offset-2 focus:ring-offset-ring-dark ${
+                active
+                  ? 'bg-ring-gold text-ring-dark'
+                  : 'text-ring-light hover:bg-white/5 hover:text-ring-gold'
+              }`}
+            >
+              <Icon className="h-5 w-5" aria-hidden="true" />
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SerialGrid({
+  cards,
+  tracker,
+  referenceImage,
+  getCardActionLinks,
+  onOpenDetails,
+  onOpenImage,
+}: {
+  cards: SerializedRingCard[];
+  tracker: TrackerSummary;
+  referenceImage: string;
+  getCardActionLinks: (card: SerializedRingCard) => { reportHref: string; serialEbayLink?: AffiliateLink };
+  onOpenDetails: (card: SerializedRingCard) => void;
+  onOpenImage: (index: number) => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      {cards.map((card, index) => {
+        const imageSrc = card.image || referenceImage;
+        const { reportHref, serialEbayLink } = getCardActionLinks(card);
+
+        return (
+          <article key={card.id} className="flex h-full flex-col rounded-lg border border-ring-gold/40 bg-ring-dark p-4">
+            <div
+              className="mb-3 aspect-[3/4] cursor-pointer overflow-hidden rounded bg-ring-light"
+              onClick={() => onOpenImage(index)}
+              role="button"
+              tabIndex={0}
+              aria-label={`View larger image of ${formatTrackerCardLabel(tracker, card)}`}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onOpenImage(index);
+                }
+              }}
+            >
+              <ExternalImage
+                src={imageSrc}
+                alt={`${formatTrackerCardLabel(tracker, card)} - ${card.name}`}
+                className="h-full w-full bg-black/20 object-contain"
+                fallbackSrc={referenceImage}
+              />
+            </div>
+
+            <h3 className="text-lg font-bold text-ring-gold tabular-nums">{card.serialNumber}/{card.serialTotal || tracker.total}</h3>
+            {card.cardTitle && card.cardTitle !== tracker.title && (
+              <p className="mb-2 text-sm font-semibold text-ring-light">{card.cardTitle}</p>
+            )}
+
+            <div className="flex flex-grow flex-col">
+              <CardStatusPills card={card} />
+
+              {card.price && (
+                <div className="mt-2 text-sm text-green-400">
+                  <p>Recent Sale: ${card.price.toLocaleString()}</p>
+                  {card.priceDate && <p className="text-xs text-ring-light">{card.priceDate}</p>}
+                </div>
+              )}
+
+              {card.grading && (
+                <div className="mt-2 text-sm text-blue-400">
+                  <p>{card.grading.service} {card.grading.grade}</p>
+                  {card.grading.dateGraded && <p className="text-xs text-ring-light">{card.grading.dateGraded}</p>}
+                </div>
+              )}
+
+              {card.found && (
+                <div className="mt-2 text-sm text-ring-light">
+                  <p>Found by: {card.foundBy}</p>
+                  <p>Date: {card.dateFound}</p>
+                  {card.link && (
+                    <a href={card.link} target="_blank" rel="noopener noreferrer" className="text-ring-gold hover:underline">
+                      View Source
+                    </a>
+                  )}
+                </div>
+              )}
+
+              <SerialActions
+                card={card}
+                tracker={tracker}
+                reportHref={reportHref}
+                serialEbayLink={serialEbayLink}
+                onOpenDetails={() => onOpenDetails(card)}
+                layout="grid"
+              />
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function SerialTable({
+  cards,
+  tracker,
+  getCardActionLinks,
+  onOpenDetails,
+}: {
+  cards: SerializedRingCard[];
+  tracker: TrackerSummary;
+  getCardActionLinks: (card: SerializedRingCard) => { reportHref: string; serialEbayLink?: AffiliateLink };
+  onOpenDetails: (card: SerializedRingCard) => void;
+}) {
+  return (
+    <div className="overflow-x-auto border-y border-ring-gold/25 bg-black/20">
+      <table className="min-w-full border-collapse text-left text-sm">
+        <thead className="border-b border-ring-gold/25 text-xs uppercase text-ring-light/50">
+          <tr>
+            <th className="px-3 py-2 font-bold">Serial</th>
+            <th className="px-3 py-2 font-bold">Card</th>
+            <th className="px-3 py-2 font-bold">Status</th>
+            <th className="px-3 py-2 font-bold">Source</th>
+            <th className="px-3 py-2 font-bold">Price</th>
+            <th className="px-3 py-2 font-bold">Grading</th>
+            <th className="px-3 py-2 font-bold">Date</th>
+            <th className="px-3 py-2 font-bold">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-ring-gold/15">
+          {cards.map((card) => {
+            const { reportHref, serialEbayLink } = getCardActionLinks(card);
+
+            return (
+              <tr key={card.id} className="align-top text-ring-light/75 transition-colors hover:bg-ring-gold/[0.06]">
+                <td className="whitespace-nowrap px-3 py-2 font-mono text-sm font-bold text-ring-gold">
+                  {card.serialNumber}/{card.serialTotal || tracker.total}
+                </td>
+                <td className="min-w-48 px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => onOpenDetails(card)}
+                    className="text-left font-semibold text-ring-light underline-offset-4 hover:text-ring-gold hover:underline"
+                  >
+                    {card.cardTitle || card.name}
+                  </button>
+                  {card.foundBy && <div className="mt-1 text-xs text-ring-light/50">{card.foundBy}</div>}
+                </td>
+                <td className="min-w-40 px-3 py-2">
+                  <CardStatusPills card={card} compact />
+                </td>
+                <td className="whitespace-nowrap px-3 py-2 text-xs">
+                  {card.link ? (
+                    <a href={card.link} target="_blank" rel="noopener noreferrer" className="font-semibold text-ring-gold underline-offset-4 hover:text-yellow-400 hover:underline">
+                      {formatSourceLabel(card.sourceType)}
+                    </a>
+                  ) : (
+                    <span className="text-ring-light/50">{formatSourceLabel(card.sourceType)}</span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2 text-xs">
+                  {card.price ? (
+                    <span className="font-semibold text-green-300">${card.price.toLocaleString()}</span>
+                  ) : (
+                    <span className="text-ring-light/35">-</span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2 text-xs">
+                  {card.grading ? (
+                    <span className="font-semibold text-blue-300">{card.grading.service} {card.grading.grade}</span>
+                  ) : (
+                    <span className="text-ring-light/35">-</span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2 text-xs text-ring-light/60">
+                  {card.dateFound || card.priceDate || '-'}
+                </td>
+                <td className="min-w-56 px-3 py-2">
+                  <SerialActions
+                    card={card}
+                    tracker={tracker}
+                    reportHref={reportHref}
+                    serialEbayLink={serialEbayLink}
+                    onOpenDetails={() => onOpenDetails(card)}
+                    layout="table"
+                  />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function CardStatusPills({ card, compact = false }: { card: SerializedRingCard; compact?: boolean }) {
+  return (
+    <div className={`flex flex-wrap gap-2 ${compact ? '' : 'mb-2'}`}>
+      <span
+        className={`inline-flex rounded px-2 py-0.5 text-xs font-bold ${
+          card.found
+            ? 'bg-green-800/50 text-green-300'
+            : (card.pendingReports || 0) > 0
+              ? 'bg-ring-teal/20 text-ring-teal'
+              : 'bg-gray-700/50 text-gray-300'
+        }`}
+      >
+        {getCardStatusLabel(card)}
+      </span>
+      {(card.pendingReports || 0) > 0 && (
+        <span className="inline-flex rounded border border-ring-teal/40 px-2 py-0.5 text-xs text-ring-light">
+          {card.pendingReports} {card.found ? 'update' : 'report'}{card.pendingReports === 1 ? '' : 's'}
+        </span>
+      )}
+      {card.sourceType && (
+        <span className="inline-flex rounded border border-ring-gold/30 px-2 py-0.5 text-xs text-ring-light">
+          {formatSourceLabel(card.sourceType)}
+        </span>
+      )}
+      {(card.evidenceImages || []).length > 0 && (
+        <span className="inline-flex rounded border border-ring-teal/40 px-2 py-0.5 text-xs text-ring-teal">
+          {(card.evidenceImages || []).length} evidence
+        </span>
+      )}
+    </div>
+  );
+}
+
+function SerialActions({
+  card,
+  tracker,
+  reportHref,
+  serialEbayLink,
+  onOpenDetails,
+  layout,
+}: {
+  card: SerializedRingCard;
+  tracker: TrackerSummary;
+  reportHref: string;
+  serialEbayLink?: AffiliateLink;
+  onOpenDetails: () => void;
+  layout: 'grid' | 'table';
+}) {
+  const baseClass = layout === 'grid'
+    ? 'w-full rounded border border-ring-gold/60 px-4 py-2 text-center text-sm font-bold text-ring-gold transition-colors hover:border-yellow-400 hover:text-yellow-400'
+    : 'rounded border border-ring-gold/45 px-2.5 py-1.5 text-xs font-bold text-ring-gold transition-colors hover:border-yellow-400 hover:text-yellow-400';
+  const detailClass = layout === 'grid'
+    ? 'w-full rounded bg-ring-gold px-4 py-2 text-sm font-bold text-ring-dark hover:bg-yellow-400'
+    : 'rounded bg-ring-gold px-2.5 py-1.5 text-xs font-bold text-ring-dark hover:bg-yellow-400';
+
+  return (
+    <div className={layout === 'grid' ? 'mt-auto grid grid-cols-1 gap-2 pt-3' : 'flex flex-wrap items-center gap-2'}>
+      <Link href={reportHref} className={baseClass}>
+        {card.found ? 'Update' : 'Report'}
+      </Link>
+      {serialEbayLink && (
+        <AffiliateOutboundLink
+          link={serialEbayLink}
+          trackerSlug={tracker.slug}
+          placement="tracker-card-serial"
+          className={baseClass}
+        >
+          eBay
+        </AffiliateOutboundLink>
+      )}
+      <button type="button" onClick={onOpenDetails} className={detailClass}>
+        Details
+      </button>
+    </div>
+  );
+}
+
+function formatSourceLabel(sourceType?: SerializedRingCard['sourceType']) {
+  if (!sourceType) return '-';
+  return sourceType.replace(/-/g, ' ');
 }
 
 function CardSummarySection({

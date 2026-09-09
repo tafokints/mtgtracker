@@ -48,8 +48,10 @@ describe('collector browsing', () => {
   });
   it('bounds pages for large, empty and stale result sets', () => {
     expect(getTrackerPage(2000, 42)).toEqual({ page: 42, pageCount: 42, start: 1968, end: 2000 });
+    expect(getTrackerPage(2000, 20, 100)).toEqual({ page: 20, pageCount: 20, start: 1900, end: 2000 });
     expect(getTrackerPage(1, 42)).toEqual({ page: 1, pageCount: 1, start: 0, end: 1 });
     expect(getTrackerPage(0, 2)).toEqual({ page: 1, pageCount: 1, start: 0, end: 0 });
     for (const invalid of [-2, 1.5, NaN, Infinity]) expect(getTrackerPage(2000, invalid).page).toBe(1);
+    expect(getTrackerPage(2000, 1, 0)).toEqual({ page: 1, pageCount: 42, start: 0, end: 48 });
   });
 });
