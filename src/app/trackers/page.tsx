@@ -65,6 +65,7 @@ export default async function TrackersPage() {
   const allLiveTrackers = getLiveTrackers();
   const coverage = getPrintingCoverage();
   const reportingSlots = reportingTrackers.reduce((total, tracker) => total + getTrackerTotalSlots(tracker), 0);
+  const allTrackedSlots = allLiveTrackers.reduce((total, tracker) => total + getTrackerTotalSlots(tracker), 0);
   const locatedCards = Object.values(directoryStats).reduce((total, stats) => total + (stats?.foundCount || 0), 0);
   const openReports = Object.values(directoryStats).reduce((total, stats) => total + (stats?.pendingReportCount || 0), 0);
 
@@ -91,7 +92,7 @@ export default async function TrackersPage() {
             <div>
               <h1 className="text-4xl font-semibold leading-tight text-ring-light md:text-5xl">Trackers</h1>
               <p className="mt-4 max-w-3xl text-base leading-7 text-ring-light/68">
-                Open a live reporting hub, submit a serial, or jump into the full serialized catalog. Deeper source notes and marketplace links live on each tracker page.
+                Every released English serialized printing has a live tracker page. The priority hubs below collect community reporting for the most active treatments; the full live directory follows.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -112,8 +113,8 @@ export default async function TrackersPage() {
         </header>
 
         <section aria-label="Tracker summary" className="grid grid-cols-2 gap-x-6 border-b border-white/10 py-1 md:grid-cols-4">
-          <Metric label="Reporting hubs" value={reportingTrackers.length.toLocaleString()} />
-          <Metric label="Tracked serials" value={reportingSlots.toLocaleString()} />
+          <Metric label="Live tracker pages" value={allLiveTrackers.length.toLocaleString()} />
+          <Metric label="Tracked serial slots" value={allTrackedSlots.toLocaleString()} />
           <Metric label="Located" value={locatedCards.toLocaleString()} />
           <Metric label="Open reports" value={openReports.toLocaleString()} />
         </section>
@@ -121,11 +122,11 @@ export default async function TrackersPage() {
         <section aria-labelledby="live-trackers" className="pt-10">
           <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-sm font-semibold text-ring-teal">Live reporting</p>
-              <h2 id="live-trackers" className="mt-2 text-2xl font-semibold text-ring-light md:text-3xl">Active tracker hubs</h2>
+              <p className="text-sm font-semibold text-ring-teal">Community reporting</p>
+              <h2 id="live-trackers" className="mt-2 text-2xl font-semibold text-ring-light md:text-3xl">Priority reporting hubs</h2>
             </div>
             <p className="text-sm text-ring-light/56">
-              {allLiveTrackers.length.toLocaleString()} live pages including generated card trackers
+              {reportingSlots.toLocaleString()} serial slots with discovery stats
             </p>
           </div>
 
@@ -133,6 +134,43 @@ export default async function TrackersPage() {
             {reportingTrackers.map((tracker) => (
               <TrackerRow key={tracker.slug} tracker={tracker} stats={directoryStats[tracker.slug]} />
             ))}
+          </div>
+        </section>
+
+        <section aria-labelledby="all-live-trackers" className="mt-12 border-t border-white/10 pt-10">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-ring-teal">Live directory</p>
+              <h2 id="all-live-trackers" className="mt-2 text-2xl font-semibold text-ring-light md:text-3xl">All live tracker pages</h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-ring-light/62">
+                {allLiveTrackers.length.toLocaleString()} active pages are ready for serial lookups and submissions, including generated card-level trackers for the broader catalog.
+              </p>
+            </div>
+            <Link
+              href="/serialized-mtg-catalog"
+              className="text-sm font-semibold text-ring-gold underline-offset-4 hover:text-yellow-300 hover:underline"
+            >
+              Open catalog
+            </Link>
+          </div>
+
+          <div className="mt-5 overflow-x-auto border-y border-white/10">
+            <table className="min-w-full border-collapse text-left text-sm">
+              <thead className="border-b border-white/10 text-xs uppercase text-ring-light/45">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Tracker</th>
+                  <th className="px-4 py-3 font-semibold">Set</th>
+                  <th className="px-4 py-3 font-semibold">Scope</th>
+                  <th className="px-4 py-3 font-semibold">Type</th>
+                  <th className="px-4 py-3 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10 text-ring-light/72">
+                {allLiveTrackers.map((tracker) => (
+                  <LiveTrackerTableRow key={tracker.slug} tracker={tracker} />
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -283,5 +321,55 @@ function TrackerRow({ tracker, stats }: { tracker: TrackerSummary; stats?: Direc
         </DirectoryCtaLink>
       </div>
     </article>
+  );
+}
+
+function LiveTrackerTableRow({ tracker }: { tracker: TrackerSummary }) {
+  const cardDefinitionCount = getTrackerCardDefinitions(tracker).length;
+  const totalSlots = getTrackerTotalSlots(tracker);
+  const scopeLabel = cardDefinitionCount > 1
+    ? `${cardDefinitionCount.toLocaleString()} cards / ${totalSlots.toLocaleString()} serials`
+    : `${totalSlots.toLocaleString()} serials`;
+
+  return (
+    <tr className="align-top transition-colors hover:bg-white/[0.035]">
+      <td className="px-4 py-3">
+        <Link href={tracker.href} className="font-semibold text-ring-light hover:text-ring-gold">
+          {tracker.displayTitle || tracker.title}
+        </Link>
+        <div className="mt-1 max-w-lg text-xs leading-5 text-ring-light/48">{tracker.subtitle}</div>
+      </td>
+      <td className="px-4 py-3 text-xs leading-5 text-ring-light/58">
+        {tracker.setName || 'Unknown set'}
+      </td>
+      <td className="whitespace-nowrap px-4 py-3 text-xs leading-5 text-ring-light/58">
+        {scopeLabel}
+      </td>
+      <td className="px-4 py-3">
+        <span className="inline-flex rounded-sm border border-white/15 px-2 py-1 text-xs uppercase text-ring-light/58">
+          {tracker.catalogGenerated ? 'Card tracker' : 'Hub'}
+        </span>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex flex-wrap gap-3 text-xs font-semibold">
+          <DirectoryCtaLink
+            href={tracker.href}
+            trackerSlug={tracker.slug}
+            action="open-tracker"
+            className="text-ring-gold underline-offset-4 hover:text-yellow-300 hover:underline"
+          >
+            Open
+          </DirectoryCtaLink>
+          <DirectoryCtaLink
+            href={`${tracker.href}/submit`}
+            trackerSlug={tracker.slug}
+            action="report-find"
+            className="text-ring-teal underline-offset-4 hover:underline"
+          >
+            Report
+          </DirectoryCtaLink>
+        </div>
+      </td>
+    </tr>
   );
 }
