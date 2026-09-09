@@ -15,6 +15,7 @@ type Cursor = { scan: string; pending: string[]; done: boolean };
 export class InventoryInputError extends Error {}
 export const ORPHAN_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 20;
+const LEGACY_SUBMISSION_ID = /^legacy-golden-chocobo-\d{2}$/;
 
 export const READ_INVENTORY_RECORDS = `
 -- bounded read-only storage inventory snapshot
@@ -63,6 +64,10 @@ function referencesAsset(records: unknown[], asset: EvidenceAsset) {
   return false;
 }
 
+function validEvidenceSubmissionId(value: unknown) {
+  return typeof value === 'string' && (EVIDENCE_ID.test(value) || LEGACY_SUBMISSION_ID.test(value));
+}
+
 function decodeCursor(value?: unknown): Cursor {
   if (value === undefined) return { scan: '0', pending: [], done: false };
   try {
@@ -93,7 +98,7 @@ export async function readStorageInventory(redis: Redis, cursorValue?: unknown, 
     rows.push(row);
     try {
       const [value] = await readRecords(redis, [evidenceKey(id)], 16 * 1024);
-      if (!record(value) || value.id !== id || typeof value.tracker !== 'string' || typeof value.submissionId !== 'string' || !EVIDENCE_ID.test(value.submissionId)) continue;
+      if (!record(value) || value.id !== id || typeof value.tracker !== 'string' || !validEvidenceSubmissionId(value.submissionId)) continue;
       const asset = value as unknown as EvidenceAsset;
       const tracker = getTracker(asset.tracker);
       const slot = tracker && Number.isSafeInteger(asset.cardId) ? getTrackerCardSlot(tracker, asset.cardId) : undefined;

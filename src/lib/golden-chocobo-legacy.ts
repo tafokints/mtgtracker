@@ -6,6 +6,8 @@ import type { TrackerSummary } from './trackers';
 
 export const GOLDEN_CHOCOBO_LEGACY_SOURCE_URL = 'https://goldenchocobotracker.vercel.app/api/cards';
 export const GOLDEN_CHOCOBO_LEGACY_CONFIRMATION = 'IMPORT_GOLDEN_CHOCOBO_LEGACY_FINDS';
+export const GOLDEN_CHOCOBO_LEGACY_IMAGE_BASE_URL = 'https://goldenchocobotracker.vercel.app/images';
+export const GOLDEN_CHOCOBO_LEGACY_IMAGE_CONFIRMATION = 'IMPORT_GOLDEN_CHOCOBO_LEGACY_IMAGES';
 
 const deterministicPrefix = 'legacy-golden-chocobo';
 const migrationNote = 'Imported from the legacy Golden Chocobo tracker.';
@@ -60,6 +62,11 @@ function parseNumber(value: unknown) {
 
 function serialForId(id: number, padding: number) {
   return String(id).padStart(padding, '0');
+}
+
+export function goldenChocoboLegacyImageUrl(serialNumber: string, baseUrl = GOLDEN_CHOCOBO_LEGACY_IMAGE_BASE_URL) {
+  if (!/^\d{2}$/.test(serialNumber)) throw new Error(`Invalid Golden Chocobo serial: ${serialNumber}`);
+  return `${baseUrl.replace(/\/+$/, '')}/chocobo-${serialNumber}.jpg`;
 }
 
 function normalizeGrading(value: unknown): GradingInfo | undefined {

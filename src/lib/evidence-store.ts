@@ -55,6 +55,42 @@ export async function storeEvidence(redis: Redis, session: SubmissionSession, im
   return asset;
 }
 
+export async function storeTrustedEvidence(
+  redis: Redis,
+  session: Pick<SubmissionSession, 'id' | 'tracker' | 'cardId'> & { exp?: number },
+  image: Awaited<ReturnType<typeof prepareEvidenceImage>>,
+  reason: string,
+) {
+  const id = randomUUID();
+  const createdAt = new Date().toISOString();
+  const asset: EvidenceAsset = {
+    id,
+    tracker: session.tracker,
+    cardId: session.cardId,
+    submissionId: session.id,
+    pathname: `quarantine/${session.tracker}/${id}.webp`,
+    sha256: createHash('sha256').update(image.data).digest('hex'),
+    size: image.data.length,
+    width: image.width,
+    height: image.height,
+    createdAt,
+    sessionExpiresAt: session.exp ?? Date.now() + 60 * 60 * 1000,
+    scan: { status: 'clean', reason, checkedAt: createdAt, policyVersion: 1 },
+  };
+
+  if (!await redis.set(evidenceKey(id), asset, { nx: true })) throw new EvidenceUploadError('Evidence record collision. Retry the import.', 409);
+  try {
+    await put(asset.pathname, image.data, {
+      access: 'private', addRandomSuffix: false, allowOverwrite: false, contentType: 'image/webp',
+      token: process.env.BLOB_READ_WRITE_TOKEN, abortSignal: AbortSignal.timeout(15000),
+    });
+  } catch (error) {
+    await redis.del(evidenceKey(id));
+    throw error;
+  }
+  return asset;
+}
+
 export async function saveEvidenceScan(redis: Redis, id: string, scan: EvidenceScan) {
   await redis.eval(COMMIT_EVIDENCE_SCAN, [evidenceKey(id)], [JSON.stringify(scan)]);
   const saved = await redis.get<EvidenceAsset>(evidenceKey(id));

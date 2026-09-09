@@ -38,6 +38,8 @@ export default function OwnerDashboard() {
   const [configuration, setConfiguration] = useState<Configuration | null>(null);
   const [legacyImporting, setLegacyImporting] = useState(false);
   const [legacyImportResult, setLegacyImportResult] = useState('');
+  const [legacyImageImporting, setLegacyImageImporting] = useState(false);
+  const [legacyImageImportResult, setLegacyImageImportResult] = useState('');
   const generation = useRef(0);
   const detailHeading = useRef<HTMLHeadingElement>(null);
   const cursor = cursors.at(-1);
@@ -137,6 +139,7 @@ export default function OwnerDashboard() {
 
     setLegacyImporting(true);
     setLegacyImportResult('');
+    setLegacyImageImportResult('');
     setError('');
     try {
       const response = await fetch('/api/admin/golden-chocobo-legacy-finds', {
@@ -165,6 +168,43 @@ export default function OwnerDashboard() {
       setError(cause instanceof Error ? cause.message : 'Legacy import failed.');
     } finally {
       setLegacyImporting(false);
+    }
+  }
+
+  async function importGoldenChocoboLegacyImages() {
+    if (legacyImageImporting) return;
+    if (!window.confirm('Import legacy Golden Chocobo images into MTG Trackers? This stores sanitized copies from the old public tracker as approved evidence images.')) return;
+
+    setLegacyImageImporting(true);
+    setLegacyImageImportResult('');
+    setError('');
+    try {
+      const response = await fetch('/api/admin/golden-chocobo-legacy-images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: 'IMPORT_GOLDEN_CHOCOBO_LEGACY_IMAGES' }),
+      });
+      const data = await response.json().catch(() => ({})) as {
+        message?: string;
+        counts?: { imported?: number; found?: number; withEvidence?: number; missing?: number; failed?: number };
+      };
+      if (response.status === 401) {
+        clearSession();
+        throw new Error('Your session ended. Sign in again.');
+      }
+      if (!response.ok) throw new Error(data.message || 'Legacy image import failed.');
+
+      setLegacyImageImportResult(
+        `Imported ${data.counts?.imported ?? 0} Golden Chocobo images. ${data.counts?.withEvidence ?? 0}/${data.counts?.found ?? 0} found serials now have evidence images; ${data.counts?.missing ?? 0} legacy image files were missing${data.counts?.failed ? `, and ${data.counts.failed} failed` : ''}.`
+      );
+      setStatus('approved');
+      setTrackerFilter('golden-chocobo');
+      setCursors([null]);
+      setRevision((value) => value + 1);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Legacy image import failed.');
+    } finally {
+      setLegacyImageImporting(false);
     }
   }
 
@@ -210,6 +250,13 @@ export default function OwnerDashboard() {
               </button>
             </div>
             {legacyImportResult && <p role="status" className={styles.notice}>{legacyImportResult}</p>}
+            <div className={styles.service}>
+              <span>Legacy evidence images</span>
+              <button type="button" onClick={importGoldenChocoboLegacyImages} disabled={legacyImageImporting} className={styles.testButton}>
+                <ArrowPathIcon />{legacyImageImporting ? 'Importing...' : 'Import images'}
+              </button>
+            </div>
+            {legacyImageImportResult && <p role="status" className={styles.notice}>{legacyImageImportResult}</p>}
           </div>
           {configuration && <StorageCheck configured={configuration.services.some((service) => service.name === 'Private image storage' && service.configured)} onSessionLost={clearSession} />}
           {configuration && <StorageInventory onSessionLost={clearSession} />}

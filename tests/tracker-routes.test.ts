@@ -145,6 +145,7 @@ import { POST as reviewSubmission } from '@/app/api/trackers/[slug]/submissions/
 import { GET as exportTrackerBackup } from '@/app/api/trackers/[slug]/export/route';
 import { POST as importTrackerBackup } from '@/app/api/trackers/[slug]/import/route';
 import { POST as importGoldenChocoboLegacyFinds } from '@/app/api/admin/golden-chocobo-legacy-finds/route';
+import { POST as importGoldenChocoboLegacyImages } from '@/app/api/admin/golden-chocobo-legacy-images/route';
 import { POST as trackAffiliateClick } from '@/app/api/affiliate/click/route';
 import { GET as getAffiliateStats } from '@/app/api/admin/affiliate-stats/route';
 import { POST as trackPromotionAction } from '@/app/api/admin/promotion-action/route';
@@ -304,6 +305,18 @@ function importRequest(body: unknown, session = adminSession) {
 
 function goldenChocoboLegacyImportRequest(body: unknown, session = adminSession, origin = 'https://mtgtrackers.com') {
   return new NextRequest('https://mtgtrackers.com/api/admin/golden-chocobo-legacy-finds', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      origin,
+      cookie: `${ADMIN_COOKIE_NAME}=${session}`,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+function goldenChocoboLegacyImageImportRequest(body: unknown, session = adminSession, origin = 'https://mtgtrackers.com') {
+  return new NextRequest('https://mtgtrackers.com/api/admin/golden-chocobo-legacy-images', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -2549,6 +2562,114 @@ describe('tracker API routes', () => {
       }),
     ]);
     expect(publicCards.filter((card: { found: boolean }) => card.found)).toHaveLength(2);
+  });
+
+  it('requires admin auth to import Golden Chocobo legacy images', async () => {
+    const response = await importGoldenChocoboLegacyImages(goldenChocoboLegacyImageImportRequest(
+      { confirm: 'IMPORT_GOLDEN_CHOCOBO_LEGACY_IMAGES' },
+      '',
+    ));
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ message: 'Unauthorized' });
+  });
+
+  it('imports legacy Golden Chocobo images as public evidence assets', async () => {
+    const goldenChocobo = getTracker('golden-chocobo')!;
+    const legacyCards = Array.from({ length: 77 }, (_, index) => ({ id: index + 1, found: false }));
+    legacyCards[0] = {
+      id: 1,
+      found: true,
+      foundBy: 'Ancestralmtg',
+      dateFound: '2025-06-20',
+      link: 'https://www.instagram.com/p/DLJPL2WviUe/',
+    };
+    legacyCards[34] = {
+      id: 35,
+      found: true,
+      foundBy: 'private collector',
+      dateFound: '2025-07-01',
+    };
+    const legacyFile = await realImage('jpeg');
+    const legacyBytes = Buffer.from(await legacyFile.arrayBuffer());
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      const method = init?.method || 'GET';
+      if (url === 'https://goldenchocobotracker.vercel.app/api/cards') {
+        return new Response(JSON.stringify(legacyCards), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url.endsWith('/images/chocobo-01.jpg')) {
+        if (method === 'HEAD') return new Response(null, { status: 200, headers: { 'content-type': 'image/jpeg', 'content-length': String(legacyBytes.length) } });
+        return new Response(new Uint8Array(legacyBytes), { status: 200, headers: { 'content-type': 'image/jpeg', 'content-length': String(legacyBytes.length) } });
+      }
+      return new Response(null, { status: 404 });
+    });
+
+    expect((await importGoldenChocoboLegacyFinds(goldenChocoboLegacyImportRequest({
+      confirm: 'IMPORT_GOLDEN_CHOCOBO_LEGACY_FINDS',
+    }))).status).toBe(200);
+    const response = await importGoldenChocoboLegacyImages(goldenChocoboLegacyImageImportRequest({
+      confirm: 'IMPORT_GOLDEN_CHOCOBO_LEGACY_IMAGES',
+    }));
+    const result = await response.json();
+    const cards = redisFixture.store.get(goldenChocobo.storage.cardsKey) as Array<{
+      image?: string;
+      evidenceImages?: Array<{ url: string; assetId?: string; caption?: string; sourceSubmissionId?: string; sourceType?: string }>;
+      history?: unknown[];
+    }>;
+    const submissions = redisFixture.store.get(goldenChocobo.storage.submissionsKey) as Array<{
+      id: string;
+      imageUrl?: string;
+      evidenceImages: Array<{ url: string; assetId?: string; sourceSubmissionId?: string }>;
+      reviewHistory?: Array<{ action: string }>;
+    }>;
+    const url = cards[0].image!;
+    const assetId = url.split('/').at(-1)!;
+    const asset = redisFixture.store.get(evidenceKey(assetId)) as EvidenceAsset;
+    const publicEvidence = await readEvidence(
+      new Request(`https://mtgtrackers.com${url}`),
+      { params: Promise.resolve({ id: assetId }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(result).toMatchObject({
+      message: 'Golden Chocobo legacy images imported',
+      counts: {
+        eligible: 2,
+        uploaded: 1,
+        imported: 1,
+        missing: 1,
+        failed: 0,
+        found: 2,
+        withEvidence: 1,
+      },
+      importedSerials: ['01'],
+      missingSerials: ['35'],
+    });
+    expect(blobFixture.put).toHaveBeenCalledTimes(1);
+    expect(asset).toMatchObject({
+      tracker: 'golden-chocobo',
+      cardId: 1,
+      submissionId: 'legacy-golden-chocobo-01',
+      scan: { status: 'clean', reason: 'trusted-legacy-import', policyVersion: 1 },
+    });
+    expect(cards[0].evidenceImages).toEqual([expect.objectContaining({
+      url,
+      assetId,
+      caption: 'Legacy Golden Chocobo 01/77 image',
+      sourceSubmissionId: 'legacy-golden-chocobo-01',
+      sourceType: 'social',
+    })]);
+    expect(cards[0].history).toHaveLength(2);
+    expect(cards[34].evidenceImages).toEqual([]);
+    expect(submissions[0]).toMatchObject({
+      id: 'legacy-golden-chocobo-01',
+      imageUrl: url,
+      evidenceImages: [expect.objectContaining({ url, assetId, sourceSubmissionId: 'legacy-golden-chocobo-01' })],
+    });
+    expect(submissions[0].reviewHistory?.at(-1)).toMatchObject({ action: 'legacy-image-import' });
+    expect(publicEvidence.status).toBe(200);
+    expect(publicEvidence.headers.get('content-type')).toContain('image/webp');
   });
 
   it('approves a pending submission and updates the target card', async () => {

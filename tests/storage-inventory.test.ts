@@ -66,6 +66,30 @@ describe('read-only storage inventory', () => {
     expect((await read()).rows[0].status).toBe('retained');
   });
 
+  it('recognizes Golden Chocobo legacy import report ids', async () => {
+    const goldenChocobo = getTracker('golden-chocobo')!;
+    const legacyReportId = 'legacy-golden-chocobo-01';
+    store.set(evidenceKey(id), asset({
+      tracker: goldenChocobo.slug,
+      cardId: 1,
+      submissionId: legacyReportId,
+      pathname: `quarantine/${goldenChocobo.slug}/${id}.webp`,
+    }));
+    store.set(goldenChocobo.storage.submissionsKey, [{
+      id: legacyReportId,
+      cardId: 1,
+      serialNumber: '01',
+      status: 'approved',
+      submittedAt: '2026-08-01T00:00:00Z',
+      evidenceImages: [{ url: evidenceUrl(id), sourceSubmissionId: legacyReportId }],
+    }]);
+
+    expect((await read()).rows[0]).toMatchObject({
+      tracker: 'golden-chocobo',
+      status: 'retained',
+    });
+  });
+
   it('keeps expired uploads through the entire seven-day grace period', async () => {
     store.set(evidenceKey(id), asset({ sessionExpiresAt: NOW - ORPHAN_GRACE_MS + 1 }));
     expect((await read()).rows[0].status).toBe('recent');
