@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import TrackerPageClient from '@/components/TrackerPageClient';
-import { getTracker, trackers } from '@/lib/trackers';
+import { getLiveTrackerStaticParams, getTracker } from '@/lib/trackers';
 import { buildBreadcrumbJsonLd, buildTrackerFaqJsonLd, buildTrackerPageMetadata, buildTrackerSerialItemPageJsonLd, buildTrackerWebPageJsonLd, trackerBreadcrumbItems } from '@/lib/seo';
 
 type TrackerPageProps = {
@@ -9,9 +9,7 @@ type TrackerPageProps = {
 };
 
 export function generateStaticParams() {
-  return trackers
-    .filter((tracker) => tracker.status === 'live')
-    .map((tracker) => ({ slug: tracker.slug }));
+  return getLiveTrackerStaticParams();
 }
 
 export async function generateMetadata({ params, searchParams }: TrackerPageProps) {

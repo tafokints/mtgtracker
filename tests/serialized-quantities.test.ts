@@ -88,7 +88,7 @@ describe('source-reviewed serialized quantities', () => {
     expect(getTrackerCardDefinitions(ring)[0].printingId).toBe(poster.id);
     expect(getTrackerTotalSlots(ring)).toBe(100);
     expect(getTrackerTotalSlots(getTracker('lotr-poster-cards')!)).toBe(2000);
-    expect(getTracker('golden-chocobo')).toMatchObject({ total: 77, status: 'planned' });
+    expect(getTracker('golden-chocobo')).toMatchObject({ total: 77, status: 'live' });
     expect(printingTotal(getCatalogPrintings('final-fantasy-traveling-chocobo')[0])).toBe(77);
     expect(printingLanguage(unique)).toBe('Black Speech');
     for (const sol of getCatalogPrintings('lotr-serialized-sol-rings')) expect(printingLanguage(sol)).toBe('Quenya');

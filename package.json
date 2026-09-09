@@ -15,6 +15,7 @@
     "catalog:list": "node scripts/scaffold-tracker.mjs list",
     "catalog:sync": "node scripts/sync-serialized-printings.mjs",
     "tracker:scaffold": "node scripts/scaffold-tracker.mjs generate",
+    "golden-chocobo:queue": "node scripts/import-golden-chocobo-legacy.mjs",
     "links:validate": "node scripts/validate-affiliate-links.mjs",
     "smoke": "node scripts/smoke-check.mjs"
   },

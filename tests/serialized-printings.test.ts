@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { serializedCatalog } from '@/lib/serialized-catalog';
 import { getCatalogPrintings, getPrintingCoverage, isReleasedPrinting, printingPath, printingReleaseDate, printingTotal, serializedPrintings, serializedSets } from '@/lib/serialized-printings';
-import { allTrackers, generatedTrackers, getCatalogAffiliateLinks, getPrintingAffiliateLinks, getPrintingTracker, getPrintingTrackerHref, getTracker, getSerialAffiliateLinks } from '@/lib/trackers';
+import { allTrackers, generatedTrackers, getCatalogAffiliateLinks, getLiveTrackerStaticParams, getPrintingAffiliateLinks, getPrintingTracker, getPrintingTrackerHref, getTracker, getSerialAffiliateLinks } from '@/lib/trackers';
 import { getTrackerCardSlot, getTrackerTotalSlots } from '@/lib/tracker-data';
 import { assertUrlShape } from '../scripts/validate-affiliate-links.mjs';
 import sitemap from '@/app/sitemap';
@@ -24,10 +24,10 @@ describe('complete serialized printing catalog', () => {
     expect(serializedSets.find((set) => set.slug === 'the-lord-of-the-rings')?.entries).toHaveLength(4);
   });
 
-  it('covers every released English printing with a working tracker, except the explicitly deferred Chocobo migration', () => {
+  it('covers every released English printing with a working tracker', () => {
     for (const card of serializedPrintings) {
       const href = getPrintingTrackerHref(card);
-      if (card.language !== 'en' || !isReleasedPrinting(card) || card.setCode === 'FIN') {
+      if (card.language !== 'en' || !isReleasedPrinting(card)) {
         expect(href, card.name).toBeUndefined();
       } else {
         expect(href, card.name).toMatch(/^\/trackers\//);
@@ -88,5 +88,10 @@ describe('complete serialized printing catalog', () => {
     for (const printing of serializedPrintings) expect(urls).toContain(`https://mtgtrackers.com${printingPath(printing)}`);
     for (const tracker of generatedTrackers) expect(urls).toContain(`https://mtgtrackers.com${tracker.href}/submit`);
     expect(urls.some((url) => url.includes('card-fra-402/submit'))).toBe(false);
+  });
+
+  it('prebuilds every live tracker page advertised by the sitemap', () => {
+    const liveSlugs = allTrackers.filter((tracker) => tracker.status === 'live').map((tracker) => tracker.slug).sort();
+    expect(getLiveTrackerStaticParams().map((params) => params.slug).sort()).toEqual(liveSlugs);
   });
 });

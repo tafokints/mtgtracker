@@ -41,7 +41,7 @@ describe('SEO structured data', () => {
     expect(jsonLd.mainEntity.itemListElement.map((item) => item.url)).toEqual(
       liveTrackers.map((tracker) => `https://mtgtrackers.com${tracker.href}`)
     );
-    expect(jsonLd.mainEntity.itemListElement.map((item) => item.name)).not.toContain('Golden Chocobo');
+    expect(jsonLd.mainEntity.itemListElement.map((item) => item.name)).toContain('Golden Chocobo');
   });
 
   it('builds recent discoveries CollectionPage JSON-LD', () => {

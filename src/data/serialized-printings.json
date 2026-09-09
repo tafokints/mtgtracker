@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "checkedAt": "2026-09-05",
+  "checkedAt": "2026-09-09",
   "query": "is:serialized lang:any",
   "source": "https://scryfall.com/search?q=is%3Aserialized+lang%3Aany&unique=prints",
   "printings": [

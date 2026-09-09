@@ -421,7 +421,7 @@ export const serializedCatalog: SerializedCatalogEntry[] = [
     foundIn: 'English-language Final Fantasy Collector Boosters',
     treatment: 'golden serialized Traveling Chocobo',
     trackingMode: 'single-card',
-    status: 'planned',
+    status: 'live',
     cardCount: 1,
     defaultSerialTotal: 77,
     sampleCards: ['Traveling Chocobo'],

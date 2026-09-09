@@ -4,7 +4,7 @@ Owner workspace: `/admin` provides the all-tracker review inbox and service conf
 
 A Vercel-ready umbrella site for Magic: The Gathering serialized card trackers.
 
-Featured trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at `/trackers/edgar-markov`, and `LOTR Poster Cards` at `/trackers/lotr-poster-cards`. The researched catalog adds 268 single-printing trackers, accessible through `/sets`. The existing Golden Chocobo tracker stays untouched and its catalog page is reference-only until migration.
+Featured trackers are `The One Ring` at `/trackers/one-ring`, `Edgar Markov` at `/trackers/edgar-markov`, `LOTR Poster Cards` at `/trackers/lotr-poster-cards`, and `Golden Chocobo` at `/trackers/golden-chocobo`. The researched catalog adds generated single-printing trackers, accessible through `/sets`. The legacy Golden Chocobo site remains the source for migration import checks.
 
 ## Routes
 

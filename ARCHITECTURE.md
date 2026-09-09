@@ -4,7 +4,7 @@
 
 MTG Trackers is a standalone Next.js 15 App Router application deployed on Vercel at https://mtgtrackers.com. Upstash Redis (or Vercel KV REST environment names) stores tracker records and analytics; Vercel Blob stores evidence uploads. The parent Golden Chocobo repository remains separate.
 
-The registry in `src/lib/trackers.ts` drives dynamic tracker pages, statistics, report forms, APIs, themes, source links, and affiliate destinations. The `trackers` array is the featured list: One Ring (100 slots), Edgar Markov (500), LOTR Poster Cards (20 cards x 100 = 2,000), and planned Golden Chocobo. `allTrackers` adds 268 generated single-printing trackers. Look up any route through `getTracker`, not the featured array.
+The registry in `src/lib/trackers.ts` drives dynamic tracker pages, statistics, report forms, APIs, themes, source links, and affiliate destinations. The `trackers` array is the featured list: One Ring (100 slots), Edgar Markov (500), LOTR Poster Cards (20 cards x 100 = 2,000), and Golden Chocobo (77). `allTrackers` adds generated single-printing trackers. Look up any route through `getTracker`, not the featured array.
 
 `src/data/serialized-printings.json` is the reviewed Scryfall snapshot. `catalog:sync` fetches all serialized printings and fails on an unknown treatment instead of guessing quantities. `serialized-printings.ts` supplies release grouping, per-variant totals, language, and source metadata. Reporting opens for released English printings except the deferred Golden Chocobo migration. Announced and non-English printings have reference pages, not active report forms. Existing poster and Edgar records are reused, not regenerated.
 

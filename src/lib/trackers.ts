@@ -453,9 +453,10 @@ export const trackers: TrackerSummary[] = [
     slug: 'golden-chocobo',
     catalogSlug: 'final-fantasy-traveling-chocobo',
     title: 'Golden Chocobo',
-    subtitle: 'Coming later',
-    description: 'The existing Golden Chocobo tracker can be migrated into this platform when we are ready.',
+    subtitle: 'Final Fantasy serialized tracker /77',
+    description: 'Track the 77 serialized Traveling Chocobo cards from Magic: The Gathering Final Fantasy Collector Boosters.',
     setName: 'Final Fantasy',
+    releaseName: 'Collector Boosters',
     cardType: 'Serialized card',
     total: 77,
     serialPadding: 2,
@@ -465,7 +466,7 @@ export const trackers: TrackerSummary[] = [
       legacyCardsKeys: ['chocobo_cards', 'chocobo-cards'],
     },
     href: '/trackers/golden-chocobo',
-    status: 'planned',
+    status: 'live',
     theme: {
       accentClass: 'text-chocobo-gold',
       surfaceClass: 'bg-chocobo-dark',
@@ -491,27 +492,61 @@ export const trackers: TrackerSummary[] = [
         ctaDetail: 'Browse Final Fantasy collector booster products.',
       },
     ],
+    referenceLinks: [
+      {
+        label: 'Wizards collecting guide',
+        href: 'https://magic.wizards.com/en/news/feature/collecting-final-fantasy',
+        type: 'official',
+      },
+      {
+        label: 'Scryfall card page',
+        href: 'https://scryfall.com/card/fin/551f/traveling-chocobo',
+        type: 'scryfall',
+      },
+    ],
+    cardDefinitions: [
+      {
+        slug: 'traveling-chocobo',
+        title: 'Traveling Chocobo',
+        referenceImage: 'https://cards.scryfall.io/large/front/6/a/6a548a79-1947-4434-98ea-ac8e228c557d.jpg?1752887769',
+        scryfallUrl: 'https://scryfall.com/card/fin/551f/traveling-chocobo',
+      },
+    ],
     marketInsights: [
       {
         title: 'Collector Demand',
-        summary: 'Golden Chocobo is queued for migration so Final Fantasy serial discovery, sealed-product interest, and legacy tracker data can eventually live in the same platform.',
+        summary: 'Golden Chocobo is an active Final Fantasy serialized tracker, preserving legacy discovery data while new reports move through MTG Trackers review.',
         bullets: [
-          'Keep the existing tracker stable until the generic MTG Trackers path can preserve its data.',
+          'Use the imported legacy records as review leads so source quality can be preserved during migration.',
           'Validate Final Fantasy affiliate links before launch so collector traffic lands on relevant products.',
-          'Use the same admin review workflow once migrated so public discoveries stay evidence-backed.',
+          'Use the same admin review workflow as other live trackers so public discoveries stay evidence-backed.',
+        ],
+      },
+      {
+        title: 'Discovery Signals',
+        summary: 'Golden Chocobo discoveries have surfaced through collector social posts, marketplace listings, and graded-card reveals, so the strongest records preserve both the serial and original source.',
+        bullets: [
+          'Prioritize source links that show the stamped serial clearly or lead to a public sale, grading certificate, or collector reveal.',
+          'Treat legacy image paths as migration context until they are attached through the evidence upload flow.',
+          'Report updates for already-found serials when better provenance, price data, or grading details appear.',
         ],
       },
     ],
     faqs: [
       {
-        question: 'When will Golden Chocobo move into MTG Trackers?',
-        answer: 'Golden Chocobo is planned for migration after the generic tracker platform can preserve the existing data, affiliate coverage, and admin review workflow cleanly.',
+        question: 'How many serialized Golden Chocobo cards exist?',
+        answer: 'There are 77 serialized Traveling Chocobo cards from Magic: The Gathering Final Fantasy Collector Boosters, numbered 01/77 through 77/77.',
       },
       {
-        question: 'Will Golden Chocobo use the same verification queue?',
-        answer: 'Yes. Once migrated, new Golden Chocobo reports should use the same evidence-backed submission queue and admin review states as the live MTG Trackers pages.',
+        question: 'Does Golden Chocobo use the MTG Trackers verification queue?',
+        answer: 'Yes. New Golden Chocobo reports use the same evidence-backed submission queue and admin review states as the other live MTG Trackers pages.',
+      },
+      {
+        question: 'Why does the tracker say Golden Chocobo when the card is Traveling Chocobo?',
+        answer: 'Golden Chocobo is the collector-facing tracker name for the golden serialized Traveling Chocobo printing, while each serial record stays tied to the official Traveling Chocobo card identity.',
       },
     ],
+    referenceImage: 'https://cards.scryfall.io/large/front/6/a/6a548a79-1947-4434-98ea-ac8e228c557d.jpg?1752887769',
   },
 ];
 
@@ -630,6 +665,14 @@ export const generatedTrackers = serializedPrintings
   .map(makePrintingTracker);
 export const allTrackers = [...trackers, ...generatedTrackers];
 const trackerRegistry = new Map(allTrackers.map((tracker) => [tracker.slug, tracker]));
+
+export function getLiveTrackers() {
+  return allTrackers.filter((tracker) => tracker.status === 'live');
+}
+
+export function getLiveTrackerStaticParams() {
+  return getLiveTrackers().map((tracker) => ({ slug: tracker.slug }));
+}
 
 export function getPrintingTracker(printing: SerializedPrinting) {
   return existingPrintingTracker(printing) || generatedTrackers.find((tracker) => tracker.printingId === printing.id);
