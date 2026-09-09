@@ -144,6 +144,7 @@ import { POST as uploadEvidenceImage } from '@/app/api/trackers/[slug]/upload-im
 import { POST as reviewSubmission } from '@/app/api/trackers/[slug]/submissions/route';
 import { GET as exportTrackerBackup } from '@/app/api/trackers/[slug]/export/route';
 import { POST as importTrackerBackup } from '@/app/api/trackers/[slug]/import/route';
+import { POST as importGoldenChocoboLegacyFinds } from '@/app/api/admin/golden-chocobo-legacy-finds/route';
 import { POST as trackAffiliateClick } from '@/app/api/affiliate/click/route';
 import { GET as getAffiliateStats } from '@/app/api/admin/affiliate-stats/route';
 import { POST as trackPromotionAction } from '@/app/api/admin/promotion-action/route';
@@ -295,6 +296,18 @@ function importRequest(body: unknown, session = adminSession) {
     headers: {
       'content-type': 'application/json',
       origin: 'https://mtgtrackers.com',
+      cookie: `${ADMIN_COOKIE_NAME}=${session}`,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+function goldenChocoboLegacyImportRequest(body: unknown, session = adminSession, origin = 'https://mtgtrackers.com') {
+  return new NextRequest('https://mtgtrackers.com/api/admin/golden-chocobo-legacy-finds', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      origin,
       cookie: `${ADMIN_COOKIE_NAME}=${session}`,
     },
     body: JSON.stringify(body),
@@ -2443,6 +2456,99 @@ describe('tracker API routes', () => {
     expect(cards[6]).toMatchObject({ id: 7, serialNumber: '007' });
     expect(submissions).toHaveLength(1);
     expect(submissions[0].id).toBe(body.submissionId);
+  });
+
+  it('requires admin auth to import Golden Chocobo legacy finds', async () => {
+    const response = await importGoldenChocoboLegacyFinds(goldenChocoboLegacyImportRequest(
+      { confirm: 'IMPORT_GOLDEN_CHOCOBO_LEGACY_FINDS' },
+      '',
+    ));
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ message: 'Unauthorized' });
+  });
+
+  it('imports Golden Chocobo legacy finds as approved public records', async () => {
+    const goldenChocobo = getTracker('golden-chocobo')!;
+    const legacyCards = Array.from({ length: 77 }, (_, index) => ({ id: index + 1, found: false }));
+    legacyCards[0] = {
+      id: 1,
+      found: true,
+      foundBy: 'Ancestralmtg',
+      dateFound: '2025-06-20',
+      link: 'https://www.instagram.com/p/DLJPL2WviUe/?utm_source=ig_web_copy_link',
+      price: 50000,
+      priceDate: '2025-07-25',
+      grading: { service: 'CGC', grade: 10, dateGraded: '2025-08-07' },
+    };
+    legacyCards[34] = {
+      id: 35,
+      found: true,
+      foundBy: 'private collector',
+      dateFound: '2025-07-01',
+    };
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify(legacyCards), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    }));
+
+    const response = await importGoldenChocoboLegacyFinds(goldenChocoboLegacyImportRequest({
+      confirm: 'IMPORT_GOLDEN_CHOCOBO_LEGACY_FINDS',
+    }));
+    const result = await response.json();
+    const cards = redisFixture.store.get(goldenChocobo.storage.cardsKey) as Array<{
+      found: boolean;
+      serialNumber: string;
+      verificationStatus: string;
+      history?: unknown[];
+    }>;
+    const submissions = redisFixture.store.get(goldenChocobo.storage.submissionsKey) as Array<{
+      id: string;
+      status: string;
+      requestedVerificationStatus: string;
+      reviewedBy?: string;
+    }>;
+    const publicCards = await (await readCards(
+      new Request('https://mtgtrackers.com/api/trackers/golden-chocobo/cards'),
+      routeContext(goldenChocobo.slug),
+    )).json();
+
+    expect(response.status).toBe(200);
+    expect(result).toMatchObject({
+      message: 'Golden Chocobo legacy finds imported',
+      counts: {
+        cards: 77,
+        found: 2,
+        submissions: 2,
+        sourceLinked: 1,
+        unverified: 1,
+      },
+    });
+    expect(cards.filter((card) => card.found)).toHaveLength(2);
+    expect(cards[0]).toMatchObject({
+      serialNumber: '01',
+      verificationStatus: 'source-linked',
+    });
+    expect(cards[0].history).toHaveLength(1);
+    expect(cards[34]).toMatchObject({
+      serialNumber: '35',
+      verificationStatus: 'unverified',
+    });
+    expect(submissions).toEqual([
+      expect.objectContaining({
+        id: 'legacy-golden-chocobo-01',
+        status: 'approved',
+        requestedVerificationStatus: 'source-linked',
+        reviewedBy: 'owner',
+      }),
+      expect.objectContaining({
+        id: 'legacy-golden-chocobo-35',
+        status: 'approved',
+        requestedVerificationStatus: 'unverified',
+        reviewedBy: 'owner',
+      }),
+    ]);
+    expect(publicCards.filter((card: { found: boolean }) => card.found)).toHaveLength(2);
   });
 
   it('approves a pending submission and updates the target card', async () => {

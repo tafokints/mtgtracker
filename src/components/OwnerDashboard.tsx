@@ -36,6 +36,8 @@ export default function OwnerDashboard() {
   const [selected, setSelected] = useState<InboxRow | null>(null);
   const [cards, setCards] = useState<SerializedRingCard[] | null>(null);
   const [configuration, setConfiguration] = useState<Configuration | null>(null);
+  const [legacyImporting, setLegacyImporting] = useState(false);
+  const [legacyImportResult, setLegacyImportResult] = useState('');
   const generation = useRef(0);
   const detailHeading = useRef<HTMLHeadingElement>(null);
   const cursor = cursors.at(-1);
@@ -128,6 +130,44 @@ export default function OwnerDashboard() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Sign-out failed.'); }
     finally { setBusy(false); }
   }
+
+  async function importGoldenChocoboLegacyFinds() {
+    if (legacyImporting) return;
+    if (!window.confirm('Import legacy Golden Chocobo finds into MTG Trackers? This overwrites current Golden Chocobo cards and review records.')) return;
+
+    setLegacyImporting(true);
+    setLegacyImportResult('');
+    setError('');
+    try {
+      const response = await fetch('/api/admin/golden-chocobo-legacy-finds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: 'IMPORT_GOLDEN_CHOCOBO_LEGACY_FINDS' }),
+      });
+      const data = await response.json().catch(() => ({})) as {
+        message?: string;
+        counts?: { found?: number; cards?: number; sourceLinked?: number; unverified?: number };
+      };
+      if (response.status === 401) {
+        clearSession();
+        throw new Error('Your session ended. Sign in again.');
+      }
+      if (!response.ok) throw new Error(data.message || 'Legacy import failed.');
+
+      setLegacyImportResult(
+        `Imported ${data.counts?.found ?? 0}/${data.counts?.cards ?? 0} Golden Chocobo finds, including ${data.counts?.sourceLinked ?? 0} source-linked records and ${data.counts?.unverified ?? 0} records kept for manual source review.`
+      );
+      setStatus('approved');
+      setTrackerFilter('golden-chocobo');
+      setCursors([null]);
+      setRevision((value) => value + 1);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Legacy import failed.');
+    } finally {
+      setLegacyImporting(false);
+    }
+  }
+
   const refresh = () => { setCursors([null]); setRevision((value) => value + 1); };
   const selectedTracker = selected ? getTracker(selected.tracker) : undefined;
 
@@ -161,6 +201,16 @@ export default function OwnerDashboard() {
           {configuration?.services.map((service) => <div className={styles.service} key={service.name}><span>{service.name}</span><span className={service.configured ? styles.configured : styles.missing}>{service.configured ? 'Configured' : 'Missing configuration'}</span></div>)}
           <p className={styles.notice}>Configuration is not a successful service test. Hosted upload, scanning, approval, and recovery checks remain required.</p>
           <div className={styles.service}><span>Scheduled backups and restore drill</span><span className={styles.missing}>Not verified here</span></div>
+          <div className={styles.storageCheck}>
+            <div className={styles.sectionTitle}><h2>Golden Chocobo migration</h2></div>
+            <div className={styles.service}>
+              <span>Legacy finds import</span>
+              <button type="button" onClick={importGoldenChocoboLegacyFinds} disabled={legacyImporting} className={styles.testButton}>
+                <ArrowPathIcon />{legacyImporting ? 'Importing...' : 'Import finds'}
+              </button>
+            </div>
+            {legacyImportResult && <p role="status" className={styles.notice}>{legacyImportResult}</p>}
+          </div>
           {configuration && <StorageCheck configured={configuration.services.some((service) => service.name === 'Private image storage' && service.configured)} onSessionLost={clearSession} />}
           {configuration && <StorageInventory onSessionLost={clearSession} />}
         </section> : <>
