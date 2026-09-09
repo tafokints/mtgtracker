@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Cinzel } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import React from "react";
 import SiteTelemetry from '@/components/SiteTelemetry';
 import { getTracker } from "@/lib/trackers";
 import SiteFooter from "@/components/SiteFooter";
 
-const cinzel = Cinzel({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], display: 'swap' });
 const oneRingTracker = getTracker('one-ring');
 const socialImage = oneRingTracker?.referenceImage || '/icon.svg';
 const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || process.env.GOOGLE_SITE_VERIFICATION;
@@ -101,7 +101,7 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#D6A73D" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
       </head>
-      <body className={cinzel.className}>
+      <body className={inter.className}>
         {children}
         <SiteFooter />
         <SiteTelemetry />
